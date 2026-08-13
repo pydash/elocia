@@ -1,0 +1,193 @@
+elocia-app/
+│
+├── README.md
+├── .gitignore
+├── docker-compose.yml
+├── .env.example
+│
+├── apps/
+│   │
+│   ├── student-desktop/
+│   │   │
+│   │   ├── frontend/                  # React + Vite
+│   │   │   ├── public/
+│   │   │   │   ├── images/
+│   │   │   │   └── sounds/
+│   │   │   │
+│   │   │   ├── src/
+│   │   │   │   ├── assets/
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── Sidebar/
+│   │   │   │   │   ├── Camera/
+│   │   │   │   │   ├── SignCard/
+│   │   │   │   │   ├── LessonCard/
+│   │   │   │   │   ├── Feedback/
+│   │   │   │   │   └── ProgressBar/
+│   │   │   │   │
+│   │   │   │   ├── pages/
+│   │   │   │   │   ├── Home/
+│   │   │   │   │   ├── Lessons/
+│   │   │   │   │   ├── Practice/
+│   │   │   │   │   ├── Results/
+│   │   │   │   │   └── Profile/
+│   │   │   │   │
+│   │   │   │   ├── services/
+│   │   │   │   │   ├── api.ts
+│   │   │   │   │   └── ml.ts
+│   │   │   │   │
+│   │   │   │   ├── hooks/
+│   │   │   │   ├── utils/
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── main.tsx
+│   │   │   │   └── index.css
+│   │   │   │
+│   │   │   ├── index.html
+│   │   │   ├── package.json
+│   │   │   └── vite.config.js
+│   │   │
+│   │   └── desktop/                   # Python + pywebview
+│   │       ├── main.py                # Desktop entry point
+│   │       ├── bridge.py              # TS ↔ Python communication
+│   │       ├── camera.py              # Camera-related Python code
+│   │       ├── inference.py           # Local ML inference
+│   │       ├── config.py
+│   │       ├── requirements.txt
+│   │       └── README.md
+│   │
+│   │
+│   └── web/
+│       │
+│       ├── src/
+│       │   ├── assets/
+│       │   │
+│       │   ├── components/
+│       │   │
+│       │   ├── pages/
+│       │   │   ├── Login.jsx
+│       │   │   │
+│       │   │   ├── teacher/
+│       │   │   │   ├── Dashboard.jsx
+│       │   │   │   ├── Students.jsx
+│       │   │   │   └── Progress.jsx
+│       │   │   │
+│       │   │   ├── parent/
+│       │   │   │   ├── Dashboard.jsx
+│       │   │   │   └── ChildProgress.jsx
+│       │   │   │
+│       │   │   └── admin/
+│       │   │       ├── Dashboard.jsx
+│       │   │       ├── Users.jsx
+│       │   │       └── Reports.jsx
+│       │   │
+│       │   ├── layouts/
+│       │   │   ├── TeacherLayout.tsx
+│       │   │   ├── ParentLayout.tsx
+│       │   │   └── AdminLayout.tsx
+│       │   │
+│       │   ├── services/
+│       │   │   └── api.ts
+│       │   │
+│       │   ├── hooks/
+│       │   ├── utils/
+│       │   ├── App.tsx
+│       │   ├── main.tsx
+│       │   └── index.css
+│       │
+│       ├── public/
+│       ├── index.html
+│       ├── package.json
+│       └── vite.config.ts
+│
+│
+├── backend/
+│   │
+│   ├── app/
+│   │   ├── main.py
+│   │   │
+│   │   ├── api/
+│   │   │   ├── auth.py
+│   │   │   ├── students.py
+│   │   │   ├── teachers.py
+│   │   │   ├── lessons.py
+│   │   │   ├── progress.py
+│   │   │   └── results.py
+│   │   │
+│   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   ├── student.py
+│   │   │   ├── teacher.py
+│   │   │   ├── lesson.py
+│   │   │   └── result.py
+│   │   │
+│   │   ├── schemas/
+│   │   │   ├── auth.py
+│   │   │   ├── student.py
+│   │   │   ├── lesson.py
+│   │   │   └── result.py
+│   │   │
+│   │   ├── services/
+│   │   │   ├── auth_service.py
+│   │   │   ├── student_service.py
+│   │   │   ├── lesson_service.py
+│   │   │   └── progress_service.py
+│   │   │
+│   │   ├── database/
+│   │   │   ├── connection.py
+│   │   │   ├── session.py
+│   │   │   └── migrations/
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   └── security.py
+│   │   │
+│   │   └── utils/
+│   │
+│   ├── tests/
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+│
+├── ml/
+│   │
+│   ├── models/                       # Trained models
+│   │   ├── sign_classifier/
+│   │   │   ├── model.onnx
+│   │   │   └── labels.json
+│   │   │
+│   │   └── hand_landmark/
+│   │       └── ...
+│   │
+│   ├── inference/
+│   │   ├── predictor.py
+│   │   ├── preprocessing.py
+│   │   └── postprocessing.py
+│   │
+│   ├── training/
+│   │   ├── train.py
+│   │   ├── evaluate.py
+│   │   └── export.py
+│   │
+│   ├── datasets/
+│   │   └── .gitkeep
+│   │
+│   ├── notebooks/
+│   │   └── ...
+│   │
+│   ├── requirements.txt
+│   └── README.md
+│
+│
+├── shared/
+│   ├── constants/
+│   ├── types/
+│   └── schemas/
+│
+│
+└── scripts/
+    ├── dev/
+    │   ├── start-backend.sh
+    │   ├── start-student.sh
+    │   └── start-teacher.sh
+    │
+    └── build/
+        └── build-desktop.sh
