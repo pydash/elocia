@@ -1,0 +1,61 @@
+/* elocia/apps/student-desktop/frontend/src/pages/LessonNavigation.css */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f4f7f6; /* Soft, friendly background color */
+  font-family: 'Quicksand', sans-serif;
+}
+
+/* The top bar holding the section tabs */
+.sections-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: #ffffff;
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+/* Individual Section Tabs */
+.section-tab {
+  background-color: transparent;
+  border: 2px solid transparent;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #7f8c8d;
+  cursor: pointer;
+  border-radius: 24px;
+  transition: all 0.2s;
+}
+
+.section-tab:hover {
+  background-color: #f1f2f6;
+}
+
+/* The Active/Selected Tab */
+.section-tab.active {
+  background-color: #74b9ff; /* Friendly blue */
+  color: #ffffff;
+  box-shadow: 0 4px 0 #0984e3; /* Gamified "pushable" effect */
+  transform: translateY(-2px);
+}
+
+.section-tab.active:active {
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+/* The Star Counter */
+.stars-container {
+  margin-left: auto; /* Pushes the stars all the way to the right side */
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f39c12;
+  background-color: #fff3e0;
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 2px solid #f39c12;
+}

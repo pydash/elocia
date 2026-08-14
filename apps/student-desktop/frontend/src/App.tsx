@@ -1,14 +1,12 @@
 import './App.css'
+import LessonNavigation from './pages/LessonNavigation'; // Added /pages/
 
 function App() {
-
   return (
     <>
-      <h1 className="underline">
-        This is Elocia Desktop App for Students
-      </h1>
+      <LessonNavigation />
     </>
   )
 }
 
-export default App
+export default App;

@@ -1,0 +1,105 @@
+.elocia-navbar {
+  display: flex;
+  flex-direction: column;
+  width: 240px; /* Slightly wider to match educational apps */
+  height: 100vh;
+  background-color: #ffffff;
+  padding: 30px 20px;
+  border-right: 2px solid #e5e5e5; /* Cleaner than a shadow for gamified UI */
+  font-family: 'Quicksand', sans-serif;
+  position: fixed;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+}
+
+/* Logo and Brand Name */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 50px;
+  padding-left: 10px;
+}
+
+.logo-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.brand-name {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #333333; /* Deep contrast for accessibility */
+  letter-spacing: 0.5px;
+}
+
+/* Navigation Links */
+.navbar-links {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  flex-grow: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 14px 20px;
+  border-radius: 20px; /* Pill shape */
+  border: 2px solid transparent; /* Prevents jumping on hover */
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-item:hover {
+  background-color: #f7f9fa;
+  border-color: #f7f9fa;
+  color: #2c3e50;
+}
+
+/* The Figma Active State */
+.nav-item.active {
+  background-color: #e3f2fd; /* Soft blue background */
+  border: 2px solid #74b9ff; /* Solid blue outline */
+  color: #0984e3;
+}
+
+/* Icons inside the nav */
+.nav-icon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+}
+
+/* Logout Button */
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background-color: #ffffff;
+  color: #ff7675;
+  border: 2px solid #ff7675;
+  padding: 14px 20px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #ffeaea;
+}
