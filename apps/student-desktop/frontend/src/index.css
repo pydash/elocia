@@ -35,8 +35,22 @@
     font-style: normal;
 }
 
+/* =========================================
+   CSS RESET (Fixes the double scrollbar!)
+========================================= */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden; 
+}
+
+* {
+  box-sizing: border-box;
+}
 
 body {
   font-family: 'Quicksand', sans-serif;
-  margin: 0;
+  /* (Removed the margin: 0 from here since we added it to html, body, #root above) */
 }

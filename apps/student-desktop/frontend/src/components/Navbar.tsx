@@ -4,21 +4,17 @@ import './Navbar.css';
 export default function Navbar() {
   return (
     <nav className="elocia-navbar">
-      {/* Brand & Logo */}
+      {/* Brand & Logo Only */}
       <div className="navbar-brand">
         <img src="/src/assets/logo-icon.png" alt="ELOCIA Logo" className="logo-icon" />
-        <span className="brand-name">ELOCIA</span>
       </div>
 
       {/* Navigation Links */}
       <ul className="navbar-links">
-        {/* Active Item */}
         <li className="nav-item active">
-          <span className="nav-icon">📖</span> {/* Placeholder icon - we will swap this! */}
+          <span className="nav-icon">📖</span>
           <span className="nav-text">Learn</span>
         </li>
-        
-        {/* Inactive Items */}
         <li className="nav-item">
           <span className="nav-icon">🎯</span>
           <span className="nav-text">Practice</span>
@@ -41,7 +37,7 @@ export default function Navbar() {
       <div className="navbar-actions">
         <button className="logout-button">
           <span className="nav-icon">🚪</span>
-          Logout
+          <span className="nav-text">Logout</span>
         </button>
       </div>
     </nav>

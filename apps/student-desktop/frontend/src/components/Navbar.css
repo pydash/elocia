@@ -1,38 +1,33 @@
 .elocia-navbar {
   display: flex;
   flex-direction: column;
-  width: 240px; /* Slightly wider to match educational apps */
+  width: 240px;
   height: 100vh;
   background-color: #ffffff;
   padding: 30px 20px;
-  border-right: 2px solid #e5e5e5; /* Cleaner than a shadow for gamified UI */
+  border-right: 2px solid #e5e5e5;
   font-family: 'Quicksand', sans-serif;
   position: fixed;
   left: 0;
   top: 0;
   box-sizing: border-box;
+
+  z-index: 100;
 }
 
 /* Logo and Brand Name */
 .navbar-brand {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  justify-content: center;
   margin-bottom: 50px;
-  padding-left: 10px;
+  padding-left: 0;
+  width: 100%;
 }
 
 .logo-icon {
-  width: 48px;
-  height: 48px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
-}
-
-.brand-name {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #333333; /* Deep contrast for accessibility */
-  letter-spacing: 0.5px;
 }
 
 /* Navigation Links */
@@ -82,6 +77,11 @@
   width: 30px;
 }
 
+.navbar-actions {
+  margin-top: auto; /* Pushes the button to the bottom */
+  width: 100%;
+}
+
 /* Logout Button */
 .logout-button {
   display: flex;
@@ -89,7 +89,7 @@
   justify-content: center;
   gap: 12px;
   background-color: #ffffff;
-  color: #ff7675;
+  color: #ff7675; /* Gamified red color */
   border: 2px solid #ff7675;
   padding: 14px 20px;
   border-radius: 20px;
@@ -98,6 +98,7 @@
   cursor: pointer;
   width: 100%;
   transition: all 0.2s;
+  font-family: 'Quicksand', sans-serif;
 }
 
 .logout-button:hover {
