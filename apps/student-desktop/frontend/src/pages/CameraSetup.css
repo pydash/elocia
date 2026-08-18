@@ -1,0 +1,305 @@
+.app-layout-fullscreen {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Quicksand', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.main-content-area-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background-color: #69DCFF;
+  position: relative;
+  overflow: hidden;
+}
+
+.clouds-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-decor {
+  position: absolute;
+}
+
+.sun {
+  width: 256px;
+  height: 256px;
+  top: 30px;
+  right: 30px;
+}
+
+@keyframes floatAndBob {
+  0%   { transform: translate(100vw, 0px); }
+  50%  { transform: translate(50vw, -15px); }
+  100% { transform: translate(-300px, 0px); }
+}
+
+.cloud-1 { width: 139px; height: 101px; top: 15%; left: 0; animation: floatAndBob 30s linear infinite; animation-delay: -5s; }
+.cloud-2 { width: 251px; height: 161px; top: 5%; left: 0; animation: floatAndBob 40s linear infinite; animation-delay: -15s; z-index: 1; }
+.cloud-3 { width: 180px; height: auto; top: 35%; left: 0; animation: floatAndBob 50s linear infinite; animation-delay: -25s; opacity: 0.7; }
+.cloud-5 { width: 120px; height: auto; bottom: 45%; left: 0; animation: floatAndBob 55s linear infinite; animation-delay: -45s; opacity: 0.5; }
+.cloud-6 { width: 200px; height: 107px; bottom: 8%; left: 0; animation: floatAndBob 45s linear infinite; animation-delay: -55s; }
+
+.camera-setup-content-wrapper {
+  position: absolute;
+  top: 10px;
+  left: 40px;
+  right: 40px;
+  bottom: 270px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 120px;
+  z-index: 3;
+}
+
+.tips-card-box-large {
+  background: #FCF9F2;
+  border: 3px dashed #FB9F34;
+  border-radius: 36px;
+  padding: 35px;
+  width: 310px;
+  height: 350px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0px 12px 24px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+  margin-top: 40px;
+}
+
+.tips-card-box-large h3 {
+  font-size: 22px;
+  color: #FB9F34;
+  margin: 0;
+  text-align: center;
+  font-weight: 800;
+}
+
+.tips-card-box-large ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-weight: 600;
+  font-size: 18px;
+  color: #3E4850;
+}
+
+.setup-mascot-container-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 50px;
+  left: 0px;
+}
+
+.setup-speech-bubble-large {
+  position: absolute;
+  width: 250px;
+  height: auto;
+  top: -100px;
+  left: -110px;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.08));
+  z-index: 4;
+}
+
+.setup-monkey-img-large {
+  width: 320px;
+  height: auto;
+  position: relative;
+  top: 0px;
+  left: 0px;
+}
+
+.camera-check-group {
+  display: flex;
+  align-items: center;
+  gap: 80px;
+  position: relative;
+}
+
+.check-mascot-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.speech-bubble-check {
+  background: #FFFFFF;
+  border: 3px solid #FB9F34;
+  border-radius: 20px;
+  padding: 18px 22px;
+  font-weight: 800;
+  font-size: 18px;
+  color: #3E4850;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.check-monkey-img {
+  width: 270px;
+  height: auto;
+}
+
+.live-camera-feed-card {
+  position: relative;
+  width: 580px;
+  height: 420px;
+  background: #1E293B;
+  border: 4px solid #FB9F34;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.actual-webcam-stream {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.live-badge-tag {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0,0,0,0.6);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 8px;
+  z-index: 2;
+  letter-spacing: 1px;
+}
+
+.top-warning-tag {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #FFFFFF;
+  border: 2px solid #FB9F34;
+  color: #D97706;
+  padding: 6px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  z-index: 5;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  white-space: nowrap;
+}
+
+.crosshair-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 260px;
+  height: 320px;
+  border: 3px dashed rgba(255,255,255,0.7);
+  border-radius: 140px;
+  pointer-events: none;
+}
+
+.bottom-split-nav-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  height: 252px;
+  z-index: 5;
+}
+
+.split-btn {
+  width: 50%;
+  height: 100%;
+  border: none;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 900;
+  font-size: 56px;
+  color: #FFFFFF;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.back-btn-side {
+  background: #4D9FFF;
+  box-shadow: 0px -4px 0px #3975BB;
+  border-radius: 60px 0px 0px 0px;
+}
+
+.okay-btn-side {
+  background: #61DD8A;
+  box-shadow: 0px -4px 0px #3EA660;
+  border-radius: 0px 60px 0px 0px;
+}
+
+.split-btn:active {
+  opacity: 0.9;
+}
+
+.dev-state-switcher {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  background: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border-radius: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.dev-state-switcher button {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.dev-state-switcher button.active {
+  background: #FB9F34;
+  color: #FFFFFF;
+  border-color: #FB9F34;
+}

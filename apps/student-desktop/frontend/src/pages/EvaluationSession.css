@@ -1,0 +1,156 @@
+/* src/pages/EvaluationSession.css */
+
+.evaluation-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: #69DCFF; /* Matches the map background */
+  font-family: 'Quicksand', sans-serif;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Header */
+.evaluation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 15px 30px;
+  border-radius: 20px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.evaluation-header h2 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.exit-btn {
+  background-color: #f8f9fa;
+  color: #7f8c8d;
+  border: 2px solid #bdc3c7;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Quicksand', sans-serif;
+  transition: all 0.2s;
+}
+
+.exit-btn:hover {
+  background-color: #e2e8f0;
+  color: #2c3e50;
+}
+
+.tier-indicator {
+  background-color: #FF9800;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: 0 3px 0 #E65100;
+}
+
+/* Video Workspace */
+.video-workspace {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  margin-bottom: 20px;
+  min-height: 0;
+}
+
+.video-container {
+  flex: 1;
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.video-container h3 {
+  color: #FF9800;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.feed-wrapper, 
+.video-placeholder {
+  width: 100%;
+  flex: 1;
+  background-color: #f8f9fa;
+  border-radius: 16px;
+  border: 4px solid #bdc3c7;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #7f8c8d;
+  font-weight: 700;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Feedback Panel */
+.feedback-panel {
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 20px 30px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.05);
+}
+
+.feedback-panel h3 {
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.parameters-grid {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.param-card {
+  flex: 1;
+  background-color: #f8f9fa;
+  border: 2px solid #bdc3c7;
+  padding: 12px 15px;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.param-card h4 {
+  margin: 0 0 8px 0;
+  color: #7f8c8d;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.score-bar {
+  height: 12px;
+  background-color: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.score-bar .fill {
+  height: 100%;
+  background-color: #10B981; /* Green when score improves */
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}

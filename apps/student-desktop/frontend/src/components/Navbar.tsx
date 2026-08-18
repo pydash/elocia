@@ -1,4 +1,3 @@
-import React from 'react';
 import './Navbar.css';
 
 export default function Navbar() {
@@ -6,7 +5,7 @@ export default function Navbar() {
     <nav className="elocia-navbar">
       {/* Brand & Logo Only */}
       <div className="navbar-brand">
-        <img src="/src/assets/logo-icon.png" alt="ELOCIA Logo" className="logo-icon" />
+        <img src="/src/assets/images/logo-icon.png" alt="ELOCIA Logo" className="logo-icon" />
       </div>
 
       {/* Navigation Links */}
