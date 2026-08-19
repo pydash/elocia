@@ -1,6 +1,17 @@
 import { useRef, useEffect, useState } from 'react';
 import './EvaluationSession.css';
 
+//  MASCOT ASSETS 
+import moveAwayMascot from '../assets/images/Move away.png';
+import thinkingHandshape from '../assets/images/Tier handshape thinking.png';
+import thinkingOrientation from '../assets/images/tier palm-orientation thinking.png';
+import thinkingLocation from '../assets/images/tier location thinking.png';
+import thinkingMovement from '../assets/images/tier movement thinking.png';
+
+//DIALOGUE BUBBLE IMAGES (PER TIER)
+import dialogueKeepGoing from '../assets/images/Keep Going.png';
+import dialogueGiveBest from '../assets/images/Give your Best.png';
+
 interface EvaluationSessionProps {
   stageId: number | null;
   onExit: () => void;
@@ -16,70 +27,136 @@ interface LandmarkData {
   pose?: LandmarkPoint[];
   left_hand?: LandmarkPoint[];
   right_hand?: LandmarkPoint[];
+  scores?: {
+    handshape: number;
+    palmOrientation: number;
+    location: number;
+    movement: number;
+    overall: number;
+    passed: boolean;
+  };
 }
+
+type MascotType = 'handshape' | 'orientation' | 'location' | 'movement' | 'moveAway' | null;
 
 export default function EvaluationSession({ stageId, onExit }: EvaluationSessionProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Parameter sub-scores working baselines (25% equal weighting model as specified in ELOCIA architecture)
-  const [scores] = useState({
+  // --- STATE ---
+  const [scores, setScores] = useState({
     handshape: 0,
     palmOrientation: 0,
     location: 0,
     movement: 0,
+    overall: 0,
+    passed: false,
   });
 
-  // Declare drawLandmarks before useEffect to prevent hoisting/access errors
-  const drawLandmarks = (landmarks: LandmarkData) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const [attemptCount, setAttemptCount] = useState(1);
+  const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
+  const [activeMascot, setActiveMascot] = useState<MascotType>(null);
+  const [showTeacherReplay, setShowTeacherReplay] = useState(false);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Renders real-time student skeleton overlay and confidence feedback features from MediaPipe landmarks
-    if (landmarks.right_hand || landmarks.left_hand || landmarks.pose) {
-      ctx.fillStyle = '#10B981';
-      // Basic indicator that landmarks are actively streaming and tracking
-      ctx.beginPath();
-      ctx.arc(30, 30, 8, 0, 2 * Math.PI);
-      ctx.fill();
+  const targetNumber = 22;
+  const currentQuestion = stageId ?? 2;
+  const totalQuestions = 10;
+
+  
+  const getMascotImage = () => {
+    switch (activeMascot) {
+      case 'handshape': return thinkingHandshape;
+      case 'orientation': return thinkingOrientation;
+      case 'location': return thinkingLocation;
+      case 'movement': return thinkingMovement;
+      case 'moveAway': return moveAwayMascot;
+      default: return moveAwayMascot; // Default neutral monkey
     }
   };
 
+
+  const getDialogueImage = () => {
+    if (scores.overall >= 60) return dialogueKeepGoing;
+    if (currentTier === 2) return dialogueGiveBest;
+    return dialogueKeepGoing;
+  };
+
+  const handleSubmitSign = () => {
+    if (scores.overall >= 60) {
+      setActiveMascot(null);
+      setShowTeacherReplay(false);
+      return;
+    }
+
+    const nextAttempt = attemptCount + 1;
+    setAttemptCount(nextAttempt);
+
+    if (nextAttempt === 3) {
+      setCurrentTier(2);
+      const params = [
+        { name: 'handshape', val: scores.handshape },
+        { name: 'orientation', val: scores.palmOrientation },
+        { name: 'location', val: scores.location },
+        { name: 'movement', val: scores.movement },
+      ];
+      params.sort((a, b) => a.val - b.val);
+      setActiveMascot(params[0].name as MascotType);
+    } else if (nextAttempt === 4) {
+      setCurrentTier(3);
+      setActiveMascot(null);
+      setShowTeacherReplay(true);
+    } else if (nextAttempt >= 5) {
+      setCurrentTier(4);
+      setActiveMascot(null);
+      setShowTeacherReplay(false);
+      setTimeout(() => onExit(), 4000);
+    }
+  };
+
+
   useEffect(() => {
-    // 1. Initialize Webcam
+    let mounted = true;
+    const videoElement = videoRef.current;
+
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        if (mounted && videoElement) {
+          videoElement.srcObject = stream;
         }
       } catch (err) {
-        console.error("Webcam access error:", err);
+        console.error('Webcam error:', err);
       }
     }
     startCamera();
 
-    // 2. Connect to local FastAPI WebSocket server using useRef to avoid cascading setState renders
-    const websocket = new WebSocket("ws://localhost:8000/ws/evaluate");
+    const websocket = new WebSocket('ws://127.0.0.1:8000/ws/evaluate');
     wsRef.current = websocket;
 
-    websocket.onopen = () => {
-      console.log("Connected to ELOCIA Python CV Pipeline");
-    };
-
     websocket.onmessage = (event) => {
-      const data: LandmarkData = JSON.parse(event.data);
-      if (data.right_hand || data.left_hand || data.pose) {
-        drawLandmarks(data);
+      try {
+        const data: LandmarkData = JSON.parse(event.data);
+        if (data.scores) setScores(data.scores);
+
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (data.right_hand || data.left_hand || data.pose) {
+              ctx.fillStyle = '#22C55E';
+              ctx.beginPath();
+              ctx.arc(30, 30, 8, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+        }
+      } catch (err) {
+        console.error('WS parse error:', err);
       }
     };
 
-    // 3. Frame transmission loop (~30 fps matching pipeline spec)
     const interval = setInterval(() => {
       if (videoRef.current && websocket.readyState === WebSocket.OPEN) {
         const canvas = document.createElement('canvas');
@@ -88,79 +165,128 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-          const base64Frame = canvas.toDataURL('image/jpeg', 0.6);
-          websocket.send(base64Frame);
+          websocket.send(JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.5) }));
         }
       }
-    }, 100);
+    }, 140);
 
     return () => {
+      mounted = false;
       clearInterval(interval);
       websocket.close();
-      if (videoRef.current && videoRef.current.srcObject) {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-        tracks.forEach(track => track.stop());
+      if (videoElement?.srcObject) {
+        (videoElement.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
       }
     };
   }, []);
 
   return (
-    <div className="evaluation-layout">
-      <header className="evaluation-header">
-        <button onClick={onExit} className="exit-btn">← Back to Map</button>
-        <h2>Stage {stageId} - Graded Practice</h2>
-        <div className="tier-indicator">Tier 1: Unaided Practice</div>
+    <div className="evaluation-layout-1920">
+      
+      {/* 1. HEADER BAR */}
+      <header className="eval-header-bar">
+        <button className="eval-back-btn" onClick={onExit} type="button" aria-label="Back">
+          ←
+        </button>
+
+        <div className="eval-title-block">
+          <div className="eval-main-title">Stage {stageId ?? 3}: Numbers (21 - 30)</div>
+          <div className="eval-progress-track">
+            {Array.from({ length: totalQuestions }, (_, index) => (
+              <div key={index} className={`eval-progress-pill ${index < currentQuestion ? 'done' : ''}`} />
+            ))}
+          </div>
+        </div>
+
+        <div className="eval-header-right">
+          <span className="eval-counter-text">{currentQuestion} of {totalQuestions}</span>
+          <button className="eval-settings-btn" type="button" aria-label="Settings">⚙</button>
+        </div>
       </header>
 
-      <div className="video-workspace">
-        <div className="video-container reference-video">
-          <h3>Reference Sign</h3>
-          <div className="video-placeholder">
-            <p>Teacher Reference Demonstration</p>
+      {/* 2. MAIN CONTENT ROW */}
+      <main className="eval-main-row">
+        
+        {/* LEFT COLUMN */}
+        <section className="eval-left-col">
+          <div className="eval-instruction-card">
+            <span className="eval-instruction-tag">Instruction:</span>
+            <h2>Make the sign for {targetNumber} in sign language</h2>
           </div>
-        </div>
 
-        <div className="video-container student-video">
-          <h3>Your Camera (Live CV)</h3>
-          <div className="feed-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-            />
-            <canvas 
-              ref={canvasRef}
-              width={640}
-              height={480}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-            />
-          </div>
-        </div>
-      </div>
+          <div className="eval-camera-card">
+            <div className="eval-live-badge">
+              <span className="eval-live-dot" /> LIVE FEED
+            </div>
 
-      <div className="feedback-panel">
-        <h3>Live Parameter Analysis (25% Weighting each)</h3>
-        <div className="parameters-grid">
-          <div className="param-card">
-            <h4>Handshape</h4>
-            <div className="score-bar"><div className="fill" style={{ width: `${scores.handshape}%` }}></div></div>
+            <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
+            <canvas ref={canvasRef} width={640} height={480} className="eval-overlay-canvas" />
+
+            {/* TIER 2 MASCOT OVERLAY */}
+            {activeMascot && (
+              <img src={getMascotImage()} alt={`${activeMascot} feedback`} className={`eval-tier2-mascot mascot-${activeMascot}`} />
+            )}
+
+            {/* TIER 3 TEACHER REPLAY OVERLAY */}
+            {showTeacherReplay && (
+              <div className="eval-tier3-overlay">
+                <h3>Tier 3: Watch the Teacher Carefully</h3>
+                <div className="eval-teacher-video-box">[Teacher Reference Video]</div>
+                <button onClick={() => setShowTeacherReplay(false)} className="eval-tier3-ready-btn">
+                  I'm Ready to Try Again
+                </button>
+              </div>
+            )}
           </div>
-          <div className="param-card">
-            <h4>Palm Orientation</h4>
-            <div className="score-bar"><div className="fill" style={{ width: `${scores.palmOrientation}%` }}></div></div>
+
+          <button className="eval-submit-btn" onClick={handleSubmitSign}>
+            {scores.overall >= 60 ? 'Perfect! Pass Stage 🎉' : `Submit Attempt (${attemptCount}/4) [Tier ${currentTier}]`}
+          </button>
+        </section>
+
+        {/* RIGHT COLUMN — OUTER CONTAINER */}
+        <section className="eval-right-col-container">
+          
+          {/* Section 1 — Number Display Card */}
+          <div className="eval-number-card">
+            <div className="eval-number-display">{targetNumber}</div>
           </div>
-          <div className="param-card">
-            <h4>Location</h4>
-            <div className="score-bar"><div className="fill" style={{ width: `${scores.location}%` }}></div></div>
+
+          {/* Section 2 — Feedback / Mascot Card with Speech Bubble */}
+          <div className="eval-mascot-feedback-card">
+            <img src={getDialogueImage()} alt="Mascot dialogue" className="eval-dialogue-img" />
+            <div className="eval-mascot-wrap">
+              <img src={getMascotImage()} alt="Learning Mascot" className="eval-feedback-mascot-img" />
+            </div>
           </div>
-          <div className="param-card">
-            <h4>Movement (DTW)</h4>
-            <div className="score-bar"><div className="fill" style={{ width: `${scores.movement}%` }}></div></div>
+
+          {/* Section 3 — Clean 4-Card Grid with Phonological Mascots */}
+          <div className="eval-parameters-grid">
+            <div className="eval-param-card param-handshape">
+              <div className="eval-param-title">Handshape</div>
+              <img src={thinkingHandshape} alt="Handshape mascot" className="eval-param-mascot" />
+              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.handshape)}%` : ''}</div>
+            </div>
+            <div className="eval-param-card param-orientation">
+              <div className="eval-param-title">Palm Orientation</div>
+              <img src={thinkingOrientation} alt="Palm orientation mascot" className="eval-param-mascot" />
+              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.palmOrientation)}%` : ''}</div>
+            </div>
+            <div className="eval-param-card param-location">
+              <div className="eval-param-title">Location</div>
+              <img src={thinkingLocation} alt="Location mascot" className="eval-param-mascot" />
+              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.location)}%` : ''}</div>
+            </div>
+            <div className="eval-param-card param-movement">
+              <div className="eval-param-title">Movement</div>
+              <img src={thinkingMovement} alt="Movement mascot" className="eval-param-mascot" />
+              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.movement)}%` : ''}</div>
+            </div>
           </div>
-        </div>
-      </div>
+
+        </section>
+
+      </main>
     </div>
   );
 }
