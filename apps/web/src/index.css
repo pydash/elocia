@@ -1,5 +1,121 @@
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap");
 @import "tailwindcss";
 
+@theme {
+  /* Font */
+  --font-sans: "Quicksand", sans-serif;
+
+  /* Typography */
+  --heading-1: 48px;
+  --heading-1-line-height: 48px;
+  --heading-1-font-weight: 700;
+
+  --heading-2: 32px;
+  --heading-2-line-height: 32px;
+  --heading-2-font-weight: 700;
+
+  --heading-3: 23px;
+  --heading-3-line-height: 23px;
+  --heading-3-font-weight: 700;
+
+  --paragraph-1: 18px;
+  --paragraph-1-line-height: 18px;
+  --paragraph-1-font-weight: 400;
+
+  --paragraph-2: 16px;
+  --paragraph-2-line-height: 16px;
+  --paragraph-2-font-weight: 400;
+
+  --caption: 14px;
+  --caption-line-height: 14px;
+  --caption-font-weight: 400;
+
+  --item-label: 12px;
+  --item-label-line-height: 12px;
+  --item-label-font-weight: 400;
+}
+
+:root {
+  --primary: #fb9f34;
+  --primary-light: #fcf9f2;
+  --primary-shadow: #8d4f00;
+  --primary-hover: #e58e2c;
+  --primary-500: #fef5eb;
+
+  --white: #ffffff;
+  --black: #3e4850;
+
+  --gray-50: #faf9f9;
+  --gray-100: #eeeeed;
+
+  --ghost: #6b7280;
+  --border: #e3e2e2;
+  --surface: #d9d9d9;
+
+  --success: #4ecb71;
+  --success-light: #d6f9e2;
+
+  --info: #4d9fff;
+  --info-light: #deedff;
+
+  --danger: #ff6363;
+  --danger-light: #ffdede;
+
+  --warning: #ffb84d;
+  --warning-light: #ffecd1;
+
+  --screen-light: #faf9f9;
+
+  --green-button: #61dd8a;
+  --green-button-disabled: #a9d7b8;
+
+  --pink: #f47ba6;
+  --pink-light: #fff7f2;
+}
+
 body {
+  font-family: var(--font-sans);
   margin: 0;
+}
+
+.heading-1 {
+  font-size: var(--heading-1);
+  line-height: var(--heading-1-line-height);
+  font-weight: var(--heading-1-font-weight);
+}
+
+.heading-2 {
+  font-size: var(--heading-2);
+  line-height: var(--heading-2-line-height);
+  font-weight: var(--heading-2-font-weight);
+}
+
+.heading-3 {
+  font-size: var(--heading-3);
+  line-height: var(--heading-3-line-height);
+  font-weight: var(--heading-3-font-weight);
+}
+
+.paragraph-1 {
+  font-size: var(--paragraph-1);
+  line-height: var(--paragraph-1-line-height);
+  font-weight: var(--paragraph-1-font-weight);
+}
+
+.paragraph-2 {
+  font-size: var(--paragraph-2);
+  line-height: var(--paragraph-2-line-height);
+  font-weight: var(--paragraph-2-font-weight);
+}
+
+.caption {
+  font-size: var(--caption);
+  line-height: var(--caption-line-height);
+  font-weight: var(--caption-font-weight);
+}
+
+.item-label {
+  font-size: var(--item-label);
+  line-height: var(--item-label-line-height);
+  font-weight: var(--item-label-font-weight);
 }
