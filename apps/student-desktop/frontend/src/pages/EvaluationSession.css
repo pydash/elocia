@@ -11,7 +11,7 @@
   box-sizing: border-box;
 }
 
-/* HEADER BAR */
+/* ============ HEADER BAR ============ */
 .eval-header-bar {
   width: 100%;
   height: 85px;
@@ -89,7 +89,7 @@
   font-weight: 800;
 }
 
-/* MAIN CONTENT ROW */
+/* ============ MAIN CONTENT ROW ============ */
 .eval-main-row {
   display: flex;
   flex: 1;
@@ -99,7 +99,7 @@
   overflow: hidden;
 }
 
-/* LEFT COLUMN */
+/* ============ LEFT COLUMN ============ */
 .eval-left-col {
   width: 45%;
   display: flex;
@@ -172,6 +172,15 @@
   border-radius: 50%;
 }
 
+.eval-camera-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .eval-webcam-stream {
   width: 100%;
   height: 100%;
@@ -179,14 +188,20 @@
   transform: scaleX(-1);
 }
 
-.eval-overlay-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 5;
+.eval-camera-number {
+  font-size: 120px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
+}
+
+.eval-camera-hint {
+  font-size: 16px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  padding: 8px 16px;
+  border-radius: 999px;
 }
 
 .eval-submit-btn {
@@ -207,7 +222,7 @@
   box-shadow: none;
 }
 
-/* RIGHT COLUMN — OUTER CONTAINER */
+/* ============ RIGHT COLUMN ============ */
 .eval-right-col-container {
   width: 55%;
   background-color: #FFF6E9;
@@ -223,7 +238,7 @@
 
 /* SECTION 1 — NUMBER DISPLAY CARD */
 .eval-number-card {
-  height: 140px;
+  height: 130px;
   background: #FFF6E9;
   border: 3px solid #FB9F34;
   border-radius: 18px;
@@ -244,13 +259,13 @@
 /* SECTION 2 — FEEDBACK / MASCOT CARD */
 .eval-mascot-feedback-card {
   flex: 1;
+  min-height: 0;
   background: #FFF6E9;
   border: 3px solid #FB9F34;
   border-radius: 18px;
   padding: 20px;
   box-sizing: border-box;
   position: relative;
-  min-height: 0;
 }
 
 /* =====================================================
@@ -261,28 +276,21 @@
    ===================================================== */
 .eval-dialogue-img {
   position: absolute;
-  top: 14px;            /* EDIT: vertical position from top */
-  left: 355px;           /* EDIT: horizontal position from left */
-  width: 240px;         /* EDIT: width size */
-  height: auto;         /* EDIT: set a px height (e.g. 96px) to force one */
+  top: 14px;
+  left: 330px;
+  width: 290px;
+  height: auto;
   object-fit: contain;
   z-index: 2;
   pointer-events: none;
 }
 
-/* =====================================================
-   MONKEY (FEEDBACK MASCOT) — EDIT COORDINATES & SIZE HERE
-   bottom / right : position from the card's bottom-right
-   width / height : MONKEY SIZE — change these only;
-   the inner image fills the box 100% automatically.
-   To anchor by top instead: bottom: auto; top: <px>;
-   ===================================================== */
 .eval-mascot-wrap {
   position: absolute;
-  bottom: -20px;          /* EDIT: vertical position from bottom */
-  right: 330px;          /* EDIT: horizontal position from right */
-  width: 230px;         /* EDIT: width size */
-  height: 230px;        /* EDIT: height size */
+  bottom: 0px;
+  right: 190px;
+  width: 530px;
+  height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,7 +303,7 @@
   object-fit: contain;
 }
 
-/* SECTION 3 — 4-CARD GRID */
+/* SECTION 3 — 4-CARD PARAMETER GRID */
 .eval-parameters-grid {
   height: 260px;
   display: grid;
@@ -310,30 +318,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   box-sizing: border-box;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.03);
   position: relative;
+  transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
-
-.eval-param-mascot {
-  position: absolute;
-  top: 34px;          /* EDIT: vertical position from top */
-  left: 50%;          /* EDIT: horizontal anchor (left offset, or keep 50% to center) */
-  transform: translateX(-50%); /* centers mascot when left is 50% */
-  width: 300px;        /* EDIT: width size */
-  height: 96px;       /* EDIT: height size */
-  object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.12));
-}
-
-/* To position by the card's bottom instead of top, use this override:
-.eval-param-mascot {
-  top: auto;
-  bottom: 40px;
-}
-*/
-
+/* CARD 1: stack = Title, Mascot, Label, Stars */
 .eval-param-title {
   font-size: 13px;
   font-weight: 800;
@@ -341,73 +333,246 @@
   text-align: center;
 }
 
-.eval-param-score {
-  margin-top: auto;
-  padding-top: 4px;
-  font-size: 20px;
-  font-weight: 900;
-  min-height: 24px;
+.eval-param-mascot {
+  width: 200px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.12));
 }
 
-.param-handshape { background: #D6F9E2; border: 2.5px solid #4ECB71; color: #166534; }
-.param-orientation { background: #DEEDFF; border: 2.5px solid #4D9FFF; color: #1E3A8A; }
-.param-location { background: #FFECD1; border: 2.5px solid #FFB84D; color: #9A3412; }
-.param-movement { background: #FFDEDE; border: 2.5px solid #FF6363; color: #991B1B; }
-
-/* TIER 2 MASCOT OVERLAYS */
-.eval-tier2-mascot {
-  position: absolute;
-  z-index: 20;
-  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-.mascot-handshape { width: 260px; bottom: 20px; right: 20px; }
-.mascot-orientation { width: 240px; bottom: 20px; left: 20px; }
-.mascot-location { width: 280px; bottom: 10px; right: 15px; }
-.mascot-movement { width: 250px; top: 40px; left: 25px; }
-
-@keyframes popIn {
-  0% { transform: scale(0.6); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* TIER 3 REPLAY OVERLAY */
-.eval-tier3-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 30;
-  color: white;
-  gap: 20px;
-  padding: 30px;
+.eval-param-label {
+  font-size: 15px;
+  font-weight: 800;
   text-align: center;
 }
 
-.eval-teacher-video-box {
-  width: 75%;
-  height: 60%;
-  background: #2D3748;
-  border: 4px solid #10B981;
-  border-radius: 20px;
+.label-warn { color: #B91C1C; }
+.label-good { color: #16A34A; }
+
+.eval-param-stars {
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
 }
 
-.eval-tier3-ready-btn {
-  background: #3B82F6;
-  color: white;
-  border: none;
-  padding: 16px 36px;
-  border-radius: 999px;
-  font-size: 18px;
+.param-star-icon {
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* FAILING CARD (< 60%): soft red glow + thicker border */
+.eval-param-card.needs-work {
+  border-width: 3.5px;
+  border-color: #EF4444;
+  box-shadow: 0 0 18px 4px rgba(239, 68, 68, 0.4);
+}
+
+/* TIER 1: keep the label/stars slots reserved (invisible) so the
+   mascot keeps the exact same position as in Tier 2 */
+.eval-param-card.hide-feedback .eval-param-label,
+.eval-param-card.hide-feedback .eval-param-stars {
+  visibility: hidden;
+}
+
+.param-handshape { background: #FFE4E4; border: 2.5px solid #4ECB71; color: #166534; }
+.param-orientation { background: #DEEDFF; border: 2.5px solid #4D9FFF; color: #1E3A8A; }
+.param-location { background: #FFECD1; border: 2.5px solid #FFB84D; color: #9A3412; }
+.param-movement { background: #D6F9E2; border: 2.5px solid #FF6363; color: #991B1B; }
+
+/* SUCCESS SPEECH TEXT */
+.eval-speech-bubble.success-text span {
+  color: #16A34A;
+}
+
+/* CAMERA TIER TAG */
+.eval-camera-tier-tag {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 12px;
+  z-index: 10;
+}
+
+/* TIER 3: TEACHER DEMO PANEL (right side, inside feedback card) */
+.eval-tier3-panel {
+  position: absolute;
+  inset: 0;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.eval-tier3-badge {
+  align-self: flex-start;
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.eval-teacher-video-box {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #000000;
+  border-radius: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.eval-watch-pill {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.eval-play-btn {
+  background: #BBF7D0;
+  color: #15803D;
+  border: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 4px 0 0 #1D4ED8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 0 0 #4D7C0F;
+  padding-left: 3px;
+}
+
+.eval-play-btn:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+/* TIER 4: PASS & FLAG MODAL */
+.eval-tier4-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.tier4-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.tier4-popup-img {
+  width: 600px;
+  max-width: 90vw;
+  object-fit: contain;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.tier4-popup-wrap {
+  position: relative;
+}
+
+.tier4-ok-btn {
+  position: absolute;
+  left: 61.25%;
+  top: 70%;
+  width: 31.25%;
+  height: 18.5%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+  transform-origin: center;
+}
+
+.tier4-ok-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tier4-ok-btn:hover {
+  transform: scale(1.05);
+}
+
+.tier4-ok-btn:active {
+  transform: scale(0.95);
+}
+
+.btn-tier4-continue:active {
+  transform: translateY(6px);
+  box-shadow: none;
+}
+
+/* DEV TOOLS PANEL (dev builds only) */
+.dev-tools-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(15, 23, 42, 0.92);
+  padding: 15px;
+  border-radius: 12px;
+  border: 2px solid #38BDF8;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.dev-tools-title {
+  color: #38BDF8;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.dev-tools-panel button {
+  background: #1E293B;
+  color: white;
+  border: 1px solid #475569;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.dev-tools-panel button:hover {
+  background: #38BDF8;
+  color: #0F172A;
+  border-color: #38BDF8;
 }

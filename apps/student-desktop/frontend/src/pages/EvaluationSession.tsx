@@ -1,194 +1,129 @@
-import { useRef, useEffect, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
 
-//  MASCOT ASSETS 
+// --- MOCK ASSETS ---
 import moveAwayMascot from '../assets/images/Move away.png';
 import thinkingHandshape from '../assets/images/Tier handshape thinking.png';
 import thinkingOrientation from '../assets/images/tier palm-orientation thinking.png';
 import thinkingLocation from '../assets/images/tier location thinking.png';
 import thinkingMovement from '../assets/images/tier movement thinking.png';
 
-//DIALOGUE BUBBLE IMAGES (PER TIER)
+// --- DIALOGUE BUBBLES (PER TIER) ---
 import dialogueKeepGoing from '../assets/images/Keep Going.png';
 import dialogueGiveBest from '../assets/images/Give your Best.png';
+
+// --- TIER 4 PASS & FLAG POPUP ---
+import tier4Popup from '../assets/images/Pop up Tier 4.png';
+import okayButton from '../assets/images/Okay Button.png';
+
+// --- 1 TO 5 STAR RATING IMAGES ---
+import star1 from '../assets/images/1 star.png';
+import star2 from '../assets/images/2 star.png';
+import star3 from '../assets/images/3 star.png';
+import star4 from '../assets/images/4 star.png';
+import star5 from '../assets/images/5 star.png';
 
 interface EvaluationSessionProps {
   stageId: number | null;
   onExit: () => void;
 }
 
-interface LandmarkPoint {
-  x: number;
-  y: number;
-  z: number;
+interface ScoreSet {
+  handshape: number;
+  palmOrientation: number;
+  location: number;
+  movement: number;
 }
 
-interface LandmarkData {
-  pose?: LandmarkPoint[];
-  left_hand?: LandmarkPoint[];
-  right_hand?: LandmarkPoint[];
-  scores?: {
-    handshape: number;
-    palmOrientation: number;
-    location: number;
-    movement: number;
-    overall: number;
-    passed: boolean;
-  };
+interface ParameterMock {
+  name: string;
+  cssClass: string;
+  mascot: string;
+  score: number;
 }
 
-type MascotType = 'handshape' | 'orientation' | 'location' | 'movement' | 'moveAway' | null;
+interface Grade {
+  stars: string;
+  label: string;
+}
+
+// --- GRADING RULES ---
+const getGrade = (score: number): Grade => {
+  if (score >= 90) return { stars: star5, label: 'Excellent!' };
+  if (score >= 75) return { stars: star4, label: 'Great!' };
+  if (score >= 60) return { stars: star3, label: 'Good!' };
+  if (score >= 40) return { stars: star2, label: 'Keep trying!' };
+  return { stars: star1, label: 'Keep trying!' };
+};
+
+// --- MOCK SCORES PER TIER ---
+const passScores: ScoreSet = { handshape: 88, palmOrientation: 92, location: 90, movement: 85 };
+const failScores: ScoreSet = { handshape: 35, palmOrientation: 65, location: 80, movement: 95 };
 
 export default function EvaluationSession({ stageId, onExit }: EvaluationSessionProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  // --- STATE ---
-  const [scores, setScores] = useState({
-    handshape: 0,
-    palmOrientation: 0,
-    location: 0,
-    movement: 0,
-    overall: 0,
-    passed: false,
-  });
-
-  const [attemptCount, setAttemptCount] = useState(1);
-  const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
-  const [activeMascot, setActiveMascot] = useState<MascotType>(null);
-  const [showTeacherReplay, setShowTeacherReplay] = useState(false);
-
   const targetNumber = 22;
   const currentQuestion = stageId ?? 2;
   const totalQuestions = 10;
+  const isDev = import.meta.env.DEV;
 
-  
-  const getMascotImage = () => {
-    switch (activeMascot) {
-      case 'handshape': return thinkingHandshape;
-      case 'orientation': return thinkingOrientation;
-      case 'location': return thinkingLocation;
-      case 'movement': return thinkingMovement;
-      case 'moveAway': return moveAwayMascot;
-      default: return moveAwayMascot; // Default neutral monkey
-    }
-  };
+  // --- TIER STATE (mock) ---
+  const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
+  const [scores, setScores] = useState<ScoreSet>(passScores);
 
-
-  const getDialogueImage = () => {
-    if (scores.overall >= 60) return dialogueKeepGoing;
-    if (currentTier === 2) return dialogueGiveBest;
-    return dialogueKeepGoing;
-  };
-
-  const handleSubmitSign = () => {
-    if (scores.overall >= 60) {
-      setActiveMascot(null);
-      setShowTeacherReplay(false);
-      return;
-    }
-
-    const nextAttempt = attemptCount + 1;
-    setAttemptCount(nextAttempt);
-
-    if (nextAttempt === 3) {
-      setCurrentTier(2);
-      const params = [
-        { name: 'handshape', val: scores.handshape },
-        { name: 'orientation', val: scores.palmOrientation },
-        { name: 'location', val: scores.location },
-        { name: 'movement', val: scores.movement },
-      ];
-      params.sort((a, b) => a.val - b.val);
-      setActiveMascot(params[0].name as MascotType);
-    } else if (nextAttempt === 4) {
-      setCurrentTier(3);
-      setActiveMascot(null);
-      setShowTeacherReplay(true);
-    } else if (nextAttempt >= 5) {
-      setCurrentTier(4);
-      setActiveMascot(null);
-      setShowTeacherReplay(false);
-      setTimeout(() => onExit(), 4000);
-    }
-  };
-
+  // --- LIVE WEBCAM PREVIEW ---
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    let mounted = true;
-    const videoElement = videoRef.current;
+    let stream: MediaStream | null = null;
+    let cancelled = false;
 
-    async function startCamera() {
+    async function enableCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-        if (mounted && videoElement) {
-          videoElement.srcObject = stream;
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480 },
+          audio: false,
+        });
+        if (!cancelled && videoRef.current) {
+          videoRef.current.srcObject = stream;
         }
       } catch (err) {
-        console.error('Webcam error:', err);
+        console.error('Webcam access failed:', err);
       }
     }
-    startCamera();
-
-    const websocket = new WebSocket('ws://127.0.0.1:8000/ws/evaluate');
-    wsRef.current = websocket;
-
-    websocket.onmessage = (event) => {
-      try {
-        const data: LandmarkData = JSON.parse(event.data);
-        if (data.scores) setScores(data.scores);
-
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (data.right_hand || data.left_hand || data.pose) {
-              ctx.fillStyle = '#22C55E';
-              ctx.beginPath();
-              ctx.arc(30, 30, 8, 0, 2 * Math.PI);
-              ctx.fill();
-            }
-          }
-        }
-      } catch (err) {
-        console.error('WS parse error:', err);
-      }
-    };
-
-    const interval = setInterval(() => {
-      if (videoRef.current && websocket.readyState === WebSocket.OPEN) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-          websocket.send(JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.5) }));
-        }
-      }
-    }, 140);
+    enableCamera();
 
     return () => {
-      mounted = false;
-      clearInterval(interval);
-      websocket.close();
-      if (videoElement?.srcObject) {
-        (videoElement.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-      }
+      cancelled = true;
+      if (stream) stream.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
+  const parameters: ParameterMock[] = [
+    { name: 'Handshape', cssClass: 'param-handshape', mascot: thinkingHandshape, score: scores.handshape },
+    { name: 'Palm Orientation', cssClass: 'param-orientation', mascot: thinkingOrientation, score: scores.palmOrientation },
+    { name: 'Location', cssClass: 'param-location', mascot: thinkingLocation, score: scores.location },
+    { name: 'Movement', cssClass: 'param-movement', mascot: thinkingMovement, score: scores.movement },
+  ];
+
+  const showFeedback = currentTier >= 2;
+
+  const getDialogueImage = () => {
+    if (currentTier === 1) return dialogueKeepGoing;
+    return dialogueGiveBest;
+  };
+
+  // --- DEV MODE TIER SWITCHES ---
+  const forceTier1 = () => { setCurrentTier(1); setScores(passScores); };
+  const forceTier2 = () => { setCurrentTier(2); setScores(failScores); };
+  const forceTier3 = () => { setCurrentTier(3); setScores(failScores); };
+  const forceTier4 = () => { setCurrentTier(4); setScores(failScores); };
+
   return (
     <div className="evaluation-layout-1920">
-      
-      {/* 1. HEADER BAR */}
-      <header className="eval-header-bar">
-        <button className="eval-back-btn" onClick={onExit} type="button" aria-label="Back">
-          ←
-        </button>
 
+      {/* HEADER BAR */}
+      <header className="eval-header-bar">
+        <button className="eval-back-btn" onClick={onExit} type="button" aria-label="Back">←</button>
         <div className="eval-title-block">
           <div className="eval-main-title">Stage {stageId ?? 3}: Numbers (21 - 30)</div>
           <div className="eval-progress-track">
@@ -197,17 +132,30 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
             ))}
           </div>
         </div>
-
         <div className="eval-header-right">
           <span className="eval-counter-text">{currentQuestion} of {totalQuestions}</span>
           <button className="eval-settings-btn" type="button" aria-label="Settings">⚙</button>
         </div>
       </header>
 
-      {/* 2. MAIN CONTENT ROW */}
+      {/* TIER 4: PASS & FLAG MODAL */}
+      {currentTier === 4 && (
+        <div className="eval-tier4-overlay">
+          <div className="tier4-modal">
+            <div className="tier4-popup-wrap">
+              <img src={tier4Popup} alt="Pass and Flag" className="tier4-popup-img" />
+              <button onClick={onExit} className="tier4-ok-btn" type="button" aria-label="OK">
+                <img src={okayButton} alt="OK" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CONTENT */}
       <main className="eval-main-row">
-        
-        {/* LEFT COLUMN */}
+
+        {/* LEFT COLUMN — CAMERA PREVIEW */}
         <section className="eval-left-col">
           <div className="eval-instruction-card">
             <span className="eval-instruction-tag">Instruction:</span>
@@ -215,78 +163,75 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
           </div>
 
           <div className="eval-camera-card">
-            <div className="eval-live-badge">
-              <span className="eval-live-dot" /> LIVE FEED
-            </div>
-
+            <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
             <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
-            <canvas ref={canvasRef} width={640} height={480} className="eval-overlay-canvas" />
-
-            {/* TIER 2 MASCOT OVERLAY */}
-            {activeMascot && (
-              <img src={getMascotImage()} alt={`${activeMascot} feedback`} className={`eval-tier2-mascot mascot-${activeMascot}`} />
-            )}
-
-            {/* TIER 3 TEACHER REPLAY OVERLAY */}
-            {showTeacherReplay && (
-              <div className="eval-tier3-overlay">
-                <h3>Tier 3: Watch the Teacher Carefully</h3>
-                <div className="eval-teacher-video-box">[Teacher Reference Video]</div>
-                <button onClick={() => setShowTeacherReplay(false)} className="eval-tier3-ready-btn">
-                  I'm Ready to Try Again
-                </button>
-              </div>
-            )}
+            <div className="eval-camera-tier-tag">Tier {currentTier}</div>
           </div>
 
-          <button className="eval-submit-btn" onClick={handleSubmitSign}>
-            {scores.overall >= 60 ? 'Perfect! Pass Stage 🎉' : `Submit Attempt (${attemptCount}/4) [Tier ${currentTier}]`}
+          <button className="eval-submit-btn" type="button">
+            Submit Attempt (Tier {currentTier})
           </button>
         </section>
 
-        {/* RIGHT COLUMN — OUTER CONTAINER */}
+        {/* RIGHT COLUMN — SCORE / FEEDBACK DASHBOARD */}
         <section className="eval-right-col-container">
-          
-          {/* Section 1 — Number Display Card */}
+
           <div className="eval-number-card">
             <div className="eval-number-display">{targetNumber}</div>
           </div>
 
-          {/* Section 2 — Feedback / Mascot Card with Speech Bubble */}
+          {/* FEEDBACK CARD: Tier 3 = teacher demo on the right; else mascot + dialogue */}
           <div className="eval-mascot-feedback-card">
-            <img src={getDialogueImage()} alt="Mascot dialogue" className="eval-dialogue-img" />
-            <div className="eval-mascot-wrap">
-              <img src={getMascotImage()} alt="Learning Mascot" className="eval-feedback-mascot-img" />
-            </div>
+            {currentTier === 3 ? (
+              <div className="eval-tier3-panel">
+                <span className="eval-tier3-badge">Teacher Demo</span>
+                <div className="eval-teacher-video-box">
+                  <span className="eval-watch-pill">Watch carefully</span>
+                  <button className="eval-play-btn" type="button" aria-label="Play teacher video">▶</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <img src={getDialogueImage()} alt="Mascot dialogue" className="eval-dialogue-img" />
+                <div className="eval-mascot-wrap">
+                  <img src={moveAwayMascot} alt="Learning Mascot" className="eval-feedback-mascot-img" />
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Section 3 — Clean 4-Card Grid with Phonological Mascots */}
+          {/* 4-CARD PARAMETER GRID */}
           <div className="eval-parameters-grid">
-            <div className="eval-param-card param-handshape">
-              <div className="eval-param-title">Handshape</div>
-              <img src={thinkingHandshape} alt="Handshape mascot" className="eval-param-mascot" />
-              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.handshape)}%` : ''}</div>
-            </div>
-            <div className="eval-param-card param-orientation">
-              <div className="eval-param-title">Palm Orientation</div>
-              <img src={thinkingOrientation} alt="Palm orientation mascot" className="eval-param-mascot" />
-              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.palmOrientation)}%` : ''}</div>
-            </div>
-            <div className="eval-param-card param-location">
-              <div className="eval-param-title">Location</div>
-              <img src={thinkingLocation} alt="Location mascot" className="eval-param-mascot" />
-              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.location)}%` : ''}</div>
-            </div>
-            <div className="eval-param-card param-movement">
-              <div className="eval-param-title">Movement</div>
-              <img src={thinkingMovement} alt="Movement mascot" className="eval-param-mascot" />
-              <div className="eval-param-score">{currentTier >= 2 ? `${Math.round(scores.movement)}%` : ''}</div>
-            </div>
+            {parameters.map((param) => {
+              const grade = getGrade(param.score);
+              const needsWork = param.score < 60;
+              return (
+                <div key={param.name} className={`eval-param-card ${param.cssClass} ${needsWork ? 'needs-work' : ''} ${showFeedback ? '' : 'hide-feedback'}`}>
+                  <div className="eval-param-title">{param.name}</div>
+                  <img src={param.mascot} alt={`${param.name} mascot`} className="eval-param-mascot" />
+                  <div className={`eval-param-label ${needsWork ? 'label-warn' : 'label-good'}`}>{grade.label}</div>
+                  <div className="eval-param-stars">
+                    <img src={grade.stars} alt={`${grade.label} stars`} className="param-star-icon" />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
         </section>
-
       </main>
+
+      {/* DEV TOOLS FLOATING PANEL (dev builds only) */}
+      {isDev && (
+        <div className="dev-tools-panel">
+          <div className="dev-tools-title">⚙ Test Tiers</div>
+          <button onClick={forceTier1}>Tier 1 (Keep Going)</button>
+          <button onClick={forceTier2}>Tier 2 (Give your Best)</button>
+          <button onClick={forceTier3}>Tier 3 (Teacher Demo)</button>
+          <button onClick={forceTier4}>Tier 4 (Pass &amp; Flag)</button>
+        </div>
+      )}
+
     </div>
   );
 }
