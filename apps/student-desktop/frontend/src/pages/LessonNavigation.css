@@ -17,9 +17,7 @@
   overflow-x: hidden; 
 }
 
-/* =========================================
-   BACKGROUND DECORATIONS & CLOUDS
-========================================= */
+
 .clouds-wrapper {
   position: absolute; 
   top: 0;
@@ -81,9 +79,7 @@
   animation-delay: -55s; 
 }
 
-/* =========================================
-   MAP & PATH
-========================================= */
+
 .map-container {
   position: relative;
   z-index: 10; 
@@ -132,9 +128,7 @@
   border-radius: 6px;
 }
 
-/* =========================================
-   STAGE CARDS
-========================================= */
+
 .stage-card {
   width: 180px;
   height: 240px;
@@ -208,9 +202,7 @@
   line-height: 1; 
 }
 
-/* =========================================
-   DETAILS PANEL & MASCOT 
-========================================= */
+
 .stage-details-wrapper {
   margin-top: 0px; 
   position: relative;
@@ -251,7 +243,7 @@
   padding-right: 150px; 
 }
 
-/* Header Group */
+
 .details-header {
   display: flex;
   flex-direction: column;
@@ -283,7 +275,7 @@
   margin: 0;
 }
 
-/* Action Row */
+
 .details-action-row {
   display: flex;
   justify-content: space-between; 

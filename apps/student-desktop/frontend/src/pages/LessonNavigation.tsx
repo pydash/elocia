@@ -2,7 +2,6 @@ import { useState } from 'react';
 import Navbar from '../components/Navbar'; 
 import './LessonNavigation.css'; 
 
-// Assets
 import sunImg from '../assets/images/Sun.png';
 import cloud1Img from '../assets/images/Cloud 1.png';
 import cloud2Img from '../assets/images/Cloud 2.png';
@@ -11,9 +10,6 @@ import cloud5Img from '../assets/images/Cloud 5.png';
 import cloud6Img from '../assets/images/Cloud 6.png'; 
 import mascotImg from '../assets/images/Tier 4 Pass-and-Flag.png';
 
-// ==========================================
-// ICONS
-// ==========================================
 const PlayIcon = () => (
   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="22" cy="22" r="22" fill="#FF9800"/>
@@ -42,19 +38,15 @@ const ButtonPlayIcon = () => (
   </svg>
 );
 
-// ==========================================
-// CONFIGURATION DATA
-// ==========================================
 const STAGE_DATA = [
   { id: 1, locked: false },
   { id: 2, locked: true },
   { id: 3, locked: true },
 ];
 
-export default function LessonNavigation() {
+export default function LessonNavigation({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile') => void }) {
   const [selectedStage, setSelectedStage] = useState<number | null>(null); 
 
-  // Handler ensures locked stages cannot be selected
   const handleStageClick = (stageId: number, isLocked: boolean) => {
     if (isLocked) return;
     setSelectedStage(prev => (prev === stageId ? null : stageId));
@@ -62,7 +54,7 @@ export default function LessonNavigation() {
 
   return (
     <div className="app-layout">
-      <Navbar /> 
+      <Navbar onNavigate={onNavigate} activeTab="learn" /> 
 
       <div className="main-content-area">
         

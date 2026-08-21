@@ -4,9 +4,10 @@ import './App.css';
 import LessonNavigation from './pages/LessonNavigation';
 import CameraSetup from './pages/CameraSetup';
 import EvaluationSession from './pages/EvaluationSession';
+import Profile from './pages/Profile';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation'>('navigation');
+  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation' | 'profile'>('navigation');
   const [activeStage, setActiveStage] = useState<number | null>(null);
 
   // This function handles transitioning from Module 3 to Module 4
@@ -16,18 +17,18 @@ function App() {
   };
 
   return (
-    <>
+    <div onClick={(e) => {
+      const target = (e.target as HTMLElement).closest('.start-lesson-btn');
+      if (target) {
+        handleStartLesson(1); // Default to Stage 1 when clicked
+      }
+    }}>
       {currentView === 'navigation' && (
-        // If you don't want to change their file, you can wrap a container around it 
-        // or add a global click listener on document for buttons with class 'start-lesson-btn'
-        <div onClick={(e) => {
-          const target = (e.target as HTMLElement).closest('.start-lesson-btn');
-          if (target) {
-            handleStartLesson(1); // Default to Stage 1 when clicked
-          }
-        }}>
-          <LessonNavigation />
-        </div>
+        <LessonNavigation onNavigate={setCurrentView} />
+      )}
+
+      {currentView === 'profile' && (
+        <Profile onNavigate={setCurrentView} />
       )}
 
       {currentView === 'setup' && (
@@ -41,9 +42,10 @@ function App() {
         <EvaluationSession 
           stageId={activeStage} 
           onExit={() => setCurrentView('navigation')} 
+          onNavigate={setCurrentView}
         />
       )}
-    </>
+    </div>
   );
 }
 

@@ -9,10 +9,12 @@
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 
-/* ============ HEADER BAR ============ */
+
 .eval-header-bar {
+  position: relative;
   width: 100%;
   height: 85px;
   background: #FB9F34;
@@ -28,16 +30,28 @@
 .eval-back-btn, .eval-settings-btn {
   width: 48px;
   height: 48px;
-  background: #ffffff;
+  background: transparent;
   border: none;
   border-radius: 50%;
   font-size: 22px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 0 0 #B45309;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.eval-back-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.eval-settings-btn {
+  background: #ffffff;
+  box-shadow: 0 4px 0 0 #B45309;
 }
 
 .eval-back-btn:active, .eval-settings-btn:active {
@@ -89,7 +103,6 @@
   font-weight: 800;
 }
 
-/* ============ MAIN CONTENT ROW ============ */
 .eval-main-row {
   display: flex;
   flex: 1;
@@ -99,7 +112,7 @@
   overflow: hidden;
 }
 
-/* ============ LEFT COLUMN ============ */
+
 .eval-left-col {
   width: 45%;
   display: flex;
@@ -136,9 +149,16 @@
   font-weight: 800;
 }
 
-.eval-camera-card {
+.eval-camera-wrapper {
   position: relative;
   flex: 1;
+  display: flex;
+  margin-bottom: 84px; 
+}
+
+.eval-camera-card {
+  width: 100%;
+  height: 100%;
   background: #1E293B;
   border: 6px solid #FB9F34;
   border-radius: 28px;
@@ -147,6 +167,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .eval-live-badge {
@@ -172,15 +193,6 @@
   border-radius: 50%;
 }
 
-.eval-camera-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: rgba(255, 255, 255, 0.85);
-}
-
 .eval-webcam-stream {
   width: 100%;
   height: 100%;
@@ -188,20 +200,17 @@
   transform: scaleX(-1);
 }
 
-.eval-camera-number {
-  font-size: 120px;
-  font-weight: 900;
+.eval-camera-tier-tag {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.65);
   color: #ffffff;
-  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
-}
-
-.eval-camera-hint {
-  font-size: 16px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px dashed rgba(255, 255, 255, 0.35);
-  padding: 8px 16px;
-  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 12px;
+  z-index: 10;
 }
 
 .eval-submit-btn {
@@ -222,7 +231,7 @@
   box-shadow: none;
 }
 
-/* ============ RIGHT COLUMN ============ */
+
 .eval-right-col-container {
   width: 55%;
   background-color: #FFF6E9;
@@ -236,7 +245,6 @@
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
 
-/* SECTION 1 — NUMBER DISPLAY CARD */
 .eval-number-card {
   height: 130px;
   background: #FFF6E9;
@@ -256,7 +264,6 @@
   text-shadow: 0px 4px 0px rgba(0, 0, 0, 0.1);
 }
 
-/* SECTION 2 — FEEDBACK / MASCOT CARD */
 .eval-mascot-feedback-card {
   flex: 1;
   min-height: 0;
@@ -268,12 +275,6 @@
   position: relative;
 }
 
-/* =====================================================
-   DIALOGUE BUBBLE IMAGE — EDIT COORDINATES & SIZE HERE
-   top  : distance from top of feedback card
-   left : distance from left edge of card
-   width / height : dialogue image size in pixels
-   ===================================================== */
 .eval-dialogue-img {
   position: absolute;
   top: 14px;
@@ -303,7 +304,6 @@
   object-fit: contain;
 }
 
-/* SECTION 3 — 4-CARD PARAMETER GRID */
 .eval-parameters-grid {
   height: 260px;
   display: grid;
@@ -325,7 +325,6 @@
   transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
-/* CARD 1: stack = Title, Mascot, Label, Stars */
 .eval-param-title {
   font-size: 13px;
   font-weight: 800;
@@ -362,15 +361,12 @@
   object-fit: contain;
 }
 
-/* FAILING CARD (< 60%): soft red glow + thicker border */
 .eval-param-card.needs-work {
   border-width: 3.5px;
   border-color: #EF4444;
   box-shadow: 0 0 18px 4px rgba(239, 68, 68, 0.4);
 }
 
-/* TIER 1: keep the label/stars slots reserved (invisible) so the
-   mascot keeps the exact same position as in Tier 2 */
 .eval-param-card.hide-feedback .eval-param-label,
 .eval-param-card.hide-feedback .eval-param-stars {
   visibility: hidden;
@@ -381,26 +377,7 @@
 .param-location { background: #FFECD1; border: 2.5px solid #FFB84D; color: #9A3412; }
 .param-movement { background: #D6F9E2; border: 2.5px solid #FF6363; color: #991B1B; }
 
-/* SUCCESS SPEECH TEXT */
-.eval-speech-bubble.success-text span {
-  color: #16A34A;
-}
 
-/* CAMERA TIER TAG */
-.eval-camera-tier-tag {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 6px 12px;
-  border-radius: 12px;
-  z-index: 10;
-}
-
-/* TIER 3: TEACHER DEMO PANEL (right side, inside feedback card) */
 .eval-tier3-panel {
   position: absolute;
   inset: 0;
@@ -466,7 +443,7 @@
   box-shadow: none;
 }
 
-/* TIER 4: PASS & FLAG MODAL */
+
 .eval-tier4-overlay {
   position: absolute;
   inset: 0;
@@ -529,50 +506,112 @@
   transform: scale(0.95);
 }
 
-.btn-tier4-continue:active {
-  transform: translateY(6px);
-  box-shadow: none;
+@keyframes popIn {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* DEV TOOLS PANEL (dev builds only) */
+
 .dev-tools-panel {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
-  background: rgba(15, 23, 42, 0.92);
-  padding: 15px;
-  border-radius: 12px;
-  border: 2px solid #38BDF8;
+  left: 90px; /* Positions it right next to the back button */
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  z-index: 10000;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  background: #FFF6E9;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 2px solid #FB9F34;
 }
 
 .dev-tools-title {
-  color: #38BDF8;
-  font-size: 14px;
-  font-weight: bold;
-  text-align: center;
+  color: #B45309;
+  font-size: 13px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  margin-right: 4px;
 }
 
 .dev-tools-panel button {
-  background: #1E293B;
-  color: white;
-  border: 1px solid #475569;
-  padding: 8px 12px;
-  border-radius: 6px;
+  background: #DEEDFF;
+  color: #1D4ED8;
+  border: 2px solid #93C5FD;
+  padding: 6px 12px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 800;
+  transition: transform 0.1s;
+  box-shadow: 0 3px 0 0 #93C5FD;
 }
 
-.dev-tools-panel button:hover {
-  background: #38BDF8;
-  color: #0F172A;
-  border-color: #38BDF8;
+.dev-tools-panel button:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+
+
+
+
+.global-confetti-overlay {
+  position: absolute;
+  top: 0; 
+  left: 0; 
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none; 
+  z-index: 15;
+}
+
+.eval-success-controls {
+  position: absolute;
+  inset: 0; 
+  pointer-events: none; 
+  z-index: 12;
+}
+
+.correct-mascot-container {
+  width: 500px; 
+  height: auto;
+  object-fit: contain;
+  position: absolute;
+  bottom: -70px;
+  left: -20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 12;
+  animation: slideUpBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.eval-next-btn {
+  position: absolute;    
+  bottom: -70px;                              
+  right: 20px;
+  background: #22C55E;
+  color: white;
+  border: none;
+  padding: 14px 40px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 12;
+  box-shadow: 0 5px 0 0 #16A34A;
+  transition: transform 0.1s;
+}
+
+.eval-next-btn:active {
+  transform: translateY(5px);
+  box-shadow: none;
+}
+
+@keyframes slideUpBounce {
+  0% { transform: translateY(150px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }

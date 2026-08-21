@@ -63,9 +63,27 @@
 
 /* The Figma Active State */
 .nav-item.active {
-  background-color: #e3f2fd; /* Soft blue background */
-  border: 2px solid #74b9ff; /* Solid blue outline */
-  color: #0984e3;
+  background-color: #F59E0B; /* vibrant orange */
+  border: 2px solid #F59E0B;
+  color: #FFFFFF;
+  box-shadow: 0 5px 0 0 #B45309; /* 3D drop shadow effect */
+  transform: translateY(-2px);
+  margin-bottom: 5px; /* Add margin so shadow doesn't clip into elements below */
+}
+
+.nav-item.active .nav-icon,
+.nav-item.active .nav-text {
+  color: #FFFFFF;
+}
+
+/* Clever trick to turn the emojis into pure white silhouettes to match the Figma outline icons */
+.nav-item.active .nav-icon {
+  filter: brightness(0) invert(1);
+}
+
+.nav-item.active:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 0 #B45309;
 }
 
 /* Icons inside the nav */

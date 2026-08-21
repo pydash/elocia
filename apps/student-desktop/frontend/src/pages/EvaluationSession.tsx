@@ -1,31 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
 
-// --- MOCK ASSETS ---
 import moveAwayMascot from '../assets/images/Move away.png';
 import thinkingHandshape from '../assets/images/Tier handshape thinking.png';
 import thinkingOrientation from '../assets/images/tier palm-orientation thinking.png';
 import thinkingLocation from '../assets/images/tier location thinking.png';
 import thinkingMovement from '../assets/images/tier movement thinking.png';
-
-// --- DIALOGUE BUBBLES (PER TIER) ---
 import dialogueKeepGoing from '../assets/images/Keep Going.png';
 import dialogueGiveBest from '../assets/images/Give your Best.png';
-
-// --- TIER 4 PASS & FLAG POPUP ---
 import tier4Popup from '../assets/images/Pop up Tier 4.png';
 import okayButton from '../assets/images/Okay Button.png';
-
-// --- 1 TO 5 STAR RATING IMAGES ---
+import backButtonImg from '../assets/images/Back Button.png';
 import star1 from '../assets/images/1 star.png';
 import star2 from '../assets/images/2 star.png';
 import star3 from '../assets/images/3 star.png';
 import star4 from '../assets/images/4 star.png';
 import star5 from '../assets/images/5 star.png';
+import confettiImg from '../assets/images/Confetti.png';
+import amazingMascot from '../assets/images/Amazing.png';
 
 interface EvaluationSessionProps {
   stageId: number | null;
   onExit: () => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile') => void;
 }
 
 interface ScoreSet {
@@ -47,7 +44,6 @@ interface Grade {
   label: string;
 }
 
-// --- GRADING RULES ---
 const getGrade = (score: number): Grade => {
   if (score >= 90) return { stars: star5, label: 'Excellent!' };
   if (score >= 75) return { stars: star4, label: 'Great!' };
@@ -56,7 +52,6 @@ const getGrade = (score: number): Grade => {
   return { stars: star1, label: 'Keep trying!' };
 };
 
-// --- MOCK SCORES PER TIER ---
 const passScores: ScoreSet = { handshape: 88, palmOrientation: 92, location: 90, movement: 85 };
 const failScores: ScoreSet = { handshape: 35, palmOrientation: 65, location: 80, movement: 95 };
 
@@ -66,11 +61,10 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
   const totalQuestions = 10;
   const isDev = import.meta.env.DEV;
 
-  // --- TIER STATE (mock) ---
   const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
   const [scores, setScores] = useState<ScoreSet>(passScores);
+  const [forceOverlayState, setForceOverlayState] = useState<boolean>(false);
 
-  // --- LIVE WEBCAM PREVIEW ---
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -112,19 +106,43 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
     return dialogueGiveBest;
   };
 
-  // --- DEV MODE TIER SWITCHES ---
   const forceTier1 = () => { setCurrentTier(1); setScores(passScores); };
   const forceTier2 = () => { setCurrentTier(2); setScores(failScores); };
   const forceTier3 = () => { setCurrentTier(3); setScores(failScores); };
   const forceTier4 = () => { setCurrentTier(4); setScores(failScores); };
 
+  const overallScore = (scores.handshape + scores.palmOrientation + scores.location + scores.movement) / 4;
+
+  const hasPassed = isDev ? forceOverlayState : (overallScore >= 60 && currentTier !== 4);
+
   return (
     <div className="evaluation-layout-1920">
+      {hasPassed && (
+        <img src={confettiImg} alt="Confetti" className="global-confetti-overlay" />
+      )}
 
-      {/* HEADER BAR */}
-      <header className="eval-header-bar">
-        <button className="eval-back-btn" onClick={onExit} type="button" aria-label="Back">←</button>
-        <div className="eval-title-block">
+        <header className="eval-header-bar">
+          <button className="eval-back-btn" onClick={(e) => { e.preventDefault(); onExit(); }} type="button" aria-label="Back">
+            <img src={backButtonImg} alt="Back" />
+          </button>
+          
+          {isDev && (
+            <div className="dev-tools-panel">
+              <div className="dev-tools-title">⚙ Test</div>
+              <button 
+                onClick={() => setForceOverlayState(!forceOverlayState)} 
+                style={{ backgroundColor: forceOverlayState ? '#22C55E' : '#DEEDFF', color: forceOverlayState ? 'white' : '#1D4ED8' }}
+              >
+                {forceOverlayState ? 'Hide Pass' : 'Show Pass'}
+              </button>
+              <button onClick={forceTier1}>T1</button>
+              <button onClick={forceTier2}>T2</button>
+              <button onClick={forceTier3}>T3</button>
+              <button onClick={forceTier4}>T4</button>
+            </div>
+          )}
+
+          <div className="eval-title-block">
           <div className="eval-main-title">Stage {stageId ?? 3}: Numbers (21 - 30)</div>
           <div className="eval-progress-track">
             {Array.from({ length: totalQuestions }, (_, index) => (
@@ -138,7 +156,6 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
         </div>
       </header>
 
-      {/* TIER 4: PASS & FLAG MODAL */}
       {currentTier === 4 && (
         <div className="eval-tier4-overlay">
           <div className="tier4-modal">
@@ -152,35 +169,39 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
         </div>
       )}
 
-      {/* MAIN CONTENT */}
       <main className="eval-main-row">
-
-        {/* LEFT COLUMN — CAMERA PREVIEW */}
         <section className="eval-left-col">
           <div className="eval-instruction-card">
             <span className="eval-instruction-tag">Instruction:</span>
             <h2>Make the sign for {targetNumber} in sign language</h2>
           </div>
 
-          <div className="eval-camera-card">
-            <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
-            <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
-            <div className="eval-camera-tier-tag">Tier {currentTier}</div>
-          </div>
+          <div className="eval-camera-wrapper">
+            <div className="eval-camera-card">
+              <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
+              <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
+              <div className="eval-camera-tier-tag">Tier {currentTier}</div>
+            </div>
 
-          <button className="eval-submit-btn" type="button">
-            Submit Attempt (Tier {currentTier})
-          </button>
+            {hasPassed && (
+              <div className="eval-success-controls">
+                <div className="correct-mascot-container">
+                  <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
+                </div>
+
+                <button className="eval-next-btn" type="button" onClick={() => console.log('Next clicked!')}>
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
-        {/* RIGHT COLUMN — SCORE / FEEDBACK DASHBOARD */}
         <section className="eval-right-col-container">
-
           <div className="eval-number-card">
             <div className="eval-number-display">{targetNumber}</div>
           </div>
 
-          {/* FEEDBACK CARD: Tier 3 = teacher demo on the right; else mascot + dialogue */}
           <div className="eval-mascot-feedback-card">
             {currentTier === 3 ? (
               <div className="eval-tier3-panel">
@@ -200,7 +221,6 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
             )}
           </div>
 
-          {/* 4-CARD PARAMETER GRID */}
           <div className="eval-parameters-grid">
             {parameters.map((param) => {
               const grade = getGrade(param.score);
@@ -217,20 +237,8 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
               );
             })}
           </div>
-
         </section>
       </main>
-
-      {/* DEV TOOLS FLOATING PANEL (dev builds only) */}
-      {isDev && (
-        <div className="dev-tools-panel">
-          <div className="dev-tools-title">⚙ Test Tiers</div>
-          <button onClick={forceTier1}>Tier 1 (Keep Going)</button>
-          <button onClick={forceTier2}>Tier 2 (Give your Best)</button>
-          <button onClick={forceTier3}>Tier 3 (Teacher Demo)</button>
-          <button onClick={forceTier4}>Tier 4 (Pass &amp; Flag)</button>
-        </div>
-      )}
 
     </div>
   );

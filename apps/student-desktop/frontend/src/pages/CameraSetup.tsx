@@ -34,7 +34,6 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
 
   const [step, setStep] = useState<SetupStep>('setup');
 
-
   useEffect(() => {
     let stream: MediaStream | null = null;
 
@@ -58,9 +57,8 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
     return () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
     };
-  }, [step !== 'setup']);
+  }, [step]);
 
-  // 2. Real-time Backend Frame Evaluation via WebSocket
   useEffect(() => {
     if (step === 'setup') return;
 
@@ -92,7 +90,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const base64Data = canvas.toDataURL('image/jpeg', 0.5);
-          // Send formatted JSON to prevent Python crashes
+          
           ws.send(JSON.stringify({ image: base64Data }));
         }
       }
@@ -104,9 +102,8 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
         ws.close();
       }
     };
-  }, [step === 'setup']);
+  }, [step]);
 
-  // Match the bubbles to the MediaPipe states
   const getDialogueBubble = () => {
     switch (step) {
       case 'not-detected': return tooFarDialogueBubble;
@@ -152,13 +149,13 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
               <ul>
                 <li><span style={{ color: '#FF662E' }}>●</span> Sit up straight</li>
                 <li><span style={{ color: '#2EABFF' }}>●</span> Find a bright place</li>
-                {/* Changed Tip 3 from Smiling to FSL Framing */}
+                
                 <li><span style={{ color: '#6DD62C' }}>●</span> Show head to half-body</li>
               </ul>
             </div>
           ) : (
             <div className="live-camera-feed-card">
-              {/* Dynamic MediaPipe Framing Tags */}
+              
               {step === 'not-detected' && (
                 <div className="top-warning-tag">Please step in front of the camera!</div>
               )}
@@ -180,7 +177,6 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
           )}
         </div>
 
-        {/* Note: Ensure .mascot-step-not-detected is in your CameraSetup.css */}
         <div className={`stage-mascot-column mascot-step-${step}`}>
           <img
             src={getDialogueBubble()}
@@ -201,8 +197,8 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
           <button
             className={`split-btn okay-btn-side ${isNextActive ? 'active-green' : 'disabled-state'}`}
             onClick={() => {
-              if (step === 'setup') setStep('not-detected'); // Start evaluation loop
-              else if (step === 'perfect') onDone(); // Proceed to FSL module
+              if (step === 'setup') setStep('not-detected'); 
+              else if (step === 'perfect') onDone(); 
             }}
             disabled={!isNextActive}
           >
