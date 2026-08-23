@@ -1,1 +1,9 @@
+mediapipe==0.10.14
+opencv-python==4.9.0.80
+fastapi
+uvicorn
+websockets
 pywebview
+numpy
+dtaidistance
+scikit-learn
