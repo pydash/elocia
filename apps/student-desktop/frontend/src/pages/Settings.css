@@ -1,0 +1,374 @@
+/* ============================================================
+   SETTINGS PAGE — Layout
+   ============================================================ */
+
+.settings-page-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: #F8F9CC;
+  overflow: hidden;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-main {
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Background floating pattern ── */
+.settings-bg-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50%       { transform: translateY(-15px) rotate(calc(var(--rot, 0deg) + 8deg)); }
+}
+
+.bg-icon {
+  position: absolute;
+  font-size: 40px;
+  opacity: 0.35;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.icon-1 { top: 10%; left: 10%; font-size: 50px; --rot: 0deg;   animation-delay: 0s;    }
+.icon-2 { top: 20%; left: 80%; font-size: 45px; --rot: 15deg;  animation-delay: -1s;   }
+.icon-3 { top: 5%;  left: 20%; font-size: 35px; --rot: -10deg; animation-delay: -2s;   }
+.icon-4 { top: 40%; right: 5%; font-size: 60px; --rot: -5deg;  animation-delay: -3s;   }
+.icon-5 { top: 70%; left: 50%; font-size: 40px; --rot: 20deg;  animation-delay: -4s;   }
+.icon-6 { top: 60%; left: 15%; font-size: 45px; --rot: -25deg; animation-delay: -5s;   }
+.icon-7 { top: 85%; right: 20%; font-size: 55px; --rot: 10deg; animation-delay: -1.5s; }
+
+/* ── Content scroll ── */
+.settings-content-scroll {
+  position: relative;
+  z-index: 1;
+  padding: 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  min-height: 100vh;
+  justify-content: center;
+}
+
+/* ============================================================
+   HERO BANNER — Purple
+   ============================================================ */
+.settings-hero-card {
+  background-color: #7C3AED;
+  border-radius: 30px;
+  padding: 35px 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 10px 0 0 #5B21B6;
+  margin-bottom: 10px;
+}
+
+.settings-title {
+  margin: 0;
+  color: #FFFFFF;
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.settings-subtitle {
+  margin: 10px 0 0 0;
+  color: #DDD6FE;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   SECTION WRAPPERS
+   ============================================================ */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.settings-section-heading {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1F2937;
+  margin: 0;
+}
+
+.settings-card {
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+}
+
+/* ============================================================
+   CAMERA SECTION
+   ============================================================ */
+.camera-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.camera-card-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.camera-emoji {
+  font-size: 52px;
+}
+
+.camera-text h3 {
+  margin: 0 0 6px 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #1F2937;
+}
+
+.camera-text p {
+  margin: 0;
+  font-size: 15px;
+  color: #6B7280;
+  font-weight: 600;
+  line-height: 1.5;
+  max-width: 420px;
+}
+
+.go-to-help-btn {
+  background-color: #3B82F6;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 16px;
+  padding: 14px 28px;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #2563EB;
+  transition: transform 0.1s, box-shadow 0.1s;
+  white-space: nowrap;
+}
+
+.go-to-help-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #2563EB;
+}
+
+/* ============================================================
+   LANGUAGE TOGGLE SECTION
+   ============================================================ */
+.language-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.language-hint {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #6B7280;
+  text-align: center;
+}
+
+.language-toggle-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.lang-btn {
+  flex: 1;
+  max-width: 260px;
+  padding: 20px 16px;
+  border: 3px solid #E5E7EB;
+  border-radius: 20px;
+  background: #FAFAFA;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  color: #6B7280;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s, color 0.15s;
+}
+
+.lang-btn:hover:not(.lang-btn--active) {
+  border-color: #A78BFA;
+  background: #F5F3FF;
+  color: #7C3AED;
+  transform: translateY(-2px);
+}
+
+.lang-btn--active {
+  border-color: #7C3AED;
+  background: #EDE9FE;
+  color: #5B21B6;
+  box-shadow: 0 0 0 4px #DDD6FE, 0 6px 0 #5B21B6;
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   AVATAR SECTION
+   ============================================================ */
+.avatar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+}
+
+/* Current avatar preview */
+.avatar-preview-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-preview-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background-color: #F3F4F6;
+  border: 4px solid #7C3AED;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.2);
+}
+
+.avatar-preview-emoji {
+  font-size: 60px;
+  line-height: 1;
+}
+
+.avatar-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-preview-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6B7280;
+  margin: 0;
+}
+
+/* Emoji grid */
+.avatar-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.avatar-emoji-btn {
+  aspect-ratio: 1;
+  border: 3px solid #E5E7EB;
+  border-radius: 16px;
+  background: #FAFAFA;
+  font-size: 38px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.avatar-emoji-btn:hover {
+  transform: scale(1.08);
+  border-color: #A78BFA;
+}
+
+.avatar-emoji-btn.selected {
+  border-color: #F59E0B;
+  box-shadow: 0 0 0 4px #FDE68A;
+  background: #FFFBEB;
+  transform: scale(1.08);
+}
+
+/* Upload button — shares the grid slot */
+.avatar-upload-btn {
+  aspect-ratio: 1;
+  border: 3px dashed #A78BFA;
+  border-radius: 16px;
+  background: #F5F3FF;
+  font-size: 26px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #7C3AED;
+  transition: transform 0.15s, background 0.15s;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+}
+
+.avatar-upload-btn span {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.avatar-upload-btn:hover {
+  transform: scale(1.05);
+  background: #EDE9FE;
+}
+
+/* Save button */
+.save-avatar-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 16px;
+  border: none;
+  border-radius: 16px;
+  background-color: #10B981;
+  color: #FFFFFF;
+  font-size: 20px;
+  font-weight: 800;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #059669;
+  transition: transform 0.1s, box-shadow 0.1s;
+  animation: popIn 0.2s ease;
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+.save-avatar-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #059669;
+}
+

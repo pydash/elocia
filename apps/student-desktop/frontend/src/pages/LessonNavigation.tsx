@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import Navbar from '../components/Navbar'; 
-import './LessonNavigation.css'; 
+import Navbar from '../components/Navbar';
+import './LessonNavigation.css';
 
 import sunImg from '../assets/images/Sun.png';
 import cloud1Img from '../assets/images/Cloud 1.png';
 import cloud2Img from '../assets/images/Cloud 2.png';
 import cloud3Img from '../assets/images/Cloud 3.png';
 import cloud5Img from '../assets/images/Cloud 5.png';
-import cloud6Img from '../assets/images/Cloud 6.png'; 
+import cloud6Img from '../assets/images/Cloud 6.png';
 import mascotImg from '../assets/images/Tier 4 Pass-and-Flag.png';
 
 const PlayIcon = () => (
@@ -44,8 +44,8 @@ const STAGE_DATA = [
   { id: 3, locked: true },
 ];
 
-export default function LessonNavigation({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile') => void }) {
-  const [selectedStage, setSelectedStage] = useState<number | null>(null); 
+export default function LessonNavigation({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void }) {
+  const [selectedStage, setSelectedStage] = useState<number | null>(null);
 
   const handleStageClick = (stageId: number, isLocked: boolean) => {
     if (isLocked) return;
@@ -54,10 +54,10 @@ export default function LessonNavigation({ onNavigate }: { onNavigate?: (view: '
 
   return (
     <div className="app-layout">
-      <Navbar onNavigate={onNavigate} activeTab="learn" /> 
+      <Navbar onNavigate={onNavigate} activeTab="learn" />
 
       <div className="main-content-area">
-        
+
         <div className="clouds-wrapper">
           <img src={sunImg} alt="Sun" className="bg-decor sun" />
           <img src={cloud1Img} alt="Cloud 1" className="bg-decor cloud-1" />
@@ -66,18 +66,18 @@ export default function LessonNavigation({ onNavigate }: { onNavigate?: (view: '
           <img src={cloud5Img} alt="Cloud 5" className="bg-decor cloud-5" />
           <img src={cloud6Img} alt="Cloud 6" className="bg-decor cloud-6" />
         </div>
-        
+
         <div className="map-container">
-          
+
           <div className="section-banner">
-            Section 1, Unit 1
+            SECTION 1, UNIT 1
           </div>
 
           <div className="stages-path">
             <div className="path-line"></div>
-            
+
             {STAGE_DATA.map((stage) => (
-              <div 
+              <div
                 key={stage.id}
                 className={`stage-card ${stage.locked ? 'locked-card' : 'active-card'} ${selectedStage === stage.id ? 'selected' : ''}`}
                 onClick={() => handleStageClick(stage.id, stage.locked)}
@@ -98,30 +98,30 @@ export default function LessonNavigation({ onNavigate }: { onNavigate?: (view: '
           {selectedStage === 1 && (
             <div className="stage-details-wrapper">
               <div className="details-rectangle">
-                
+
                 <img src={mascotImg} alt="Stage Mascot" className="details-mascot" />
-                
+
                 <div className="details-content">
-                  
+
                   <div className="details-header">
                     <span className="details-stage-name">Stage 1</span>
-                    <h3 className="details-stage-title">Master Intermediate Numbers</h3>
+                    <h3 className="details-stage-title">Get to know how to count</h3>
                     <p className="details-stage-description">
-                      Learn the signs for numbers from 21 to 30 through guided lessons, examples, and practice activities.
+                      Let's dive in to the sign language using numbers
                     </p>
                   </div>
-                  
+
                   <div className="details-action-row">
                     <div className="details-stats">
                       <div className="stat-row">
                         <RoundsIcon />
-                        <span>10 rounds</span>
+                        <span>10 Rounds</span>
                       </div>
                       <div className="stat-row">
-                        <span className="progress-text">Progress: <span className="progress-highlight">0/10 Completed</span></span>
+                        <span className="progress-text">Progress <span className="progress-highlight">0/10 completed</span></span>
                       </div>
                     </div>
-                    
+
                     <button className="start-lesson-btn">
                       <ButtonPlayIcon />
                       Start Learning

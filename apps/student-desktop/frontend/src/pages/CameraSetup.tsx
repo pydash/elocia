@@ -90,7 +90,6 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const base64Data = canvas.toDataURL('image/jpeg', 0.5);
-          
           ws.send(JSON.stringify({ image: base64Data }));
         }
       }
@@ -145,32 +144,31 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
         <div className="camera-setup-content-wrapper">
           {step === 'setup' ? (
             <div className="tips-card-box-large">
-              <h3>Tips for a perfect shot!</h3>
+              <h3>Tips to get higher chances to perfectly passed</h3>
               <ul>
-                <li><span style={{ color: '#FF662E' }}>●</span> Sit up straight</li>
-                <li><span style={{ color: '#2EABFF' }}>●</span> Find a bright place</li>
-                
-                <li><span style={{ color: '#6DD62C' }}>●</span> Show head to half-body</li>
+                <li><span style={{ color: '#FF662E' }}>●</span> Sit in a well-lit area so your gestures are clear.</li>
+                <li><span style={{ color: '#2EABFF' }}>●</span> Make sure you have a clean, uncluttered background.</li>
+                <li><span style={{ color: '#6DD62C' }}>●</span> Position yourself so your hands and upper body are fully visible.</li>
               </ul>
             </div>
           ) : (
             <div className="live-camera-feed-card">
-              
+
               {step === 'not-detected' && (
-                <div className="top-warning-tag">Please step in front of the camera!</div>
+                <div className="top-warning-tag">{"\u26A0\uFE0F"} No person detected! Please step into the frame.</div>
               )}
               {step === 'too-close' && (
-                <div className="top-warning-tag">Move away: Make sure your shoulders fit in frame</div>
+                <div className="top-warning-tag">{"\u26A0\uFE0F"} You're too close! Please step back a bit.</div>
               )}
               {step === 'too-far' && (
-                <div className="top-warning-tag">Move closer to the camera</div>
+                <div className="top-warning-tag">{"\u26A0\uFE0F"} You're too far! Please come closer.</div>
               )}
               {step === 'perfect' && (
                 <div className="top-warning-tag tag-perfect">
-                  ● Half-Body Framing Perfect! Click "Start" to begin!
+                  {"\u2728"} Perfect distance! You're ready.
                 </div>
               )}
-              <div className="live-badge-tag">● LIVE FEED</div>
+              <div className="live-badge-tag">LIVE FEED</div>
               <video ref={videoRef} autoPlay playsInline muted className="actual-webcam-stream" />
               <div className="crosshair-guide" />
             </div>
@@ -192,17 +190,17 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
 
         <div className="bottom-split-nav-bar">
           <button className="split-btn back-btn-side" onClick={onCancel}>
-            <span>⬅</span> Back
+            <span>{"\u2B05\uFE0F"}</span> BACK
           </button>
           <button
             className={`split-btn okay-btn-side ${isNextActive ? 'active-green' : 'disabled-state'}`}
             onClick={() => {
-              if (step === 'setup') setStep('not-detected'); 
-              else if (step === 'perfect') onDone(); 
+              if (step === 'setup') setStep('not-detected');
+              else if (step === 'perfect') onDone();
             }}
             disabled={!isNextActive}
           >
-            {step === 'setup' ? 'Okay' : 'Start'} <span>➡</span>
+            {step === 'setup' ? 'Okay' : 'Start'} <span>{"\u27A1\uFE0F"}</span>
           </button>
         </div>
 

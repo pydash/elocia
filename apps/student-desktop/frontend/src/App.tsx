@@ -5,9 +5,11 @@ import LessonNavigation from './pages/LessonNavigation';
 import CameraSetup from './pages/CameraSetup';
 import EvaluationSession from './pages/EvaluationSession';
 import Profile from './pages/Profile';
+import Help from './pages/Help';
+import Settings from './pages/Settings';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation' | 'profile'>('navigation');
+  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings'>('navigation');
   const [activeStage, setActiveStage] = useState<number | null>(null);
 
   // This function handles transitioning from Module 3 to Module 4
@@ -31,17 +33,25 @@ function App() {
         <Profile onNavigate={setCurrentView} />
       )}
 
+      {currentView === 'help' && (
+        <Help onNavigate={setCurrentView} />
+      )}
+
+      {currentView === 'settings' && (
+        <Settings onNavigate={setCurrentView} />
+      )}
+
       {currentView === 'setup' && (
-        <CameraSetup 
-          onDone={() => setCurrentView('evaluation')} 
-          onCancel={() => setCurrentView('navigation')} 
+        <CameraSetup
+          onDone={() => setCurrentView('evaluation')}
+          onCancel={() => setCurrentView('navigation')}
         />
       )}
 
       {currentView === 'evaluation' && (
-        <EvaluationSession 
-          stageId={activeStage} 
-          onExit={() => setCurrentView('navigation')} 
+        <EvaluationSession
+          stageId={activeStage}
+          onExit={() => setCurrentView('navigation')}
           onNavigate={setCurrentView}
         />
       )}

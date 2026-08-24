@@ -22,7 +22,7 @@ import amazingMascot from '../assets/images/Amazing.png';
 interface EvaluationSessionProps {
   stageId: number | null;
   onExit: () => void;
-  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile') => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void;
 }
 
 interface ScoreSet {
@@ -32,28 +32,16 @@ interface ScoreSet {
   movement: number;
 }
 
-interface ParameterMock {
-  name: string;
-  cssClass: string;
-  mascot: string;
-  score: number;
-}
-
-interface Grade {
-  stars: string;
-  label: string;
-}
-
-const getGrade = (score: number): Grade => {
-  if (score >= 90) return { stars: star5, label: 'Excellent!' };
-  if (score >= 75) return { stars: star4, label: 'Great!' };
-  if (score >= 60) return { stars: star3, label: 'Good!' };
-  if (score >= 40) return { stars: star2, label: 'Keep trying!' };
-  return { stars: star1, label: 'Keep trying!' };
-};
-
 const passScores: ScoreSet = { handshape: 88, palmOrientation: 92, location: 90, movement: 85 };
 const failScores: ScoreSet = { handshape: 35, palmOrientation: 65, location: 80, movement: 95 };
+
+const getStarImage = (score: number): string => {
+  if (score >= 90) return star5;
+  if (score >= 75) return star4;
+  if (score >= 60) return star3;
+  if (score >= 40) return star2;
+  return star1;
+};
 
 export default function EvaluationSession({ stageId, onExit }: EvaluationSessionProps) {
   const targetNumber = 22;
@@ -92,11 +80,18 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
     };
   }, []);
 
-  const parameters: ParameterMock[] = [
-    { name: 'Handshape', cssClass: 'param-handshape', mascot: thinkingHandshape, score: scores.handshape },
-    { name: 'Palm Orientation', cssClass: 'param-orientation', mascot: thinkingOrientation, score: scores.palmOrientation },
-    { name: 'Location', cssClass: 'param-location', mascot: thinkingLocation, score: scores.location },
-    { name: 'Movement', cssClass: 'param-movement', mascot: thinkingMovement, score: scores.movement },
+  const getGradeLabel = (score: number): string => {
+    if (score >= 90) return 'Excellent';
+    if (score >= 75) return 'Great';
+    if (score >= 60) return 'Good';
+    return 'Keep Trying';
+  };
+
+  const parameters = [
+    { name: 'Handshape',       cssClass: 'param-handshape',   mascot: thinkingHandshape,   score: scores.handshape },
+    { name: 'Palm Orientation', cssClass: 'param-orientation',  mascot: thinkingOrientation, score: scores.palmOrientation },
+    { name: 'Location',        cssClass: 'param-location',     mascot: thinkingLocation,    score: scores.location },
+    { name: 'Movement',        cssClass: 'param-movement',     mascot: thinkingMovement,    score: scores.movement },
   ];
 
   const showFeedback = currentTier >= 2;
@@ -112,7 +107,6 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
   const forceTier4 = () => { setCurrentTier(4); setScores(failScores); };
 
   const overallScore = (scores.handshape + scores.palmOrientation + scores.location + scores.movement) / 4;
-
   const hasPassed = isDev ? forceOverlayState : (overallScore >= 60 && currentTier !== 4);
 
   return (
@@ -121,29 +115,31 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
         <img src={confettiImg} alt="Confetti" className="global-confetti-overlay" />
       )}
 
-        <header className="eval-header-bar">
-          <button className="eval-back-btn" onClick={(e) => { e.preventDefault(); onExit(); }} type="button" aria-label="Back">
-            <img src={backButtonImg} alt="Back" />
-          </button>
-          
-          {isDev && (
-            <div className="dev-tools-panel">
-              <div className="dev-tools-title">⚙ Test</div>
-              <button 
-                onClick={() => setForceOverlayState(!forceOverlayState)} 
-                style={{ backgroundColor: forceOverlayState ? '#22C55E' : '#DEEDFF', color: forceOverlayState ? 'white' : '#1D4ED8' }}
-              >
-                {forceOverlayState ? 'Hide Pass' : 'Show Pass'}
-              </button>
-              <button onClick={forceTier1}>T1</button>
-              <button onClick={forceTier2}>T2</button>
-              <button onClick={forceTier3}>T3</button>
-              <button onClick={forceTier4}>T4</button>
-            </div>
-          )}
+      <header className="eval-header-bar">
+        <button className="eval-back-btn" onClick={(e) => { e.preventDefault(); onExit(); }} type="button" aria-label="Back">
+          <img src={backButtonImg} alt="Back" />
+        </button>
 
-          <div className="eval-title-block">
-          <div className="eval-main-title">Stage {stageId ?? 3}: Numbers (21 - 30)</div>
+        {isDev && (
+          <div className="dev-tools-panel">
+            <div className="dev-tools-title">{"\u2699\uFE0F"} Test</div>
+            <button
+              onClick={() => setForceOverlayState(!forceOverlayState)}
+              style={{ backgroundColor: forceOverlayState ? '#22C55E' : '#DEEDFF', color: forceOverlayState ? 'white' : '#1D4ED8' }}
+            >
+              {forceOverlayState ? 'Hide Pass' : 'Show Pass'}
+            </button>
+            <button onClick={forceTier1}>T1</button>
+            <button onClick={forceTier2}>T2</button>
+            <button onClick={forceTier3}>T3</button>
+            <button onClick={forceTier4}>T4</button>
+          </div>
+        )}
+
+        <div className="eval-title-block">
+          <div className="eval-main-title">
+            Stage {stageId ?? 3}: Numbers (21 - 30)
+          </div>
           <div className="eval-progress-track">
             {Array.from({ length: totalQuestions }, (_, index) => (
               <div key={index} className={`eval-progress-pill ${index < currentQuestion ? 'done' : ''}`} />
@@ -152,7 +148,7 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
         </div>
         <div className="eval-header-right">
           <span className="eval-counter-text">{currentQuestion} of {totalQuestions}</span>
-          <button className="eval-settings-btn" type="button" aria-label="Settings">⚙</button>
+          <button className="eval-settings-btn" type="button" aria-label="Settings">{"\u2699\uFE0F"}</button>
         </div>
       </header>
 
@@ -172,8 +168,8 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
       <main className="eval-main-row">
         <section className="eval-left-col">
           <div className="eval-instruction-card">
-            <span className="eval-instruction-tag">Instruction:</span>
-            <h2>Make the sign for {targetNumber} in sign language</h2>
+            <span className="eval-instruction-tag">Instruction</span>
+            <h2>Perform the number {targetNumber} in sign language</h2>
           </div>
 
           <div className="eval-camera-wrapper">
@@ -188,9 +184,8 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
                 <div className="correct-mascot-container">
                   <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
                 </div>
-
                 <button className="eval-next-btn" type="button" onClick={() => console.log('Next clicked!')}>
-                  Next →
+                  Next
                 </button>
               </div>
             )}
@@ -207,8 +202,8 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
               <div className="eval-tier3-panel">
                 <span className="eval-tier3-badge">Teacher Demo</span>
                 <div className="eval-teacher-video-box">
-                  <span className="eval-watch-pill">Watch carefully</span>
-                  <button className="eval-play-btn" type="button" aria-label="Play teacher video">▶</button>
+                  <span className="eval-watch-pill">Watch carefully!</span>
+                  <button className="eval-play-btn" type="button" aria-label="Play teacher video">{"\u25B6\uFE0F"}</button>
                 </div>
               </div>
             ) : (
@@ -223,15 +218,16 @@ export default function EvaluationSession({ stageId, onExit }: EvaluationSession
 
           <div className="eval-parameters-grid">
             {parameters.map((param) => {
-              const grade = getGrade(param.score);
               const needsWork = param.score < 60;
+              const label = getGradeLabel(param.score);
+              const starImg = getStarImage(param.score);
               return (
-                <div key={param.name} className={`eval-param-card ${param.cssClass} ${needsWork ? 'needs-work' : ''} ${showFeedback ? '' : 'hide-feedback'}`}>
+                <div key={param.name} className={`eval-param-card ${param.cssClass} ${needsWork ? 'needs-work' : ''} ${showFeedback ? 'show-feedback' : 'hide-feedback'}`}>
                   <div className="eval-param-title">{param.name}</div>
                   <img src={param.mascot} alt={`${param.name} mascot`} className="eval-param-mascot" />
-                  <div className={`eval-param-label ${needsWork ? 'label-warn' : 'label-good'}`}>{grade.label}</div>
+                  <div className={`eval-param-label ${needsWork ? 'label-warn' : 'label-good'}`}>{label}</div>
                   <div className="eval-param-stars">
-                    <img src={grade.stars} alt={`${grade.label} stars`} className="param-star-icon" />
+                    <img src={starImg} alt={`${label} stars`} className="param-star-icon" />
                   </div>
                 </div>
               );

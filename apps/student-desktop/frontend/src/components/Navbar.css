@@ -76,7 +76,7 @@
   color: #FFFFFF;
 }
 
-/* Clever trick to turn the emojis into pure white silhouettes to match the Figma outline icons */
+/* Clever trick to turn the colorful SVGs into pure white silhouettes to match the Figma outline icons */
 .nav-item.active .nav-icon {
   filter: brightness(0) invert(1);
 }
