@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import Navbar from '../components/Navbar'; 
-import './LessonNavigation.css'; 
+import Sidebar from '../../components/Sidebar/Sidebar'; 
+import './Lessons.css'; 
 
 // Assets
-import sunImg from '../assets/Sun.png';
-import cloud1Img from '../assets/Cloud 1.png';
-import cloud2Img from '../assets/Cloud 2.png';
-import cloud3Img from '../assets/Cloud 3.png';
-import cloud5Img from '../assets/Cloud 5.png';
-import cloud6Img from '../assets/Cloud 6.png'; 
-import mascotImg from '../assets/Tier 4 Pass-and-Flag.png';
+import sunImg from '../../assets/Sun.png';
+import cloud1Img from '../../assets/Cloud 1.png';
+import cloud2Img from '../../assets/Cloud 2.png';
+import cloud3Img from '../../assets/Cloud 3.png';
+import cloud5Img from '../../assets/Cloud 5.png';
+import cloud6Img from '../../assets/Cloud 6.png'; 
+import mascotImg from '../../assets/Tier 4 Pass-and-Flag.png';
 
 // ==========================================
 // ICONS
@@ -62,7 +62,7 @@ export default function LessonNavigation() {
 
   return (
     <div className="app-layout">
-      <Navbar /> 
+      <Sidebar /> 
 
       <div className="main-content-area">
         

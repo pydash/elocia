@@ -1,16 +1,16 @@
 import React from 'react';
-import './Navbar.css';
+import './Sidebar.css'; // Make sure your CSS file is renamed to this!
 
-export default function Navbar() {
+export default function Sidebar() { // Renamed from Navbar
   return (
-    <nav className="elocia-navbar">
+    <nav className="elocia-sidebar">
       {/* Brand & Logo Only */}
-      <div className="navbar-brand">
+      <div className="sidebar-brand">
         <img src="/src/assets/logo-icon.png" alt="ELOCIA Logo" className="logo-icon" />
       </div>
 
       {/* Navigation Links */}
-      <ul className="navbar-links">
+      <ul className="sidebar-links">
         <li className="nav-item active">
           <span className="nav-icon">📖</span>
           <span className="nav-text">Learn</span>
@@ -34,7 +34,7 @@ export default function Navbar() {
       </ul>
 
       {/* Logout Action */}
-      <div className="navbar-actions">
+      <div className="sidebar-actions">
         <button className="logout-button">
           <span className="nav-icon">🚪</span>
           <span className="nav-text">Logout</span>
