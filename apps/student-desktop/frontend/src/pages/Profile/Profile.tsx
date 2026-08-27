@@ -3,7 +3,7 @@ import Navbar from '../../components/Sidebar/Sidebar';
 const viewAllBtnImg = "/images/View all Button.png";
 import './Profile.css';
 
-export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void }) {
+export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements') => void }) {
   const [avatar] = useState<string>(() => localStorage.getItem('elocia_avatar') || '');
 
   return (
@@ -87,7 +87,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
           <section className="achievements-section">
             <div className="achievements-header">
               <h2 className="achievements-title">Recent Achievements</h2>
-              <button className="view-all-btn">
+              <button className="view-all-btn" onClick={() => onNavigate?.('achievements')}>
                 <img src={viewAllBtnImg} alt="View all" />
               </button>
             </div>

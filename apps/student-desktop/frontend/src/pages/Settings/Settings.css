@@ -372,3 +372,212 @@
   box-shadow: 0 2px 0 #059669;
 }
 
+/* ============================================================
+   CAMERA SANDBOX (Moved from Help)
+   ============================================================ */
+.sandbox-container {
+  display: flex;
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 25px;
+  gap: 30px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+}
+
+.sandbox-video-wrapper {
+  position: relative;
+  width: 400px;
+  height: 300px;
+  background: #1E293B;
+  border-radius: 16px;
+  border: 4px solid #3B82F6;
+  overflow: hidden;
+  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+
+.sandbox-live-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-dot {
+  width: 8px; height: 8px;
+  background: #EF4444;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%   { transform: scale(1);   opacity: 1;   }
+  50%  { transform: scale(1.3); opacity: 0.5; }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+
+.sandbox-video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.sandbox-checklist {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sandbox-checklist h3 { margin: 0 0 15px 0; font-size: 20px; color: #374151; }
+
+.sandbox-checklist ul {
+  list-style: none;
+  padding: 0; margin: 0 0 20px 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.sandbox-checklist li {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 16px; color: #4B5563;
+}
+
+.check-icon { font-size: 20px; }
+
+.sandbox-tip {
+  background: #FEF3C7;
+  border: 2px solid #FCD34D;
+  padding: 15px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #92400E;
+}
+
+/* ============================================================
+   FEEDBACK SECTION (Moved from Help)
+   ============================================================ */
+.feedback-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  border: 3px solid #FCA5A5;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.feedback-intro {
+  margin: 0;
+  font-size: 16px;
+  color: #374151;
+  line-height: 1.65;
+}
+
+.feedback-textarea {
+  width: 100%;
+  border: 3px solid #BFDBFE;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  font-weight: 600;
+  color: #1F2937;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  background: #F0F9FF;
+}
+
+.feedback-textarea:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
+  background: #FFFFFF;
+}
+
+.feedback-textarea::placeholder { color: #9CA3AF; font-weight: 500; }
+
+.feedback-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.feedback-char-count { font-size: 13px; color: #6B7280; font-weight: 600; }
+.feedback-hint       { color: #EF4444; margin-left: 4px; }
+
+.feedback-send-btn {
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  color: #FFFFFF;
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 30px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #1D4ED8;
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 0.3px;
+}
+
+.feedback-send-btn:hover:not(:disabled)  { transform: translateY(-2px); box-shadow: 0 8px 0 #1D4ED8; }
+.feedback-send-btn:active:not(:disabled) { transform: translateY(3px);  box-shadow: 0 3px 0 #1D4ED8; }
+
+.feedback-send-btn--disabled,
+.feedback-send-btn:disabled {
+  background: #D1D5DB;
+  box-shadow: 0 4px 0 #9CA3AF;
+  cursor: not-allowed;
+  color: #6B7280;
+}
+
+.feedback-error {
+  margin: 0;
+  color: #DC2626;
+  font-size: 14px;
+  font-weight: 700;
+  background: #FEF2F2;
+  border: 2px solid #FCA5A5;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+/* Success / Cooldown box */
+.feedback-sent-box {
+  background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+  border: 3px solid #6EE7B7;
+  border-radius: 20px;
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  box-shadow: 0 6px 0 #34D399;
+}
+
+.feedback-sent-emoji {
+  font-size: 56px;
+  animation: bouncePop 0.5s ease-out;
+}
+
+@keyframes bouncePop {
+  0%   { transform: scale(0);   }
+  70%  { transform: scale(1.2); }
+  100% { transform: scale(1);   }
+}
+
+.feedback-sent-title { margin: 0; font-size: 26px; font-weight: 800; color: #065F46; }
+.feedback-sent-sub   { margin: 0; font-size: 16px; color: #047857; font-weight: 600; line-height: 1.6; }

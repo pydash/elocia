@@ -64,6 +64,7 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
   const currentItem = items[questionIndex];
 
   const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
+  const [, setFailCount] = useState<number>(0);
   const [scores, setScores] = useState<ScoreSet>(failScores); // Start with failing so UI isn't passed
   const [hasEvaluated, setHasEvaluated] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
@@ -131,9 +132,17 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
             data.scores.movement < 60;
 
           if (overall < 60 || hasFailedParameter) {
-            setCurrentTier(prev => Math.min(4, prev + 1) as 1 | 2 | 3 | 4);
+            setFailCount(prev => {
+              const newCount = prev + 1;
+              if (newCount >= 4) setCurrentTier(4);
+              else if (newCount >= 3) setCurrentTier(3);
+              else if (newCount >= 2) setCurrentTier(2);
+              else setCurrentTier(1);
+              return newCount;
+            });
           } else {
             // Pass!
+            setFailCount(0);
             setCurrentTier(1);
           }
         } else if (data.action === 'landmarks') {
@@ -335,6 +344,7 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
     if (questionIndex < totalQuestions - 1) {
       setQuestionIndex(prev => prev + 1);
       setCurrentTier(1);
+      setFailCount(0);
       setScores(failScores); // Reset scores so it's not instantly passed
       setHasEvaluated(false);
     } else {
@@ -361,6 +371,31 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
   const getDialogueImage = () => {
     if (currentTier === 1) return dialogueKeepGoing;
     return dialogueGiveBest;
+  };
+
+  const getLowestParameter = () => {
+    const params = [
+      { name: 'Handshape', score: scores.handshape },
+      { name: 'Palm Orientation', score: scores.palmOrientation },
+      { name: 'Location', score: scores.location },
+      { name: 'Movement', score: scores.movement },
+    ];
+    let lowest = params[0];
+    for (let i = 1; i < params.length; i++) {
+      if (params[i].score < lowest.score) {
+        lowest = params[i];
+      }
+    }
+    return lowest;
+  };
+
+  const getTier2FeedbackMessage = () => {
+    const lowest = getLowestParameter();
+    if (lowest.name === 'Handshape') return "Check your fingers!\nMake sure the shape matches.";
+    if (lowest.name === 'Palm Orientation') return "Turn your hand!\nCheck which way your palm faces.";
+    if (lowest.name === 'Location') return "Move your hand!\nMake sure it's in the right spot.";
+    if (lowest.name === 'Movement') return "Check your motion!\nFollow the exact path.";
+    return "Give it your best!";
   };
 
   // Dev helpers for quickly previewing tiers — callable from the browser console:
@@ -514,7 +549,13 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
               </div>
             ) : (
               <>
-                <img src={getDialogueImage()} alt="Mascot dialogue" className="eval-dialogue-img" />
+                {currentTier === 2 && hasEvaluated ? (
+                  <div className="eval-css-speech-bubble">
+                    {getTier2FeedbackMessage()}
+                  </div>
+                ) : (
+                  <img src={getDialogueImage()} alt="Mascot dialogue" className="eval-dialogue-img" />
+                )}
                 <div className="eval-mascot-wrap">
                   <img src={moveAwayMascot} alt="Learning Mascot" className="eval-feedback-mascot-img" />
                 </div>

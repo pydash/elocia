@@ -8,9 +8,10 @@ import StageComplete from './pages/StageComplete/StageComplete';
 import Profile from './pages/Profile/Profile';
 import Help from './pages/Help/Help';
 import Settings from './pages/Settings/Settings';
+import Achievements from './pages/Achievements/Achievements';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings'>('navigation');
+  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements'>('navigation');
   const [activeStage, setActiveStage] = useState<number | null>(null);
   const [completedStage, setCompletedStage] = useState<number | null>(null);
   const [unlockedStages, setUnlockedStages] = useState<number[]>([1]); // Stage 1 is unlocked by default
@@ -39,6 +40,10 @@ function App() {
 
       {currentView === 'profile' && (
         <Profile onNavigate={setCurrentView} />
+      )}
+
+      {currentView === 'achievements' && (
+        <Achievements onNavigate={setCurrentView} />
       )}
 
       {currentView === 'help' && (

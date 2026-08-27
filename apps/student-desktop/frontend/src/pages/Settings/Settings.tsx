@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import './Settings.css';
 
@@ -7,10 +7,7 @@ type View = 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settin
 const PRESET_AVATARS = ['\uD83D\uDC31', '\uD83D\uDC36', '\uD83E\uDD8A', '\uD83D\uDC3C', '\uD83D\uDC38', '\uD83E\uDD81', '\uD83D\uDC2F', '\uD83D\uDC28'];
 
 const getStoredAvatar = (): string => {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return '';
-  }
-
+  if (typeof window === 'undefined' || !window.localStorage) return '';
   return window.localStorage.getItem('elocia_avatar') || '';
 };
 
@@ -22,34 +19,94 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
   const isDirty = pendingAvatar !== '' && pendingAvatar !== savedAvatar;
 
-  function selectEmoji(emoji: string) {
-    setPendingAvatar(emoji);
-  }
+  function selectEmoji(emoji: string) { setPendingAvatar(emoji); }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setPendingAvatar(result);
-    };
+    reader.onload = (ev) => setPendingAvatar(ev.target?.result as string);
     reader.readAsDataURL(file);
     e.target.value = '';
   }
 
   function saveAvatar() {
     if (!pendingAvatar) return;
-
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem('elocia_avatar', pendingAvatar);
     }
-
     setSavedAvatar(pendingAvatar);
     setPendingAvatar('');
   }
 
   const displayAvatar = pendingAvatar || savedAvatar;
+
+  // ── Camera Stream ─────────────────────────────────────────────────────────
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+    async function enableCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        console.warn('Camera access is not available in this environment.');
+        return;
+      }
+      try {
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+        if (cancelled) { cameraStream.getTracks().forEach(t => t.stop()); return; }
+        stream = cameraStream;
+        if (videoRef.current) videoRef.current.srcObject = cameraStream;
+      } catch (err) {
+        console.error('Webcam access failed in Settings sandbox:', err);
+      }
+    }
+    enableCamera();
+    return () => { cancelled = true; if (stream) stream.getTracks().forEach(t => t.stop()); };
+  }, []);
+
+  // ── Feedback Form State ───────────────────────────────────────────────────
+  const EMAILJS_SERVICE_ID  = 'service_mlr8x0l';
+  const EMAILJS_TEMPLATE_ID = 'template_on0ihwr';
+  const EMAILJS_PUBLIC_KEY  = 'W_bEYnn5Ji5UnwzX5';
+  const COOLDOWN_MS = 5 * 60 * 1000;
+
+  const [feedbackText, setFeedbackText] = useState('');
+  const [sendStatus, setSendStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [cooldownLeft, setCooldownLeft] = useState<number>(() => {
+    const lastSent = Number(localStorage.getItem('elocia_feedback_last_sent') || '0');
+    const elapsed  = Date.now() - lastSent;
+    return elapsed < COOLDOWN_MS ? Math.ceil((COOLDOWN_MS - elapsed) / 1000) : 0;
+  });
+
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownLeft(prev => { if (prev <= 1) { clearInterval(timer); return 0; } return prev - 1; });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownLeft]);
+
+  async function handleSendFeedback() {
+    if (!feedbackText.trim() || feedbackText.trim().length < 10) return;
+    if (cooldownLeft > 0) return;
+    setSendStatus('sending');
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service_id: EMAILJS_SERVICE_ID, template_id: EMAILJS_TEMPLATE_ID, user_id: EMAILJS_PUBLIC_KEY, template_params: { message: feedbackText.trim() } }),
+      });
+      if (res.ok) {
+        setSendStatus('sent'); setFeedbackText('');
+        localStorage.setItem('elocia_feedback_last_sent', String(Date.now()));
+        setCooldownLeft(COOLDOWN_MS / 1000);
+      } else { setSendStatus('error'); }
+    } catch { setSendStatus('error'); }
+  }
+
+  const canSend = feedbackText.trim().length >= 10 && cooldownLeft === 0 && sendStatus !== 'sending';
+  const minutesLeft = Math.ceil(cooldownLeft / 60);
+
 
   return (
     <div className="settings-page-container">
@@ -73,26 +130,6 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
           <section className="settings-hero-card">
             <h1 className="settings-title">My Settings</h1>
             <p className="settings-subtitle">Make Elocia feel just right for you!</p>
-          </section>
-
-          {/* ── Camera ──────────────────────────────────────────────────── */}
-          <section className="settings-section">
-            <h2 className="settings-section-heading">{"\uD83D\uDCF7"} Camera</h2>
-            <div className="settings-card camera-card">
-              <div className="camera-card-body">
-                <span className="camera-emoji">{"\uD83D\uDCF9"}</span>
-                <div className="camera-text">
-                  <h3>Need help with your camera?</h3>
-                  <p>Go to the Help page to check your camera and get tips on the best position!</p>
-                </div>
-              </div>
-              <button
-                className="go-to-help-btn"
-                onClick={() => onNavigate?.('help')}
-              >
-                Go to Help →
-              </button>
-            </div>
           </section>
 
           {/* ── Avatar ──────────────────────────────────────────────────── */}
@@ -151,6 +188,77 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
                 </button>
               )}
             </div>
+          </section>
+
+          {/* ── Camera ──────────────────────────────────────────────────── */}
+          <section className="settings-section">
+            <h2 className="settings-section-heading">{"\uD83D\uDCF7"} Check Your Camera</h2>
+            <div className="sandbox-container">
+              <div className="sandbox-video-wrapper">
+                <div className="sandbox-live-badge"><span className="live-dot"></span> LIVE VIDEO</div>
+                <video ref={videoRef} autoPlay playsInline muted className="sandbox-video" />
+              </div>
+              <div className="sandbox-checklist">
+                <h3>Before we play, make sure:</h3>
+                <ul>
+                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>We can see you!</strong> Stay inside the video frame.</span></li>
+                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>Not too close.</strong> Leave space for your hands.</span></li>
+                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>Lots of light.</strong> Turn on the lights in your room.</span></li>
+                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>Clean background.</strong> A blank wall works best!</span></li>
+                </ul>
+                <div className="sandbox-tip">
+                  <strong>Teacher Tip: If your camera is a mirror, raise your right hand and make sure the video does exactly what you do!</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── FEEDBACK PANEL ── */}
+          <section className="settings-section">
+            <h2 className="settings-section-heading">🐛 Found a Pesky Bug?</h2>
+            {cooldownLeft > 0 ? (
+              <div className="feedback-sent-box">
+                <span className="feedback-sent-emoji">🎉</span>
+                <p className="feedback-sent-title">Yay! Your message was sent!</p>
+                <p className="feedback-sent-sub">
+                  Thank you so much for helping us make Elocia better!{' '}
+                  You can send another message in{' '}
+                  <strong>{minutesLeft} {minutesLeft === 1 ? 'minute' : 'minutes'}</strong>. 🕐
+                </p>
+              </div>
+            ) : (
+              <div className="feedback-card">
+                <p className="feedback-intro">
+                  Did the app do something silly? 🤔 Or maybe you have a super cool idea to make Elocia even more awesome?{' '}
+                  <strong>Ask your teacher or parent to help you type a message below our builders would love to hear from you! 💌</strong>
+                </p>
+                <textarea
+                  className="feedback-textarea"
+                  placeholder="Type your message here... (e.g. 'The camera was not working!' or 'I think there should be more animals!')"
+                  value={feedbackText}
+                  onChange={e => { setFeedbackText(e.target.value); setSendStatus('idle'); }}
+                  rows={5}
+                  maxLength={500}
+                />
+                <div className="feedback-footer">
+                  <span className="feedback-char-count">
+                    {feedbackText.length}/500{feedbackText.trim().length < 10 && feedbackText.length > 0 && (
+                      <span className="feedback-hint"> (need at least 10 letters!)</span>
+                    )}
+                  </span>
+                  <button
+                    className={`feedback-send-btn ${!canSend ? 'feedback-send-btn--disabled' : ''}`}
+                    onClick={handleSendFeedback}
+                    disabled={!canSend}
+                  >
+                    {sendStatus === 'sending' ? '📤 Sending...' : '✉️ Send to the Builders!'}
+                  </button>
+                </div>
+                {sendStatus === 'error' && (
+                  <p className="feedback-error">😟 Oops! Something went wrong. Please ask your teacher to try again later.</p>
+                )}
+              </div>
+            )}
           </section>
 
         </div>

@@ -1,54 +1,45 @@
-import { useEffect, useRef } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
 import './Help.css';
 
+const TOUR_STEPS = [
+  {
+    icon: '🎓', label: 'Learn',
+    title: 'Learn',
+    desc: 'Go on an adventure! Explore the map and start brand new sign language lessons. This is where all the fun begins!',
+  },
+  {
+    icon: '📝', label: 'Practice',
+    title: 'Practice',
+    desc: 'Play fun review games with the signs you already learned! Keep practicing and you will get better and better!',
+  },
+  {
+    icon: '👤', label: 'Profile',
+    title: 'Profile',
+    desc: 'This is YOUR page! See your daily streak, count your stars, and show off all of your cool achievements!',
+  },
+  {
+    icon: '⚙️', label: 'Settings',
+    title: 'Settings',
+    desc: 'Need to change something? Adjust your camera or pick a cool new avatar right here and you want to report a problem to our builders.',
+  },
+  {
+    icon: '❓', label: 'Help',
+    title: 'Help',
+    desc: "That's this page! Come back here whenever you need help .",
+  },
+  {
+    icon: '🚪', label: 'Logout',
+    title: 'Logout',
+    desc: "All done for today? Click here to safely log out. Great job — see you next time! 🌟",
+  },
+];
+
 export default function Help({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    let cancelled = false;
-
-    async function enableCamera() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        console.warn('Camera access is not available in this environment.');
-        return;
-      }
-
-      try {
-        const cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480 },
-          audio: false,
-        });
-
-        if (cancelled) {
-          cameraStream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        stream = cameraStream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = cameraStream;
-        }
-      } catch (err) {
-        console.error('Webcam access failed in Help sandbox:', err);
-      }
-    }
-    enableCamera();
-
-    return () => {
-      cancelled = true;
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
   return (
     <div className="help-page-container">
-      {/* Sidebar */}
       <Navbar activeTab="help" onNavigate={onNavigate} />
-
-      {/* Main Content Area */}
       <main className="help-main">
+
         {/* Background Decorative Pattern */}
         <div className="help-bg-pattern">
           <span className="bg-icon icon-1">{"\u2B50"}</span>
@@ -61,77 +52,57 @@ export default function Help({ onNavigate }: { onNavigate?: (view: 'navigation' 
         </div>
 
         <div className="help-content-scroll">
-
           {/* Header Banner */}
           <section className="help-hero-card">
             <h1 className="help-title"> Need Help?</h1>
             <p className="help-subtitle">Find everything you need to know about using Elocia right here!</p>
           </section>
 
-          {/* CAMERA SANDBOX */}
-          <section className="help-section">
-            <h2 className="section-heading">{"\uD83D\uDCF7"} Check Your Camera</h2>
-            <div className="sandbox-container">
-              <div className="sandbox-video-wrapper">
-                <div className="sandbox-live-badge"><span className="live-dot"></span> LIVE VIDEO</div>
-                <video ref={videoRef} autoPlay playsInline muted className="sandbox-video" />
-              </div>
-              <div className="sandbox-checklist">
-                <h3>Before we play, make sure:</h3>
-                <ul>
-                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>We can see you!</strong> Stay inside the video frame.</span></li>
-                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>Not too close.</strong> Leave space for your hands.</span></li>
-                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>Lots of light.</strong> Turn on the lights in your room.</span></li>
-                  <li><span className="check-icon">{"\u2705"}</span> <span><strong>Clean background.</strong> A blank wall works best!</span></li>
-                </ul>
-                <div className="sandbox-tip">
-                  <strong>Teacher Tip: If your camera is a mirror, raise your right hand and make sure the video does exactly what you do!</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ICON GLOSSARY */}
+          {/* BUTTONS DIAGRAM PANEL */}
           <section className="help-section">
             <h2 className="section-heading">What do these buttons do?</h2>
-            <div className="help-grid">
+            
+            <div className="static-diagram-container">
+              {/* Sidebar replica with callouts attached */}
+              <div className="tour-sidebar-mock">
+                <div className="tour-mock-logo">
+                  <img src="/images/logo-icon.png" alt="Elocia Logo" className="mock-logo-img" />
+                </div>
 
-              <div className="help-card border-blue">
-                <div className="help-icon-circle bg-blue">{"\uD83C\uDF93"}</div>
-                <h3>Learn</h3>
-                <p>Go here to explore the map and start new sign language lessons.</p>
+                {/* Nav items (steps 0–4) */}
+                {TOUR_STEPS.slice(0, 5).map((step, i) => (
+                  <div key={i} className={`tour-nav-item ${i === 2 ? 'tour-nav-item--active' : ''}`}>
+                    <span className="tour-nav-icon">{step.icon}</span>
+                    <span className="tour-nav-label">{step.label}</span>
+                    <span className="tour-badge">{i + 1}</span>
+                    
+                    {/* The text callout pointing from the badge */}
+                    <div className="diagram-callout">
+                      <div className="diagram-connector"></div>
+                      <div className="diagram-callout-content">
+                        <h4>{step.title}</h4>
+                        <p>{step.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Logout (step 5) */}
+                <div className="tour-logout-item">
+                  <span className="tour-nav-icon">🚪</span>
+                  <span className="tour-nav-label">Logout</span>
+                  <span className="tour-badge tour-badge--logout">6</span>
+                  
+                  {/* The text callout for logout */}
+                  <div className="diagram-callout">
+                    <div className="diagram-connector"></div>
+                    <div className="diagram-callout-content logout-callout">
+                      <h4>{TOUR_STEPS[5].title}</h4>
+                      <p>{TOUR_STEPS[5].desc}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <div className="help-card border-green">
-                <div className="help-icon-circle bg-green">{"\uD83D\uDCDD"}</div>
-                <h3>Practice</h3>
-                <p>Play fun games to review the signs you already know.</p>
-              </div>
-
-              <div className="help-card border-orange">
-                <div className="help-icon-circle bg-orange">{"\uD83D\uDC64"}</div>
-                <h3>Profile</h3>
-                <p>Check your streak, see your stars, and view your achievements.</p>
-              </div>
-
-              <div className="help-card border-gray">
-                <div className="help-icon-circle bg-gray">{"\u2699\uFE0F"}</div>
-                <h3>Settings</h3>
-                <p>Change your avatar and access camera shortcuts.</p>
-              </div>
-
-              <div className="help-card border-pink">
-                <div className="help-icon-circle bg-pink">{"\uD83D\uDC35"}</div>
-                <h3>Camera Monkey</h3>
-                <p>He'll tell you if you're too close or too far from the camera!</p>
-              </div>
-
-              <div className="help-card border-gold">
-                <div className="help-icon-circle bg-gold">{"\u2B50"}</div>
-                <h3>Stars</h3>
-                <p>Earn stars by copying the signs perfectly.</p>
-              </div>
-
             </div>
           </section>
 
