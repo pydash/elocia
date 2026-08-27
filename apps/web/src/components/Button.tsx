@@ -5,7 +5,9 @@ const variants = {
   outline:
     "border border-(--primary) bg-transparent text-(--primary) hover:bg-(--primary) hover:text-white",
   destructive:
-    "bg-(--danger) border-(--danger-light)! text-white disabled:pointer-events-none disabled:opacity-50",
+    "bg-(--danger-light) border-1 border-(--danger)! text-(--danger) hover:bg-[#FFC7C7] disabled:pointer-events-none disabled:opacity-50",
+  ghost:
+    "bg-(--gray-100) text-(--black) border-(--ghost)! hover:bg-(--gray-150) disabled:pointer-events-none disabled:opacity-50",
 };
 
 function Button({ variant = "default", className = "", children, ...props }) {

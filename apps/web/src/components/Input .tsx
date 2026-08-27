@@ -16,12 +16,12 @@ export default function Input({
   return (
     <div className="relative w-full">
       {LeadingIcon && (
-        <LeadingIcon className="pointer-events-none absolute left-3 top-6 size-5 -translate-y-1/2 text-(--ghost)" />
+        <LeadingIcon className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-(--ghost)" />
       )}
 
       <input
         type={type}
-        className={`w-full paragraph-2 rounded-md border-2 border-(--border) bg-(--gray-50) px-4 py-3 text-(--ghost) outline-none ${
+        className={`h-12 w-full rounded-md border-2 border-(--border) bg-(--gray-50) px-4 paragraph-2 text-(--ghost) outline-none ${
           LeadingIcon ? "pl-10" : ""
         } ${TrailingIcon ? "pr-12" : ""} ${className}`}
         {...props}
