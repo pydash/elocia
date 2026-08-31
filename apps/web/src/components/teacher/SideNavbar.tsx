@@ -39,7 +39,7 @@ export default function TeacherSideNavbar() {
   const currentPath = location.pathname.split("/")[2] || "students";
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white">
+    <aside className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white fixed">
       {/* Logo */}
       <div className="p-4 flex items-center justify-center">
         <div className="flex size-28 items-center justify-center">
