@@ -40,7 +40,7 @@ const ButtonPlayIcon = () => (
 );
 
 interface LessonNavigationProps {
-  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
   unlockedStages: number[];
   onStartLesson: (stageId: number) => void;
 }

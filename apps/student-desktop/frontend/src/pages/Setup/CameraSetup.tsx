@@ -27,6 +27,20 @@ interface CameraSetupProps {
 
 type SetupStep = 'setup' | 'not-detected' | 'too-close' | 'too-far' | 'perfect';
 
+const LeftArrowIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }}>
+    <line x1="21" y1="12" x2="4" y2="12" />
+    <polyline points="10 5 3 12 10 19" />
+  </svg>
+);
+
+const RightArrowIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: '8px' }}>
+    <line x1="3" y1="12" x2="20" y2="12" />
+    <polyline points="14 5 21 12 14 19" />
+  </svg>
+);
+
 export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -197,7 +211,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
 
         <div className="bottom-split-nav-bar">
           <button className="split-btn back-btn-side" onClick={onCancel}>
-            <span>{"\u2B05\uFE0F"}</span> BACK
+            <LeftArrowIcon /> Back
           </button>
           <button
             className={`split-btn okay-btn-side ${isNextActive ? 'active-green' : 'disabled-state'}`}
@@ -207,7 +221,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
             }}
             disabled={!isNextActive}
           >
-            {step === 'setup' ? 'Okay' : 'Start'} <span>{"\u27A1\uFE0F"}</span>
+            {step === 'setup' ? 'Okay' : 'Start'} <RightArrowIcon />
           </button>
         </div>
 

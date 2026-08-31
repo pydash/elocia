@@ -11,7 +11,6 @@
   left: 0;
   top: 0;
   box-sizing: border-box;
-
   z-index: 100;
 }
 
@@ -30,45 +29,39 @@
   object-fit: contain;
 }
 
-/* Navigation Links */
 .navbar-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  list-style: none;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  flex-grow: 1;
+  gap: 10px;
+  flex: 1;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 1.2rem;
-  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: 12px;
   color: #7f8c8d;
+  font-weight: 700;
+  font-size: 18px;
   cursor: pointer;
-  padding: 14px 20px;
-  border-radius: 20px; /* Pill shape */
-  border: 2px solid transparent; /* Prevents jumping on hover */
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s ease;
 }
 
 .nav-item:hover {
-  background-color: #f7f9fa;
-  border-color: #f7f9fa;
-  color: #2c3e50;
+  background-color: #f8f9fa;
+  color: #34495e;
 }
 
-/* The Figma Active State */
 .nav-item.active {
   background-color: #F59E0B; /* vibrant orange */
   border: 2px solid #F59E0B;
   color: #FFFFFF;
   box-shadow: 0 5px 0 0 #B45309; /* 3D drop shadow effect */
   transform: translateY(-2px);
-  margin-bottom: 5px; /* Add margin so shadow doesn't clip into elements below */
 }
 
 .nav-item.active .nav-icon,
@@ -86,37 +79,37 @@
   box-shadow: 0 0 0 0 #B45309;
 }
 
-/* Icons inside the nav */
 .nav-icon {
-  font-size: 1.5rem;
+  font-size: 24px;
+  margin-right: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 30px;
 }
 
+/* Logout Button */
 .navbar-actions {
-  margin-top: auto; /* Pushes the button to the bottom */
+  margin-top: auto;
   width: 100%;
 }
 
-/* Logout Button */
 .logout-button {  
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   background-color: #ffffff;
-  color: #ff7675; /* Gamified red color */
-  border: 2px solid #ff7675;
-  padding: 14px 20px;
-  border-radius: 20px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  width: 100%;
-  transition: all 0.2s;
   font-family: 'Quicksand', sans-serif;
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e74c3c;
+  color: #e74c3c;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .logout-button:hover {

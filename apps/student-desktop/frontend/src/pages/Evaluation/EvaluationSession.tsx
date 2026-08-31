@@ -24,7 +24,7 @@ interface EvaluationSessionProps {
   stageId: number | null;
   onExit: () => void;
   onComplete: (stageId: number) => void;
-  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
 }
 
 interface ScoreSet {
@@ -32,6 +32,23 @@ interface ScoreSet {
   palmOrientation: number;
   location: number;
   movement: number;
+}
+
+interface Point3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface LandmarksData {
+  hand: Point3D[];
+  pose: {
+    nose: Point3D;
+    leftShoulder: Point3D;
+    rightShoulder: Point3D;
+  };
+  scores: ScoreSet;
+  frames: number;
 }
 
 const passScores: ScoreSet = { handshape: 88, palmOrientation: 92, location: 90, movement: 85 };
@@ -54,7 +71,7 @@ const HAND_CONNECTIONS = [
   [0, 17]
 ];
 
-export default function EvaluationSession({ stageId, onExit, onComplete }: EvaluationSessionProps) {
+export default function EvaluationSession({ stageId, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
   const currentStageId = stageId ?? 1;
   const stageData = getStageData(currentStageId);
   const items = stageData?.items || [{ globalId: 1, name: "1" }];
@@ -74,7 +91,7 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
   const [diagOn, setDiagOn] = useState<boolean>(false);
   const [diagData, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
   const diagRef = useRef(diagOn);
-  const landmarksRef = useRef<any>(null);
+  const landmarksRef = useRef<LandmarksData | null>(null);
   const trailRef = useRef<{ x: number, y: number, a: number }[]>([]);
   const overlayRef = useRef<HTMLCanvasElement>(null);
 
@@ -447,7 +464,7 @@ export default function EvaluationSession({ stageId, onExit, onComplete }: Evalu
           >
             {"\uD83D\uDD2C"}
           </button>
-          <button className="eval-settings-btn" type="button" aria-label="Settings">{"\u2699\uFE0F"}</button>
+          <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { sessionStorage.setItem('scrollToBug', 'true'); onNavigate?.('settings'); }}>{"\u2699\uFE0F"}</button>
         </div>
       </header>
 

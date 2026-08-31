@@ -4,14 +4,14 @@ import './Achievements.css';
 const backButtonImg = '/images/Back Button.png';
 
 interface AchievementsProps {
-  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements') => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
 }
 
 export default function Achievements({ onNavigate }: AchievementsProps) {
   return (
     <div className="achievements-page-container">
       {/* Sidebar */}
-      <Navbar activeTab="profile" onNavigate={onNavigate as any} />
+      <Navbar activeTab="profile" onNavigate={onNavigate} />
 
       {/* Main Content Area */}
       <main className="achievements-main">

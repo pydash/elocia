@@ -14,7 +14,7 @@ const cloud6Img = '/images/Cloud 6.png';
 interface StageCompleteProps {
   stageId: number | null;
   onBackToLearn: () => void;
-  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings') => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
 }
 
 const TrophyIcon = () => (

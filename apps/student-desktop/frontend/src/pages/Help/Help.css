@@ -18,10 +18,8 @@
   margin-left: 240px;
   width: calc(100% - 240px);
   position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ── Background floating icons ───────────────────────────── */
@@ -59,13 +57,14 @@
 .help-content-scroll {
   position: relative;
   z-index: 1;
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 28px 60px 80px;
+  padding: 60px;
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 50px; /* Space between sections */
+  justify-content: center;
+  min-height: 100vh;
+  gap: 30px;
 }
 
 /* ── Hero banner ─────────────────────────────────────────── */
@@ -110,168 +109,101 @@
   gap: 10px;
 }
 
-/* ============================================================
-   STATIC BUTTON DIAGRAM
-   ============================================================ */
-.static-diagram-container {
+
+/* Interactive Tour Card */
+.interactive-tour-container {
   display: flex;
   justify-content: center;
-  /* Offset padding to perfectly center the entire cluster (sidebar + callouts) */
-  padding: 30px 420px 30px 0; 
+  padding: 20px 0;
 }
 
-/* ── Sidebar mock ──────────────────────────────────────────── */
-.tour-sidebar-mock {
-  flex-shrink: 0;
-  width: 190px;
-  background: #FFFFFF;
+.interactive-tour-card {
+  background: white;
+  border: 3px solid #F59E0B;
   border-radius: 20px;
-  border: 2px solid #E5E7EB;
-  padding: 18px 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 60px; /* Increased massively to fix overlap */
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  padding: 40px;
+  text-align: center;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
-.tour-mock-logo {
-  display: flex;
-  justify-content: center;
+.tour-card-icon {
+  font-size: 4rem;
   margin-bottom: 20px;
-  width: 100%;
 }
 
-.mock-logo-img {
-  width: 90px;
-  height: 90px;
-  object-fit: contain;
-}
-
-/* Each nav item in the mock */
-.tour-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 2px solid transparent;
-  position: relative; /* Anchor for absolute callouts */
-  user-select: none;
-}
-
-.tour-nav-item--active {
-  background: #F59E0B !important;
-  border-color: #F59E0B !important;
-  box-shadow: 0 4px 0 #B45309;
-}
-
-.tour-nav-item--active .tour-nav-label {
-  color: #FFFFFF !important;
-}
-
-.tour-nav-item--active .tour-nav-icon {
-  filter: brightness(0) invert(1);
-}
-
-.tour-nav-icon  { font-size: 18px; }
-.tour-nav-label { font-size: 14px; font-weight: 700; color: #6B7280; flex: 1; }
-
-/* Logout item */
-.tour-logout-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 2px solid #FECACA;
-  position: relative; /* Anchor for absolute callouts */
-  user-select: none;
-}
-
-.tour-logout-item .tour-nav-label { color: #EF4444; }
-
-/* Numbered badge on the right edge */
-.tour-badge {
-  position: absolute;
-  right: -12px; /* Hang half off the edge */
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px; height: 24px;
-  background: #F59E0B;
-  color: #FFFFFF;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #FFFFFF;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  z-index: 2;
-}
-
-.tour-badge--logout {
-  background: #EF4444;
-}
-
-/* ── The Static Text Callouts (positioned absolutely to the right) ── */
-.diagram-callout {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 400px; /* Made wider to fit text nicely */
-  display: flex;
-  align-items: center;
-  pointer-events: none; /* Let clicks pass through if needed */
-  z-index: 5;
-}
-
-/* The connecting line with arrow */
-.diagram-connector {
-  width: 50px;
-  height: 2px;
-  background-color: #374151; /* Dark gray line */
-  position: relative;
-  margin-left: 20px;
-  margin-right: 15px;
-}
-
-.diagram-connector::after {
-  content: '';
-  position: absolute;
-  right: -2px;
-  top: 50%;
-  transform: translateY(-50%);
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 6px solid #374151; /* The arrowhead pointing right */
-}
-
-/* The box containing the text */
-.diagram-callout-content {
-  background: #FFFFFF;
-  border-radius: 12px;
-  padding: 10px 14px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  border-left: 4px solid #F59E0B;
-  flex: 1;
-}
-
-.logout-callout {
-  border-left-color: #EF4444;
-}
-
-.diagram-callout-content h4 {
-  margin: 0 0 2px 0;
-  font-size: 14px;
+.interactive-tour-card h3 {
+  font-size: 1.8rem;
   font-weight: 800;
-  color: #1F2937;
+  color: #2c3e50;
+  margin: 0 0 15px 0;
 }
 
-.diagram-callout-content p {
-  margin: 0;
-  font-size: 12.5px;
-  color: #4B5563;
-  line-height: 1.35;
+.interactive-tour-card p {
+  font-size: 1.1rem;
+  color: #7f8c8d;
+  margin: 0 0 30px 0;
+  line-height: 1.5;
 }
+
+.start-tour-btn {
+  background-color: #F59E0B;
+  color: white;
+  border: none;
+  border-radius: 100px;
+  padding: 16px 32px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #B45309;
+  transition: all 0.2s;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.start-tour-btn:active {
+  transform: translateY(6px);
+  box-shadow: none;
+}
+
+/* Customizing driver.js popover to match ELOCIA theme */
+.elocia-driver-theme {
+  font-family: 'Quicksand', sans-serif !important;
+  border-radius: 16px;
+  padding: 15px;
+  border: 3px solid #F59E0B;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+}
+
+.elocia-driver-theme * {
+  font-family: 'Quicksand', sans-serif !important;
+}
+
+.elocia-driver-theme .driver-popover-title {
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  color: #F59E0B !important;
+  margin-bottom: 8px !important;
+}
+
+.elocia-driver-theme .driver-popover-description {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: #2c3e50 !important;
+  line-height: 1.4 !important;
+}
+
+.elocia-driver-theme .driver-popover-footer button {
+  background-color: #F59E0B !important;
+  color: white !important;
+  text-shadow: none !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  border: none !important;
+  padding: 8px 15px !important;
+  cursor: pointer !important;
+}
+
+.elocia-driver-theme .driver-popover-footer button:hover {
+  background-color: #d97706 !important;
+}
+

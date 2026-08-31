@@ -1,6 +1,7 @@
 // src/App.tsx
 import { useState } from 'react';
 import './App.css';
+import Login from './pages/Login/Login';
 import LessonNavigation from './pages/Lessons/LessonNavigation';
 import CameraSetup from './pages/Setup/CameraSetup';
 import EvaluationSession from './pages/Evaluation/EvaluationSession';
@@ -9,9 +10,14 @@ import Profile from './pages/Profile/Profile';
 import Help from './pages/Help/Help';
 import Settings from './pages/Settings/Settings';
 import Achievements from './pages/Achievements/Achievements';
+import Practice from './pages/Practice/Practice';
+import PuzzleSign from './pages/Mini Games/Puzzle Sign';
+
+import SeeItSignIt from './pages/Mini Games/SeeItSignIt';
+import MagicFingers from './pages/Mini Games/MagicFingers';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements'>('navigation');
+  const [currentView, setCurrentView] = useState<'login' | 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers'>('login');
   const [activeStage, setActiveStage] = useState<number | null>(null);
   const [completedStage, setCompletedStage] = useState<number | null>(null);
   const [unlockedStages, setUnlockedStages] = useState<number[]>([1]); // Stage 1 is unlocked by default
@@ -24,18 +30,44 @@ function App() {
 
   return (
     <div onClick={(e) => {
-      const target = (e.target as HTMLElement).closest('.start-lesson-btn');
+      const el = e.target as HTMLElement;
+      // Logout button (sidebar, available on every page) -> back to Login
+      if (el.closest('.nav-logout-btn')) {
+        setCurrentView('login');
+        return;
+      }
+      const target = el.closest('.start-lesson-btn');
       if (target) {
         // Find which stage was selected in LessonNavigation and start it
         // We will manage this directly from inside LessonNavigation instead of event delegation
       }
     }}>
+      {currentView === 'login' && (
+        <Login onStart={() => setCurrentView('navigation')} />
+      )}
+
       {currentView === 'navigation' && (
         <LessonNavigation 
           onNavigate={setCurrentView} 
           unlockedStages={unlockedStages} 
           onStartLesson={handleStartLesson} 
         />
+      )}
+
+      {currentView === 'practice' && (
+        <Practice onNavigate={setCurrentView} />
+      )}
+
+      {currentView === 'puzzle-sign' && (
+        <PuzzleSign onNavigate={setCurrentView} />
+      )}
+
+      {currentView === 'see-it-sign-it' && (
+        <SeeItSignIt onNavigate={setCurrentView} />
+      )}
+
+      {currentView === 'magic-fingers' && (
+        <MagicFingers onNavigate={setCurrentView} />
       )}
 
       {currentView === 'profile' && (

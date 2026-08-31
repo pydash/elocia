@@ -3,7 +3,7 @@ import Navbar from '../../components/Sidebar/Sidebar';
 const viewAllBtnImg = "/images/View all Button.png";
 import './Profile.css';
 
-export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements') => void }) {
+export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void }) {
   const [avatar] = useState<string>(() => localStorage.getItem('elocia_avatar') || '');
 
   return (

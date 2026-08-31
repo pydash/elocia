@@ -1,0 +1,486 @@
+/* Puzzle Sign Global */
+.ps-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #F8F9CC;
+  overflow: hidden;
+  font-family: 'Quicksand', sans-serif;
+}
+
+/* 1. Menu Screen */
+.ps-main-menu {
+  margin-left: 240px; /* Account for fixed sidebar */
+  width: calc(100% - 240px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.ps-bg-watermark {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(243, 156, 18, 0.05) 20px, transparent 21px),
+    radial-gradient(circle at 90% 80%, rgba(52, 152, 219, 0.05) 30px, transparent 31px);
+  z-index: 0;
+}
+
+.ps-menu-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.ps-logo {
+  max-width: 400px;
+  width: 100%;
+  margin-bottom: -20px;
+  z-index: 2;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.1));
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ps-activity-box {
+  width: 100%;
+  background: white;
+  border: 3px dashed #f39c12;
+  border-radius: 20px;
+  padding: 3rem 2rem 2rem 2rem; /* Extra top padding for overlapping logo */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.ps-search-bar {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.8rem 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.ps-search-bar input {
+  border: none;
+  background: none;
+  outline: none;
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1rem;
+  margin-left: 0.8rem;
+  width: 100%;
+}
+
+.ps-activities {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Custom Scrollbar for Activities */
+.ps-activities::-webkit-scrollbar {
+  width: 8px;
+}
+.ps-activities::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+.ps-activities::-webkit-scrollbar-thumb {
+  background: #f39c12;
+  border-radius: 4px;
+}
+.ps-activities::-webkit-scrollbar-thumb:hover {
+  background: #d68910;
+}
+
+.ps-activity-btn {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #f39c12;
+  border-radius: 16px;
+  padding: 0.8rem 1.5rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 0 #f39c12;
+}
+
+.ps-activity-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #d68910;
+}
+
+.ps-activity-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 #d68910;
+}
+
+.activity-number {
+  background: #f39c12;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-right: 1.2rem;
+}
+
+.activity-text {
+  flex: 1;
+  text-align: left;
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f39c12;
+}
+
+.activity-arrow {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+.ps-back-btn {
+  margin-top: 2rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.8rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'Quicksand', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #2980b9;
+}
+
+
+/* Game Area Custom Additions (Used inside the evaluation-layout-1920) */
+
+.ps-crosshair {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px; height: 200px;
+  pointer-events: none;
+}
+
+.ch-line {
+  position: absolute;
+  background: rgba(255,255,255,0.3);
+}
+.ch-h { top: 50%; left: 0; right: 0; height: 2px; border-top: 2px dashed rgba(255,255,255,0.5); background: transparent; }
+.ch-v { left: 50%; top: 0; bottom: 0; width: 2px; border-left: 2px dashed rgba(255,255,255,0.5); background: transparent; }
+.ch-circle {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border: 2px dashed rgba(255,255,255,0.5);
+  border-radius: 50%;
+}
+
+.ps-bg-watermark {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+@keyframes floatPractice {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(-15px) rotate(calc(var(--rot, 0deg) + 8deg)); }
+}
+
+.bg-icon {
+  position: absolute;
+  font-size: 50px;
+  opacity: 0.15; /* Softly blended into background */
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
+  animation: floatPractice 6s ease-in-out infinite;
+}
+
+.icon-1 { top: 10%; left: 5%; font-size: 65px; --rot: -10deg; animation-delay: 0s; }
+.icon-2 { top: 15%; right: 15%; font-size: 55px; --rot: 15deg; animation-delay: -1s; }
+.icon-3 { top: 35%; left: 20%; font-size: 60px; --rot: 20deg; animation-delay: -2s; }
+.icon-4 { top: 40%; right: 10%; font-size: 70px; --rot: -5deg; animation-delay: -3s; }
+.icon-5 { top: 60%; left: 12%; font-size: 55px; --rot: -20deg; animation-delay: -4s; }
+.icon-6 { top: 65%; right: 25%; font-size: 60px; --rot: 25deg; animation-delay: -1.5s; }
+.icon-7 { top: 85%; left: 25%; font-size: 65px; --rot: -15deg; animation-delay: -5s; }
+.icon-8 { top: 25%; left: 55%; font-size: 50px; --rot: 10deg; animation-delay: -2.5s; }
+.icon-9 { top: 80%; right: 5%; font-size: 55px; --rot: 5deg; animation-delay: -0.5s; }
+.icon-10 { top: 90%; right: 40%; font-size: 50px; --rot: 15deg; animation-delay: -3.5s; }
+
+.ps-puzzle-card {
+  background: white;
+  width: 95%; /* Make it fill almost the entire column */
+  max-width: 800px; /* Increased max width so it scales larger on desktop */
+  border-radius: 20px;
+  padding: 4rem 3rem; /* Generous padding */
+  border: 3px solid #f39c12; /* Crisp orange border */
+  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+  z-index: 2;
+  margin: 0 auto; /* Centers the card */
+}
+
+.puzzle-equation {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.puzzle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.puzzle-emoji {
+  font-size: 6.5rem; /* Massively scaled up */
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+}
+
+.puzzle-image-mock {
+  width: 120px; /* Scaled up image */
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.puzzle-qmark {
+  font-size: 6.5rem; /* Massively scaled up */
+  font-weight: 900;
+  color: #bdc3c7;
+}
+
+.puzzle-underscore {
+  width: 100px; /* Larger underscore */
+  height: 10px;
+  background: #ecf0f1;
+  border-radius: 5px;
+}
+
+.puzzle-operator {
+  font-size: 5rem; /* Scaled up operators */
+  font-weight: 800;
+  color: #bdc3c7;
+}
+
+.ps-score-card {
+  background: white;
+  width: 95%; /* Matches the puzzle card width */
+  max-width: 800px;
+  border-radius: 20px;
+  padding: 2.5rem 3.5rem; /* Generous padding */
+  border: 3px solid #f39c12; /* Crisp orange border */
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+  z-index: 2;
+  margin: 0 auto; /* Centers the card */
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 2.2rem; /* Massively scaled up font */
+  margin-bottom: 1.5rem;
+}
+
+.score-row:last-child {
+  margin-bottom: 0;
+}
+
+.score-row.highest .score-label, .score-row.highest .score-value {
+  color: #f39c12;
+  font-weight: 700;
+}
+
+.score-row.current .score-label {
+  color: #f39c12;
+  font-weight: 700;
+}
+
+.score-row.current .score-value {
+  color: #2c3e50; /* Dark gray for the current score value */
+  font-weight: 700;
+}
+
+/* ============================================================
+   Grading feedback states (in-game)
+   ============================================================ */
+
+/* Red "recording" badge while the 3-second sign capture runs */
+.ps-recording-badge {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(229, 72, 77, 0.95);
+  color: white;
+  font-weight: 800;
+  font-size: 1.4rem;
+  padding: 10px 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 11;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  animation: psPulse 1s ease-in-out infinite;
+}
+
+.ps-recording-dot {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+}
+
+@keyframes psPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* Amber warning card for missing baselines / offline server */
+.ps-baseline-error {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(52, 152, 219, 0.95);
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 12px 20px;
+  border-radius: 12px;
+  z-index: 11;
+  max-width: 80%;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+/* Answer revealed after a pass (or give-up) */
+.puzzle-emoji.ps-revealed {
+  color: #22C55E;
+  animation: psRevealPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes psRevealPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   Bottom Controls (Mascot & Buttons Flow)
+   ============================================================ */
+
+.ps-bottom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2rem;
+  width: 100%;
+}
+
+.ps-mascot-area {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  position: relative;
+}
+
+/* ============================================================
+   Mascot Settings (Edit size and location here)
+   ============================================================ */
+.ps-mascot-img {
+  /* Size */
+  width: 380px;
+  height: 380px;
+  
+  /* Location */
+  margin-left: -20px; /* Negative pushes left, positive pushes right */
+  margin-top: -200px;    /* Negative pushes up towards camera, positive pushes down */
+  
+  /* Keep this to prevent image stretching */
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+.ps-speech-bubble {
+  background: white;
+  border: 4px solid #FB9F34;
+  border-radius: 16px;
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FB9F34;
+  text-align: center;
+  box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+  white-space: pre-line;
+  position: relative;
+  max-width: 260px;
+}
+
+.ps-speech-bubble::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -16px;
+  transform: translateY(-50%);
+  border-width: 12px 16px 12px 0;
+  border-style: solid;
+  border-color: transparent #FB9F34 transparent transparent;
+}
+
+.ps-speech-bubble::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -9px;
+  transform: translateY(-50%);
+  border-width: 9px 12px 9px 0;
+  border-style: solid;
+  border-color: transparent white transparent transparent;
+}
+
+.ps-button-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ps-action-btn.eval-next-btn {
+  position: static;
+  margin: 0 !important;
+  bottom: auto;
+  right: auto;
+}
+
+.ps-give-up-btn {
+  position: static;
+  margin: 0;
+  transform: none;
+  left: auto;
+}
+
+.ps-give-up-btn:active {
+  transform: translateY(4px);
+}
+

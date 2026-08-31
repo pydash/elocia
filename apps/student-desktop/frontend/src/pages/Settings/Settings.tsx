@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import './Settings.css';
 
-type View = 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings';
+type View = 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice';
 
 const PRESET_AVATARS = ['\uD83D\uDC31', '\uD83D\uDC36', '\uD83E\uDD8A', '\uD83D\uDC3C', '\uD83D\uDC38', '\uD83E\uDD81', '\uD83D\uDC2F', '\uD83D\uDC28'];
 
@@ -18,6 +18,17 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty = pendingAvatar !== '' && pendingAvatar !== savedAvatar;
+
+  // Auto-scroll to bug report section if triggered from a mini-game / evaluation gear icon
+  useEffect(() => {
+    if (sessionStorage.getItem('scrollToBug') === 'true') {
+      setTimeout(() => {
+        const el = document.getElementById('bug-report-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      sessionStorage.removeItem('scrollToBug');
+    }
+  }, []);
 
   function selectEmoji(emoji: string) { setPendingAvatar(emoji); }
 
@@ -72,6 +83,8 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
   const [feedbackText, setFeedbackText] = useState('');
   const [sendStatus, setSendStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [cooldownLeft, setCooldownLeft] = useState<number>(() => {
     const lastSent = Number(localStorage.getItem('elocia_feedback_last_sent') || '0');
     const elapsed  = Date.now() - lastSent;
@@ -107,6 +120,18 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
   const canSend = feedbackText.trim().length >= 10 && cooldownLeft === 0 && sendStatus !== 'sending';
   const minutesLeft = Math.ceil(cooldownLeft / 60);
 
+  function handleForgotPassword() {
+    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+      setForgotStatus('error');
+      return;
+    }
+
+    setForgotStatus('sending');
+    setTimeout(() => {
+      setForgotStatus('sent');
+      setForgotEmail('');
+    }, 700);
+  }
 
   return (
     <div className="settings-page-container">
@@ -213,8 +238,53 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
             </div>
           </section>
 
-          {/* ── FEEDBACK PANEL ── */}
+          {/* ── FORGOT PASSWORD ── */}
           <section className="settings-section">
+            <h2 className="settings-section-heading">🔐 Forgot Password?</h2>
+            <div className="password-reset-card">
+              <p className="password-reset-text">
+                Need help getting back in? Enter your email and we’ll send a reset link to your inbox.
+              </p>
+
+              <div className="password-reset-form">
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => {
+                    setForgotEmail(e.target.value);
+                    if (forgotStatus !== 'idle') setForgotStatus('idle');
+                  }}
+                  placeholder="name@example.com"
+                  className="password-reset-input"
+                  aria-label="Email address"
+                />
+
+                <button
+                  type="button"
+                  className="password-reset-btn"
+                  onClick={handleForgotPassword}
+                  disabled={forgotStatus === 'sending'}
+                >
+                  {forgotStatus === 'sending' ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </div>
+
+              {forgotStatus === 'error' && (
+                <p className="password-reset-message password-reset-message--error">
+                  Please enter a valid email address.
+                </p>
+              )}
+
+              {forgotStatus === 'sent' && (
+                <p className="password-reset-message password-reset-message--success">
+                  Reset link sent! Check your email for the next step.
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* ── FEEDBACK PANEL ── */}
+          <section id="bug-report-section" className="settings-section">
             <h2 className="settings-section-heading">🐛 Found a Pesky Bug?</h2>
             {cooldownLeft > 0 ? (
               <div className="feedback-sent-box">
