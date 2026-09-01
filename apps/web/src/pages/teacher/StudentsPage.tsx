@@ -40,7 +40,7 @@ const onDeactivate = (username: string) => {
   console.log(`Deactivating account for ${username}`);
 };
 
-export default function TeacherStudents() {
+export default function TeacherStudentsPage() {
   return (
     <div>
       <TopHeaderBar />

@@ -3,7 +3,7 @@ import Field from "../../components/Field";
 import Button from "../../components/Button";
 import { User, Lock } from "lucide-react";
 
-export default function TeacherLogin() {
+export default function TeacherLoginPage() {
   return (
     <>
       <main className="flex h-screen w-screen">
