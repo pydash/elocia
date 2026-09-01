@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
 
-export default function Landing() {
+export default function LandingPage() {
   return (
     <main className="h-screen bg-(--primary-500) flex flex-col">
       {/* Centered content */}
