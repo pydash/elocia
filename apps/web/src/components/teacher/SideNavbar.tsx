@@ -1,10 +1,10 @@
 import {
   Users,
   BookOpen,
-  CheckSquare,
   Settings,
   HelpCircle,
   LogOut,
+  ClipboardList,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import NavbarMenuItem from "../NavbarMenuItem";
@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
   },
   {
     name: "Tasks",
-    icon: CheckSquare,
+    icon: ClipboardList,
     to: "/teacher/tasks",
   },
 ];
