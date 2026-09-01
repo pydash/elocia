@@ -1,0 +1,194 @@
+<<<<<<< HEAD
+.elocia-sidebar {
+=======
+.elocia-navbar {
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  height: 100vh;
+  background-color: #ffffff;
+  padding: 30px 20px;
+  border-right: 2px solid #e5e5e5;
+  font-family: 'Quicksand', sans-serif;
+  position: fixed;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  z-index: 100;
+}
+
+/* Logo and Brand Name */
+<<<<<<< HEAD
+.sidebar-brand {
+=======
+.navbar-brand {
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+  display: flex;
+  justify-content: center;
+  margin-bottom: 50px;
+  padding-left: 0;
+  width: 100%;
+}
+
+.logo-icon {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+<<<<<<< HEAD
+/* Navigation Links */
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  flex-grow: 1;
+=======
+.navbar-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+<<<<<<< HEAD
+  gap: 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 14px 20px;
+  border-radius: 20px; /* Pill shape */
+  border: 2px solid transparent; /* Prevents jumping on hover */
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-item:hover {
+  background-color: #f7f9fa;
+  border-color: #f7f9fa;
+  color: #2c3e50;
+}
+
+/* The Figma Active State */
+=======
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: #7f8c8d;
+  font-weight: 700;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: #f8f9fa;
+  color: #34495e;
+}
+
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+.nav-item.active {
+  background-color: #F59E0B; /* vibrant orange */
+  border: 2px solid #F59E0B;
+  color: #FFFFFF;
+  box-shadow: 0 5px 0 0 #B45309; /* 3D drop shadow effect */
+  transform: translateY(-2px);
+<<<<<<< HEAD
+  margin-bottom: 5px; /* Add margin so shadow doesn't clip into elements below */
+=======
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+}
+
+.nav-item.active .nav-icon,
+.nav-item.active .nav-text {
+  color: #FFFFFF;
+}
+
+/* Clever trick to turn the colorful SVGs into pure white silhouettes to match the Figma outline icons */
+.nav-item.active .nav-icon {
+  filter: brightness(0) invert(1);
+}
+
+.nav-item.active:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 0 #B45309;
+}
+
+<<<<<<< HEAD
+/* Icons inside the nav */
+.nav-icon {
+  font-size: 1.5rem;
+=======
+.nav-icon {
+  font-size: 24px;
+  margin-right: 15px;
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+}
+
+<<<<<<< HEAD
+.sidebar-actions {
+  margin-top: auto; /* Pushes the button to the bottom */
+  width: 100%;
+}
+
+/* Logout Button */
+=======
+/* Logout Button */
+.navbar-actions {
+  margin-top: auto;
+  width: 100%;
+}
+
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+.logout-button {  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background-color: #ffffff;
+<<<<<<< HEAD
+  color: #ff7675; /* Gamified red color */
+  border: 2px solid #ff7675;
+  padding: 14px 20px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+  font-family: 'Quicksand', sans-serif;
+=======
+  font-family: 'Quicksand', sans-serif;
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e74c3c;
+  color: #e74c3c;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6
+}
+
+.logout-button:hover {
+  background-color: #ffeaea;
+<<<<<<< HEAD
+}
+=======
+}
+>>>>>>> 760f75e03194bc04076708af8826962e2e8fd3c6

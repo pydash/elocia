@@ -1,0 +1,201 @@
+.achievements-page-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Quicksand', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #F8F9CC;
+}
+
+.achievements-main {
+  margin-left: 240px; /* Sidebar width */
+  width: calc(100% - 240px);
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Reusing Profile Background Pattern logic */
+.achievements-bg-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.achievements-bg-pattern .bg-icon {
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.2;
+}
+
+.achievements-bg-pattern .icon-1 { top: 10%; left: 15%; transform: rotate(-15deg); }
+.achievements-bg-pattern .icon-2 { top: 25%; right: 20%; transform: rotate(10deg); font-size: 4rem; }
+.achievements-bg-pattern .icon-3 { bottom: 15%; left: 25%; transform: rotate(-5deg); font-size: 5rem; }
+.achievements-bg-pattern .icon-4 { top: 40%; left: 50%; transform: rotate(20deg); font-size: 2.5rem; }
+.achievements-bg-pattern .icon-5 { bottom: 30%; right: 10%; transform: rotate(-25deg); font-size: 3.5rem; }
+
+/* Scrollable Content */
+.achievements-content-scroll {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 40px 60px;
+  box-sizing: border-box;
+}
+
+.achievements-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.achievements-back-btn {
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.achievements-back-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.achievements-back-btn:active {
+  transform: translateY(4px);
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #2c3e50;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.05);
+}
+
+.spacer {
+  width: 100px; /* Balances the back button width */
+}
+
+/* Coming Soon Banner */
+.coming-soon-container {
+  margin-bottom: 40px;
+}
+
+.coming-soon-card {
+  background-color: #E8F4FD;
+  border: 2px dashed #2EABFF;
+  border-radius: 16px;
+  padding: 20px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.coming-soon-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.coming-soon-card h2 {
+  color: #2EABFF;
+  margin: 0 0 10px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.coming-soon-card p {
+  color: #5b7290;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Full Grid */
+.achievements-full-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* Reuse the exact styles from Profile.css for consistency */
+.achievement-card {
+  background: white;
+  border: 2px solid #e5e5e5;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.achievement-card:hover {
+  transform: translateY(-5px);
+}
+
+.achievement-icon-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.icon-trophy { background: #fff5e6; border: 2px solid #fbdc99; }
+.icon-flame { background: #ffeee6; border: 2px solid #fbac85; }
+.icon-medal { background: #fdf0f5; border: 2px solid #f6adc6; }
+.icon-lock { background: #f7f9fa; border: 2px solid #e5e5e5; color: #bdc3c7; }
+
+.achievement-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #2c3e50;
+}
+
+.achievement-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #7f8c8d;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.achievement-card.locked {
+  background: #fdfdfd;
+  opacity: 0.8;
+}
+
+.achievement-card.locked h3,
+.achievement-card.locked p {
+  color: #95a5a6;
+}
+
+.active-border {
+  border: 2px solid #fbac85;
+}
