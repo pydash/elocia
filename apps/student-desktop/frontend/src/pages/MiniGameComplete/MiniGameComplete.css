@@ -1,0 +1,206 @@
+/* Mini Game Complete - Sky scene reusing the shared app-layout pattern */
+.mg-complete-bg {
+  background-color: #51C7FF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 40px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Confetti overlay */
+.mg-complete-confetti {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.8;
+}
+
+/* Mascot peeking from behind the card */
+.mg-complete-mascot {
+  position: relative;
+  z-index: 5; /* Lower than the card (z-index: 10) so it sits behind */
+  width: 250px;
+  height: auto;
+  margin-bottom: -70px; /* pull the card up over the mascot */
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+}
+
+/* White card */
+.mg-complete-card {
+  position: relative;
+  z-index: 10;
+  width: 550px;
+  max-width: 92%;
+  background-color: #ffffff;
+  border: 4px solid #f39c12; /* Matching screenshot orange border */
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.mg-complete-title {
+  margin: 0 0 24px;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #3498db; /* Matching screenshot blue title */
+  text-transform: uppercase;
+}
+
+/* XP pill */
+.mg-xp-pill {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: #F8F9FA;
+  border-radius: 16px;
+  padding: 16px 24px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.05);
+  margin-bottom: 8px;
+}
+
+.mg-xp-trophy {
+  background-color: #f39c12;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(243, 156, 18, 0.3);
+}
+
+.mg-xp-texts {
+  flex: 1;
+  min-width: 0;
+}
+
+.mg-xp-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f39c12;
+}
+
+.mg-xp-subtitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e67e22;
+  opacity: 0.8;
+}
+
+.mg-xp-amount {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #f39c12;
+  white-space: nowrap;
+}
+
+/* Section label */
+.mg-signs-practiced-label {
+  align-self: flex-start;
+  margin: 20px 0 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f39c12;
+}
+
+/* Scrollable sign list */
+.mg-signs-list {
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 8px;
+}
+
+.mg-signs-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mg-signs-list::-webkit-scrollbar-thumb {
+  background-color: #bdc3c7;
+  border-radius: 8px;
+}
+
+.mg-signs-list::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+  border-radius: 8px;
+}
+
+.mg-sign-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: #FFF9F0;
+  border: 2px solid #f39c12;
+  border-radius: 16px;
+  padding: 12px 16px;
+}
+
+.mg-sign-star {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mg-sign-star-num {
+  position: absolute;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #d35400;
+}
+
+.mg-sign-name {
+  flex: 1;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #e67e22;
+}
+
+.mg-sign-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Back to Practice button */
+.mg-back-btn {
+  position: relative;
+  z-index: 10;
+  margin-top: -24px; /* overlaps card slightly */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #f39c12;
+  color: #ffffff;
+  border: none;
+  border-radius: 16px;
+  padding: 16px 48px;
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 0 0 #d68910;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.mg-back-btn:active {
+  transform: translateY(6px);
+  box-shadow: none;
+}
