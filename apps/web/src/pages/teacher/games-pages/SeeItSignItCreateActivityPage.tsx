@@ -35,7 +35,7 @@ export function SeeItSignItCreateActivityStepOnePage() {
     <section className="space-y-6 mt-6">
       <StepIndicator steps={steps} step={1} />
 
-      <div className="flex flex-col p-6 gap-6 bg-gray-100 rounded-4xl">
+      <article className="flex flex-col p-6 gap-6 bg-(--white) rounded-4xl shadow-lg/5">
         <div className="grid grid-cols-2 gap-6">
           <div className="col-span-1">
             <div className="aspect-video w-full overflow-hidden rounded-2xl bg-gray-200 hover:bg-gray-300">
@@ -87,7 +87,7 @@ export function SeeItSignItCreateActivityStepOnePage() {
             </Button>
           </Link>
         </div>
-      </div>
+      </article>
     </section>
   );
 }
