@@ -130,7 +130,7 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
             onClick={handleDelete}
             type="button"
           >
-            ✕
+            ←
           </button>
         </div>
       </div>

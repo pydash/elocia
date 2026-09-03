@@ -29,11 +29,11 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
           {/* Hero Card */}
           <section className="profile-hero-card">
             <div className="hero-avatar-container">
-              <div className="avatar-circle">
+              <div className="avatar-circle" style={{ width: '100%', height: '100%', position: 'relative' }}>
                 {avatar.startsWith('data:') ? (
-                  <img src={avatar} alt="Your avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  <img src={avatar} alt="Your avatar" style={{ display: 'block', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                 ) : (
-                  <span className="avatar-emoji">{avatar || "\uD83D\uDE0A"}</span>
+                  <span className="avatar-emoji" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>{avatar || "\uD83D\uDE0A"}</span>
                 )}
               </div>
             </div>

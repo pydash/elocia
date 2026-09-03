@@ -83,8 +83,6 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
   const [feedbackText, setFeedbackText] = useState('');
   const [sendStatus, setSendStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotStatus, setForgotStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [cooldownLeft, setCooldownLeft] = useState<number>(() => {
     const lastSent = Number(localStorage.getItem('elocia_feedback_last_sent') || '0');
     const elapsed  = Date.now() - lastSent;
@@ -119,19 +117,6 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
   const canSend = feedbackText.trim().length >= 10 && cooldownLeft === 0 && sendStatus !== 'sending';
   const minutesLeft = Math.ceil(cooldownLeft / 60);
-
-  function handleForgotPassword() {
-    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
-      setForgotStatus('error');
-      return;
-    }
-
-    setForgotStatus('sending');
-    setTimeout(() => {
-      setForgotStatus('sent');
-      setForgotEmail('');
-    }, 700);
-  }
 
   return (
     <div className="settings-page-container">
@@ -238,51 +223,6 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
             </div>
           </section>
 
-          {/* ── FORGOT PASSWORD ── */}
-          <section className="settings-section">
-            <h2 className="settings-section-heading">🔐 Forgot Password?</h2>
-            <div className="password-reset-card">
-              <p className="password-reset-text">
-                Need help getting back in? Enter your email and we’ll send a reset link to your inbox.
-              </p>
-
-              <div className="password-reset-form">
-                <input
-                  type="email"
-                  value={forgotEmail}
-                  onChange={(e) => {
-                    setForgotEmail(e.target.value);
-                    if (forgotStatus !== 'idle') setForgotStatus('idle');
-                  }}
-                  placeholder="name@example.com"
-                  className="password-reset-input"
-                  aria-label="Email address"
-                />
-
-                <button
-                  type="button"
-                  className="password-reset-btn"
-                  onClick={handleForgotPassword}
-                  disabled={forgotStatus === 'sending'}
-                >
-                  {forgotStatus === 'sending' ? 'Sending...' : 'Send Reset Link'}
-                </button>
-              </div>
-
-              {forgotStatus === 'error' && (
-                <p className="password-reset-message password-reset-message--error">
-                  Please enter a valid email address.
-                </p>
-              )}
-
-              {forgotStatus === 'sent' && (
-                <p className="password-reset-message password-reset-message--success">
-                  Reset link sent! Check your email for the next step.
-                </p>
-              )}
-            </div>
-          </section>
-
           {/* ── FEEDBACK PANEL ── */}
           <section id="bug-report-section" className="settings-section">
             <h2 className="settings-section-heading">🐛 Found a Pesky Bug?</h2>
@@ -336,3 +276,8 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
     </div>
   );
 }
+
+
+
+
+
