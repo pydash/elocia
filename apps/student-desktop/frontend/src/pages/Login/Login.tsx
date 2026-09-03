@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Login.css';
 import ProfileSelect from './Profile Select';
 import PinEntry from './Student Pin';
@@ -6,17 +6,11 @@ import PinEntry from './Student Pin';
 export interface StudentProfile {
   id: string;
   name: string;
-  pin: string;
   color: string;
   emoji: string;
+  level?: number;
+  streak?: number;
 }
-
-const STUDENTS: StudentProfile[] = [
-  { id: '11111111-1111-1111-1111-111111111111', name: 'Ethan', pin: '1234', color: '#F59E0B', emoji: '👦' },
-  { id: '22222222-2222-2222-2222-222222222222', name: 'Mia', pin: '1234', color: '#EC4899', emoji: '👧' },
-  { id: '33333333-3333-3333-3333-333333333333', name: 'Leo', pin: '1234', color: '#3B82F6', emoji: '🧒' },
-  { id: '44444444-4444-4444-4444-444444444444', name: 'Alex', pin: '1234', color: '#10B981', emoji: '👦' },
-];
 
 interface LoginProps {
   onStart: () => void;
@@ -24,7 +18,16 @@ interface LoginProps {
 
 export default function Login({ onStart }: LoginProps) {
   const [view, setView] = useState<'welcome' | 'select' | 'pin'>('welcome');
+  const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+
+  useEffect(() => {
+    // Fetch real students from your backend
+    fetch('http://localhost:8000/students')
+      .then(res => res.json())
+      .then(data => setStudents(data))
+      .catch(err => console.error("Failed to load students:", err));
+  }, []);
 
   const handleSelectStudent = (student: StudentProfile) => {
     setSelectedStudent(student);
@@ -36,9 +39,10 @@ export default function Login({ onStart }: LoginProps) {
     setSelectedStudent(null);
   };
 
-  const handlePinSuccess = () => {
+  const handlePinSuccess = (token: string) => {
     if (selectedStudent) {
       localStorage.setItem('elocia_current_student', JSON.stringify(selectedStudent));
+      localStorage.setItem('elocia_access_token', token);
     }
     onStart();
   };
@@ -79,7 +83,7 @@ export default function Login({ onStart }: LoginProps) {
 
   return (
     <ProfileSelect
-      students={STUDENTS}
+      students={students}
       onSelectStudent={handleSelectStudent}
     />
   );

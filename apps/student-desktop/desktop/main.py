@@ -184,8 +184,7 @@ async def evaluate_endpoint(websocket: WebSocket):
         print(f"Evaluation WS error: {e}")
 
 def run_api():
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-
+    print("Starting Desktop API on port 8001...")
 
 if __name__ == '__main__':
     api_thread = Thread(target=run_api, daemon=True)

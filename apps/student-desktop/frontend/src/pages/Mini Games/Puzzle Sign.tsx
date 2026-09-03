@@ -226,7 +226,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     }
     enableCamera();
 
-    const ws = new WebSocket('ws://127.0.0.1:8000/ws/evaluate');
+    const ws = new WebSocket('ws://127.0.0.1:8001/ws/evaluate');
     wsRef.current = ws;
 
     ws.onmessage = (event) => {

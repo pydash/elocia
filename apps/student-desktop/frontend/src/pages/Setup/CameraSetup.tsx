@@ -82,7 +82,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
   useEffect(() => {
     if (step === 'setup') return;
 
-    const ws = new WebSocket('ws://127.0.0.1:8000/ws/camera-check');
+    const ws = new WebSocket('ws://127.0.0.1:8001/ws/camera-check');
     wsRef.current = ws;
 
     ws.onmessage = (event) => {

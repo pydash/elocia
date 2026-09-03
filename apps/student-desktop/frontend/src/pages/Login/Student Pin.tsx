@@ -7,7 +7,7 @@ const studentPinMascot = '/images/Student Pin Monkey.png';
 interface PinEntryProps {
   student: StudentProfile;
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (token: string) => void;
 }
 
 export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) {
@@ -15,9 +15,10 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
   const [enteredPin, setEnteredPin] = useState('');
   const [error, setError] = useState(false);
   const [shaking, setShaking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleKeyPress = (digit: string) => {
-    if (enteredPin.length >= PIN_LENGTH) return;
+  const handleKeyPress = async (digit: string) => {
+    if (enteredPin.length >= PIN_LENGTH || isLoading) return;
     setError(false);
 
     const newPin = enteredPin + digit;
@@ -25,22 +26,41 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
 
     // Auto-submit when all digits entered
     if (newPin.length === PIN_LENGTH) {
-      if (newPin === student.pin) {
-        // Correct!
-        onSuccess();
-      } else {
-        // Wrong PIN — shake and reset
-        setError(true);
-        setShaking(true);
-        setTimeout(() => {
-          setEnteredPin('');
-          setShaking(false);
-        }, 600);
+      setIsLoading(true);
+      try {
+        const res = await fetch('http://localhost:8000/auth/student/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_name: student.name, pin: newPin })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Correct PIN!
+          onSuccess(data.access_token);
+        } else {
+          // Wrong PIN (401)
+          triggerError();
+        }
+      } catch (err) {
+        console.error("Login failed", err);
+        triggerError();
       }
+      setIsLoading(false);
     }
   };
 
+  const triggerError = () => {
+    setError(true);
+    setShaking(true);
+    setTimeout(() => {
+      setEnteredPin('');
+      setShaking(false);
+    }, 600);
+  };
+
   const handleDelete = () => {
+    if (isLoading) return;
     setError(false);
     setEnteredPin(prev => prev.slice(0, -1));
   };
