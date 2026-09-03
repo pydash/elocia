@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
+import { saveScore } from '../../utils/api';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import './Puzzle Sign.css';
@@ -253,6 +254,24 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             } else {
               setStreak(0); // Reset streak on incorrect sign
             }
+
+            // Save score to database
+            const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+            saveScore({
+              student_id: student.id,
+              activity_type: 'puzzle_sign',
+              stage_id: roundIndex,
+              attempt_number: attempts + 1,
+              tier_level: 1,
+              score_handshape: data.scores.handshape,
+              score_palm_orientation: data.scores.palmOrientation,
+              score_location: data.scores.location,
+              score_movement: data.scores.movement,
+              score_overall: overall,
+              passed: overall >= 60,
+              streak: streak,
+              xp_earned: score,
+            });
           } else if (data.error) {
           // e.g. "Baseline not found for stage 2" -> friendly message
           setIsEvaluating(false);

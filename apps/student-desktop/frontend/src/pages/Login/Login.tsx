@@ -12,10 +12,10 @@ export interface StudentProfile {
 }
 
 const STUDENTS: StudentProfile[] = [
-  { id: 'ethan', name: 'Ethan', pin: '1234', color: '#F59E0B', emoji: '👦' },
-  { id: 'mia', name: 'Mia', pin: '1234', color: '#EC4899', emoji: '👧' },
-  { id: 'leo', name: 'Leo', pin: '1234', color: '#3B82F6', emoji: '🧒' },
-  { id: 'alex', name: 'Alex', pin: '1234', color: '#10B981', emoji: '👦' },
+  { id: '11111111-1111-1111-1111-111111111111', name: 'Ethan', pin: '1234', color: '#F59E0B', emoji: '👦' },
+  { id: '22222222-2222-2222-2222-222222222222', name: 'Mia', pin: '1234', color: '#EC4899', emoji: '👧' },
+  { id: '33333333-3333-3333-3333-333333333333', name: 'Leo', pin: '1234', color: '#3B82F6', emoji: '🧒' },
+  { id: '44444444-4444-4444-4444-444444444444', name: 'Alex', pin: '1234', color: '#10B981', emoji: '👦' },
 ];
 
 interface LoginProps {

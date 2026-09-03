@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
 import { getStageData } from '../../data/curriculum';
+import { saveScore } from '../../utils/api';
 
 const moveAwayMascot = '/images/Move away.png';
 const thinkingHandshape = '/images/Tier handshape thinking.png';
@@ -81,7 +82,7 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
   const currentItem = items[questionIndex];
 
   const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
-  const [, setFailCount] = useState<number>(0);
+  const [failCount, setFailCount] = useState<number>(0);
   const [scores, setScores] = useState<ScoreSet>(failScores); // Start with failing so UI isn't passed
   const [hasEvaluated, setHasEvaluated] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
@@ -162,6 +163,22 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
             setFailCount(0);
             setCurrentTier(1);
           }
+
+          // Save score to database
+          const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+          saveScore({
+            student_id: student.id,
+            activity_type: 'evaluation',
+            stage_id: currentItem?.globalId ?? 0,
+            attempt_number: failCount + 1,
+            tier_level: currentTier,
+            score_handshape: data.scores.handshape,
+            score_palm_orientation: data.scores.palmOrientation,
+            score_location: data.scores.location,
+            score_movement: data.scores.movement,
+            score_overall: overall,
+            passed: overall >= 60 && !hasFailedParameter,
+          });
         } else if (data.action === 'landmarks') {
           landmarksRef.current = data;
           setDiagData({ scores: data.scores, frames: data.frames });
