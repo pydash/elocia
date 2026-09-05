@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
-import { saveScore } from '../../utils/api';
+import { saveScore, saveMiniGameScore } from '../../utils/api';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import './Puzzle Sign.css';
@@ -177,6 +177,16 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
       setRevealed(false);
       setBaselineError(null);
     } else {
+      const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+      if (student.id) {
+        saveMiniGameScore({
+          student_id: student.id,
+          game_type: 'puzzle_sign',
+          score: score,
+          streak: streak,
+          rounds_completed: rounds.length
+        });
+      }
       setView('results');
     }
   };
@@ -195,6 +205,17 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     setView('game');
   };
   Object.assign(window, { psStartGame });
+
+  // Keep refs in sync so WebSocket listener always accesses latest state without reconnecting
+  const streakRef = useRef(streak);
+  const scoreRef = useRef(score);
+  const roundIndexRef = useRef(roundIndex);
+  const attemptsRef = useRef(attempts);
+
+  useEffect(() => { streakRef.current = streak; }, [streak]);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { roundIndexRef.current = roundIndex; }, [roundIndex]);
+  useEffect(() => { attemptsRef.current = attempts; }, [attempts]);
 
   // Keep ref in sync so the frame-stream interval sees the latest value
   useEffect(() => {
@@ -246,10 +267,14 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             setLastResult({ passed, overall, scores });
             setAttempts(prev => prev + 1);
 
+            const currentStreak = streakRef.current;
+            const currentScore = scoreRef.current;
+            let earned = 0;
+
             if (passed) {
-              const multiplier = 1 + (streak * 0.2);
-              const pointsEarned = Math.round(overall * multiplier);
-              setScore(prev => prev + pointsEarned);
+              const multiplier = 1 + (currentStreak * 0.2);
+              earned = Math.round(overall * multiplier);
+              setScore(prev => prev + earned);
               setStreak(prev => prev + 1);
             } else {
               setStreak(0); // Reset streak on incorrect sign
@@ -260,8 +285,8 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             saveScore({
               student_id: student.id,
               activity_type: 'puzzle_sign',
-              stage_id: roundIndex,
-              attempt_number: attempts + 1,
+              stage_id: roundIndexRef.current,
+              attempt_number: attemptsRef.current + 1,
               tier_level: 1,
               score_handshape: data.scores.handshape,
               score_palm_orientation: data.scores.palmOrientation,
@@ -269,8 +294,8 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
               score_movement: data.scores.movement,
               score_overall: overall,
               passed: overall >= 60,
-              streak: streak,
-              xp_earned: score,
+              streak: currentStreak,
+              xp_earned: currentScore + earned,
             });
           } else if (data.error) {
           // e.g. "Baseline not found for stage 2" -> friendly message

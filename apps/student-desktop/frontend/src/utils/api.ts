@@ -1,4 +1,45 @@
 const API_BASE = 'http://127.0.0.1:8000';
+
+export interface MiniGameConfigItem {
+  id: string;
+  game_type: string;
+  title: string;
+  target_sign: string;
+  prompt_image: string | null;
+  hint_text: string | null;
+  options: string | null;
+  difficulty: number;
+}
+
+export async function fetchMiniGameConfigs(gameType: string): Promise<MiniGameConfigItem[]> {
+  try {
+    const res = await fetch(`${API_BASE}/minigames/config/${gameType}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch mini-game configs (offline?):', err);
+    return [];
+  }
+}
+
+export async function saveMiniGameScore(payload: {
+  student_id: string;
+  game_type: string;
+  score: number;
+  streak: number;
+  rounds_completed: number;
+}) {
+  try {
+    await fetch(`${API_BASE}/minigames/scores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.warn('Mini-game score save failed (offline?):', err);
+  }
+}
+
 export async function saveScore(payload: {
   student_id: string;
   activity_type: string;
@@ -35,4 +76,3 @@ export async function saveScore(payload: {
     console.warn('Score save failed (offline?):', err);
   }
 }
-

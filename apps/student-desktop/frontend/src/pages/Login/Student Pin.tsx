@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { StudentProfile } from './Login';
 import './Student Pin.css';
 
@@ -17,7 +17,16 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
   const [shaking, setShaking] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleKeyPress = async (digit: string) => {
+  const triggerError = useCallback(() => {
+    setError(true);
+    setShaking(true);
+    setTimeout(() => {
+      setEnteredPin('');
+      setShaking(false);
+    }, 600);
+  }, []);
+
+  const handleKeyPress = useCallback(async (digit: string) => {
     if (enteredPin.length >= PIN_LENGTH || isLoading) return;
     setError(false);
 
@@ -48,22 +57,27 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
       }
       setIsLoading(false);
     }
-  };
+  }, [enteredPin, isLoading, student.name, onSuccess, triggerError]);
 
-  const triggerError = () => {
-    setError(true);
-    setShaking(true);
-    setTimeout(() => {
-      setEnteredPin('');
-      setShaking(false);
-    }, 600);
-  };
-
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (isLoading) return;
     setError(false);
     setEnteredPin(prev => prev.slice(0, -1));
-  };
+  }, [isLoading]);
+
+  // Allow physical keyboard input (numbers 0-9 and backspace only)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) {
+        handleKeyPress(e.key);
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        handleDelete();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyPress, handleDelete]);
 
   return (
     <div className="pin-layout">
@@ -99,8 +113,12 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
       {/* PIN Card */}
       <div className="pin-card">
         {/* Student avatar */}
-        <div className="pin-avatar" style={{ backgroundColor: student.color }}>
-          <span className="pin-avatar-emoji">{student.emoji}</span>
+        <div className="pin-avatar" style={{ backgroundColor: student.color, overflow: 'hidden' }}>
+          {student.emoji && (student.emoji.startsWith('data:') || student.emoji.startsWith('http') || student.emoji.startsWith('/')) ? (
+            <img src={student.emoji} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+          ) : (
+            <span className="pin-avatar-emoji">{student.emoji || "👦"}</span>
+          )}
         </div>
 
         {/* Student name */}

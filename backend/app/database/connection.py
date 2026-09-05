@@ -20,5 +20,5 @@ async def get_db():
 
 async def init_db():
     async with engine.begin() as conn:
-        from app.models import user, session
+        from app.models import user, session, minigame
         await conn.run_sync(Base.metadata.create_all)

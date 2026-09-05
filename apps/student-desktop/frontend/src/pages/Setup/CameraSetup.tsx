@@ -47,6 +47,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [step, setStep] = useState<SetupStep>('setup');
+  const [wsConnected, setWsConnected] = useState<boolean>(false);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -82,23 +83,55 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
   useEffect(() => {
     if (step === 'setup') return;
 
-    const ws = new WebSocket('ws://127.0.0.1:8001/ws/camera-check');
-    wsRef.current = ws;
+    let cancelled = false;
+    let retryTimer: number | null = null;
+    let ws: WebSocket | null = null;
 
-    ws.onmessage = (event) => {
+    function connectWs() {
       try {
-        const data = JSON.parse(event.data);
-        if (data.status) {
-          setStep(data.status as SetupStep);
+        ws = new WebSocket('ws://127.0.0.1:8001/ws/camera-check');
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          if (!cancelled) setWsConnected(true);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.status && !cancelled) {
+              setStep(data.status as SetupStep);
+            }
+          } catch (err) {
+            console.error('WebSocket parse error:', err);
+          }
+        };
+
+        ws.onerror = () => {
+          if (!cancelled) setWsConnected(false);
+        };
+
+        ws.onclose = () => {
+          if (!cancelled) {
+            setWsConnected(false);
+            retryTimer = window.setTimeout(connectWs, 2000);
+          }
+        };
+      } catch {
+        if (!cancelled) {
+          setWsConnected(false);
+          retryTimer = window.setTimeout(connectWs, 2000);
         }
-      } catch (err) {
-        console.error('WebSocket parse error:', err);
       }
-    };
+    }
+
+    connectWs();
 
     const interval = setInterval(() => {
+      const activeWs = wsRef.current;
       if (
-        ws.readyState === WebSocket.OPEN &&
+        activeWs &&
+        activeWs.readyState === WebSocket.OPEN &&
         videoRef.current &&
         videoRef.current.videoWidth > 0
       ) {
@@ -111,15 +144,17 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const base64Data = canvas.toDataURL('image/jpeg', 0.5);
-          ws.send(JSON.stringify({ image: base64Data }));
+          activeWs.send(JSON.stringify({ image: base64Data }));
         }
       }
     }, 140);
 
     return () => {
+      cancelled = true;
       clearInterval(interval);
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
+      if (retryTimer) clearTimeout(retryTimer);
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        wsRef.current.close();
       }
     };
   }, [step]);
@@ -144,7 +179,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
     }
   };
 
-  const isNextActive = step === 'setup' || step === 'perfect';
+  const isNextActive = step === 'setup' || (step === 'perfect' && wsConnected);
 
   return (
     <div className="app-layout">
@@ -175,19 +210,27 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
           ) : (
             <div className="live-camera-feed-card">
 
-              {step === 'not-detected' && (
-                <div className="top-warning-tag">{"\u26A0\uFE0F"} No person detected! Please step into the frame.</div>
-              )}
-              {step === 'too-close' && (
-                <div className="top-warning-tag">{"\u26A0\uFE0F"} You're too close! Please step back a bit.</div>
-              )}
-              {step === 'too-far' && (
-                <div className="top-warning-tag">{"\u26A0\uFE0F"} You're too far! Please come closer.</div>
-              )}
-              {step === 'perfect' && (
-                <div className="top-warning-tag tag-perfect">
-                  {"\u2728"} Perfect distance! You're ready.
+              {!wsConnected ? (
+                <div className="top-warning-tag" style={{ backgroundColor: '#EF4444', color: '#FFFFFF', fontWeight: 600 }}>
+                  {"\u26A0\uFE0F"} Connecting to AI Vision Server (port 8001)... (Check Terminal 2)
                 </div>
+              ) : (
+                <>
+                  {step === 'not-detected' && (
+                    <div className="top-warning-tag">{"\u26A0\uFE0F"} No person detected! Please step into the frame.</div>
+                  )}
+                  {step === 'too-close' && (
+                    <div className="top-warning-tag">{"\u26A0\uFE0F"} You're too close! Please step back a bit.</div>
+                  )}
+                  {step === 'too-far' && (
+                    <div className="top-warning-tag">{"\u26A0\uFE0F"} You're too far! Please come closer.</div>
+                  )}
+                  {step === 'perfect' && (
+                    <div className="top-warning-tag tag-perfect">
+                      {"\u2728"} Perfect distance! You're ready.
+                    </div>
+                  )}
+                </>
               )}
               <div className="live-badge-tag">LIVE FEED</div>
               <video ref={videoRef} autoPlay playsInline muted className="actual-webcam-stream" />

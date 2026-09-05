@@ -185,19 +185,32 @@ async def evaluate_endpoint(websocket: WebSocket):
 
 def run_api():
     print("Starting Desktop API on port 8001...")
+    uvicorn.run(app, host="127.0.0.1", port=8001, log_level="info")
 
 if __name__ == '__main__':
-    api_thread = Thread(target=run_api, daemon=True)
-    api_thread.start()
+    # Check if user wants server-only mode (ideal for browser testing)
+    server_only = "--server" in sys.argv or "--no-window" in sys.argv or os.environ.get("ELOCIA_SERVER_ONLY") == "1"
 
-    import time
-    time.sleep(1)
+    if server_only:
+        print("Running ELOCIA CV Server in standalone mode (no desktop window)...")
+        run_api()
+    else:
+        api_thread = Thread(target=run_api, daemon=True)
+        api_thread.start()
 
-    webview.create_window(
-        "ELOCIA",
-        "http://localhost:5173",
-        width=1920,
-        height=1080,
-        resizable=False,
-    )
-    webview.start()
+        import time
+        time.sleep(1)
+
+        try:
+            webview.create_window(
+                "ELOCIA",
+                "http://localhost:5173",
+                width=1920,
+                height=1080,
+                resizable=False,
+            )
+            webview.start()
+        except Exception as e:
+            print(f"PyWebView window error: {e}")
+            print("Falling back to standalone API server...")
+            api_thread.join()

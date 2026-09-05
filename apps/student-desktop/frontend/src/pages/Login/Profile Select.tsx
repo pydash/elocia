@@ -48,8 +48,12 @@ export default function ProfileSelect({ students, onSelectStudent }: ProfileSele
               onClick={() => onSelectStudent(student)}
               type="button"
             >
-              <div className="ps-avatar" style={{ backgroundColor: student.color }}>
-                <span className="ps-avatar-emoji">{student.emoji}</span>
+              <div className="ps-avatar" style={{ backgroundColor: student.color, overflow: 'hidden' }}>
+                {student.emoji && (student.emoji.startsWith('data:') || student.emoji.startsWith('http') || student.emoji.startsWith('/')) ? (
+                  <img src={student.emoji} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                ) : (
+                  <span className="ps-avatar-emoji">{student.emoji || "👦"}</span>
+                )}
               </div>
               <span className="ps-name">{student.name}</span>
             </button>

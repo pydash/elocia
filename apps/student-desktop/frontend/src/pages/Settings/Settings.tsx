@@ -41,10 +41,30 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
     e.target.value = '';
   }
 
-  function saveAvatar() {
+  async function saveAvatar() {
     if (!pendingAvatar) return;
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem('elocia_avatar', pendingAvatar);
+      
+      const currentStudentRaw = window.localStorage.getItem('elocia_current_student');
+      if (currentStudentRaw) {
+        try {
+          const currentStudent = JSON.parse(currentStudentRaw);
+          currentStudent.emoji = pendingAvatar;
+          window.localStorage.setItem('elocia_current_student', JSON.stringify(currentStudent));
+
+          // Save to backend database
+          if (currentStudent.id) {
+            await fetch(`http://localhost:8000/users/${currentStudent.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ emoji: pendingAvatar })
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to sync avatar with student database profile:', err);
+        }
+      }
     }
     setSavedAvatar(pendingAvatar);
     setPendingAvatar('');
