@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
 import './LessonNavigation.css';
 import { CURRICULUM } from '../../data/curriculum';
+import type { Section } from '../../data/curriculum';
+import { fetchCurriculum, fetchStudentProgress } from '../../utils/api';
+import type { StudentProgress } from '../../utils/api';
 
 const sunImg = '/images/Sun.png';
 const cloud1Img = '/images/Cloud 1.png';
@@ -47,17 +50,44 @@ interface LessonNavigationProps {
 
 export default function LessonNavigation({ onNavigate, unlockedStages, onStartLesson }: LessonNavigationProps) {
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
+  const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
+  const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
+
+  useEffect(() => {
+    // 1. Fetch live dynamic curriculum from backend (or fallback to static)
+    fetchCurriculum().then(sections => {
+      if (sections && sections.length > 0) {
+        setCurriculumData(sections);
+      }
+    });
+
+    // 2. Fetch student progress if student is logged in
+    const storedStudent = localStorage.getItem('elocia_current_student');
+    if (storedStudent) {
+      try {
+        const student = JSON.parse(storedStudent);
+        if (student.id) {
+          fetchStudentProgress(student.id).then(prog => {
+            if (prog) setStudentProgress(prog);
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing stored student:', e);
+      }
+    }
+  }, []);
 
   const handleStageClick = (stageId: number, isLocked: boolean) => {
     if (isLocked) return;
     setSelectedStage(prev => (prev === stageId ? null : stageId));
   };
 
-  // We display the first Unit of the first Section for this map view
-  const currentSection = CURRICULUM[0];
+  const currentSection = curriculumData[0] || CURRICULUM[0];
   const currentUnit = currentSection.units[0];
 
-  const selectedStageData = selectedStage ? currentUnit.stages.find(s => s.id === selectedStage) : null;
+  const selectedStageData = selectedStage 
+    ? currentSection.units.flatMap(u => u.stages).find(s => s.id === selectedStage) 
+    : null;
 
   return (
     <div className="app-layout">
@@ -129,7 +159,19 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                         <span>{selectedStageData.items.length} Rounds</span>
                       </div>
                       <div className="stat-row">
-                        <span className="progress-text">Progress <span className="progress-highlight">0/{selectedStageData.items.length} completed</span></span>
+                        {(() => {
+                          const stageInfo = studentProgress?.stages.find(s => s.stage_id === selectedStageData.id);
+                          if (stageInfo && stageInfo.passed) {
+                            return (
+                              <span className="progress-text" style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+                                {"\u2B50"} {stageInfo.stars}/5 Stars ({stageInfo.best_score}%)
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="progress-text">Progress <span className="progress-highlight">0/{selectedStageData.items.length} completed</span></span>
+                          );
+                        })()}
                       </div>
                     </div>
 

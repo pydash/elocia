@@ -164,8 +164,35 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
             setCurrentTier(1);
           }
 
-          // Save score to database
+          // Save score to database with max 50 XP for proper learn signing
           const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+          const isPassed = overall >= 60 && !hasFailedParameter;
+          const xpEarned = isPassed ? Math.min(50, Math.round((overall / 100) * 50)) : 0;
+
+          // Track highest parameters in localStorage for achievements
+          try {
+            const curH = parseFloat(localStorage.getItem('elocia_highest_h') || '0');
+            if (data.scores.handshape > curH) localStorage.setItem('elocia_highest_h', data.scores.handshape.toString());
+
+            const curP = parseFloat(localStorage.getItem('elocia_highest_p') || '0');
+            if (data.scores.palmOrientation > curP) localStorage.setItem('elocia_highest_p', data.scores.palmOrientation.toString());
+
+            const curL = parseFloat(localStorage.getItem('elocia_highest_l') || '0');
+            if (data.scores.location > curL) localStorage.setItem('elocia_highest_l', data.scores.location.toString());
+
+            const curM = parseFloat(localStorage.getItem('elocia_highest_m') || '0');
+            if (data.scores.movement > curM) localStorage.setItem('elocia_highest_m', data.scores.movement.toString());
+
+            if (isPassed) {
+              const day = new Date().getDay();
+              if (day === 0 || day === 6) {
+                localStorage.setItem('elocia_weekend_practiced', 'true');
+              }
+            }
+          } catch (e) {
+            console.warn('Could not update evaluation parameters localStorage:', e);
+          }
+
           saveScore({
             student_id: student.id,
             activity_type: 'evaluation',
@@ -177,7 +204,8 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
             score_location: data.scores.location,
             score_movement: data.scores.movement,
             score_overall: overall,
-            passed: overall >= 60 && !hasFailedParameter,
+            passed: isPassed,
+            xp_earned: xpEarned,
           });
         } else if (data.action === 'landmarks') {
           landmarksRef.current = data;
@@ -511,6 +539,13 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
               <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
               <canvas ref={overlayRef} className="eval-overlay-canvas" />
               <div className="eval-camera-tier-tag">Tier {currentTier}</div>
+
+              {isRecording && (
+                <div className="eval-recording-badge">
+                  <span className="eval-recording-dot" />
+                  Sign the number {currentItem.name}!
+                </div>
+              )}
 
               {diagOn && diagData && (
                 <div className="eval-diag-panel">

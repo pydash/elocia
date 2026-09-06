@@ -8,6 +8,7 @@ export interface StudentProfile {
   name: string;
   color: string;
   emoji: string;
+  grade_level?: number;
   level?: number;
   streak?: number;
 }

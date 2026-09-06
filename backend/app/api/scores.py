@@ -2,13 +2,44 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
+from datetime import datetime
 import uuid
 
 from app.database.connection import get_db
 from app.models.user import User
 from app.models.session import EvaluationAttempt
+from app.models.minigame import MiniGameSession
 
 router = APIRouter(prefix="/scores", tags=["Scoring & Evaluation"])
+
+def compute_level_from_xp(total_xp: int) -> int:
+    """
+    Level 1: 0 - 499 XP (Beginner Signer)
+    Level 2: 500 - 1,499 XP (Junior Signer)
+    Level 3: 1,500 - 2,999 XP (Active Signer)
+    Level 4: 3,000 - 4,999 XP (Skilled Signer)
+    Level 5: 5,000 - 7,499 XP (Star Signer)
+    Level 6: 7,500 - 10,499 XP (Honor Signer)
+    Level 7: 10,500 - 13,999 XP (Advanced Signer)
+    Level 8: 14,000 - 17,999 XP (Class Top Signer)
+    Level 9: 18,000 - 22,499 XP (Senior Signer)
+    Level 10: 22,500+ XP (Master Signer)
+    """
+    thresholds = [
+        (22500, 10),
+        (18000, 9),
+        (14000, 8),
+        (10500, 7),
+        (7500, 6),
+        (5000, 5),
+        (3000, 4),
+        (1500, 3),
+        (500, 2),
+    ]
+    for xp, lvl in thresholds:
+        if total_xp >= xp:
+            return lvl
+    return 1
 
 @router.post("/save", status_code=status.HTTP_201_CREATED)
 async def save_score(
@@ -50,11 +81,15 @@ async def save_score(
     user = user_res.scalar_one_or_none()
     if user:
         if passed:
-            user.streak = (user.streak or 0) + 1
+            # Check calendar day: only increment day streak if last practice was on a previous day
+            now = datetime.utcnow()
+            last_date = user.updated_at.date() if user.updated_at else None
+            today_date = now.date()
+            if last_date != today_date:
+                user.streak = (user.streak or 0) + 1
+
             if tier_level == 1:
                 user.signs_mastered = (user.signs_mastered or 0) + 1
-        else:
-            user.streak = 0
             
         avg_res = await db.execute(
             select(func.avg(EvaluationAttempt.score_overall))
@@ -63,6 +98,22 @@ async def save_score(
         avg_val = avg_res.scalar()
         if avg_val is not None:
             user.avg_score = round(float(avg_val), 2)
+
+        # Calculate Total XP earned across all lessons & mini-games and update level
+        eval_xp_res = await db.execute(
+            select(func.coalesce(func.sum(EvaluationAttempt.xp_earned), 0))
+            .where(EvaluationAttempt.student_id == stud_uuid)
+        )
+        total_eval_xp = eval_xp_res.scalar() or 0
+
+        game_xp_res = await db.execute(
+            select(func.coalesce(func.sum(MiniGameSession.score), 0))
+            .where(MiniGameSession.student_id == stud_uuid)
+        )
+        total_game_xp = game_xp_res.scalar() or 0
+
+        total_xp = int(total_eval_xp + total_game_xp)
+        user.level = compute_level_from_xp(total_xp)
             
     await db.commit()
     return {"status": "saved", "attempt_id": str(attempt.id)}

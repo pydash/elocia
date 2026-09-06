@@ -199,3 +199,139 @@
 .active-border {
   border: 2px solid #fbac85;
 }
+/* Category Filter Tabs */
+.achievements-filters {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.achievement-filter-btn {
+  background: white;
+  border: 2px solid #E2E8F0;
+  border-radius: 24px;
+  padding: 8px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.achievement-filter-btn:hover {
+  border-color: #3B82F6;
+  color: #3B82F6;
+  transform: translateY(-2px);
+}
+
+.achievement-filter-btn.active {
+  background: #3B82F6;
+  color: white;
+  border-color: #3B82F6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Overview Banner */
+.achievements-stats-banner {
+  background: white;
+  border-radius: 20px;
+  padding: 20px 30px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  border: 2px solid #F1F5F9;
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.banner-trophy-icon {
+  font-size: 2.8rem;
+  background: #FEF3C7;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-text h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #1E293B;
+}
+
+.banner-text p {
+  margin: 0;
+  color: #64748B;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.banner-progress-bar-container {
+  width: 200px;
+  background: #E2E8F0;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.banner-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #F59E0B, #10B981);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* Progress bar inside card */
+.achievement-progress-wrapper {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.achievement-progress-track {
+  width: 100%;
+  background: #E2E8F0;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.achievement-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.achievement-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748B;
+  margin-top: 6px;
+}
+
+.unlocked-pill {
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-top: 10px;
+}

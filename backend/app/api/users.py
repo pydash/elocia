@@ -22,6 +22,7 @@ async def create_student(data: StudentCreate, db: AsyncSession = Depends(get_db)
         pin=data.pin,
         color=data.color or "#3B82F6",
         emoji=data.emoji or "👦",
+        grade_level=data.grade_level or 1,
         parent_id=data.parent_id
     )
     db.add(student)
@@ -60,6 +61,7 @@ async def get_students(db: AsyncSession = Depends(get_db)):
             "name": s.name,
             "color": s.color,
             "emoji": s.emoji,
+            "grade_level": s.grade_level or 1,
             "level": s.level,
             "streak": s.streak,
             "avg_score": s.avg_score
@@ -75,12 +77,31 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
     result = await db.execute(query)
     return result.scalars().all()
 
+from sqlalchemy import select, func
+from app.models.session import EvaluationAttempt
+from app.models.minigame import MiniGameSession
+
 @router.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Compute live total XP across learning attempts and mini-games
+    eval_xp_res = await db.execute(
+        select(func.coalesce(func.sum(EvaluationAttempt.xp_earned), 0))
+        .where(EvaluationAttempt.student_id == user_id)
+    )
+    total_eval_xp = eval_xp_res.scalar() or 0
+
+    game_xp_res = await db.execute(
+        select(func.coalesce(func.sum(MiniGameSession.score), 0))
+        .where(MiniGameSession.student_id == user_id)
+    )
+    total_game_xp = game_xp_res.scalar() or 0
+
+    user.total_xp = int(total_eval_xp + total_game_xp)
     return user
 
 @router.put("/users/{user_id}", response_model=UserResponse)

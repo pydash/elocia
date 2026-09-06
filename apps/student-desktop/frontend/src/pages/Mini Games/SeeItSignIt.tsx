@@ -158,6 +158,16 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
             setScore(newScore);
             setHighScore(prev => Math.max(prev, newScore));
             setStreak(prev => prev + 1);
+
+            try {
+              if (newScore >= 500) {
+                localStorage.setItem('elocia_game_score_500', 'true');
+              }
+              const roundsDone = parseInt(localStorage.getItem('elocia_see_it_rounds') || '0', 10) + 1;
+              localStorage.setItem('elocia_see_it_rounds', roundsDone.toString());
+            } catch (err) {
+              console.warn('Failed to save see-it-sign-it rounds:', err);
+            }
           } else {
             setRoundPassed(false);
             setStreak(0); // V4.1 rule: Reset streak on incorrect answer
@@ -241,13 +251,14 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
       setRoundPassed(false);
       setFeedbackError(null);
     } else {
-      // Game Complete - save score to backend
+      // Game Complete - save score to backend (capped at 500 XP max for mini-games)
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
       if (student.id) {
+        const finalXp = Math.min(500, score);
         saveMiniGameScore({
           student_id: student.id,
           game_type: 'see_it_sign_it',
-          score: score,
+          score: finalXp,
           streak: streak,
           rounds_completed: totalRounds
         });

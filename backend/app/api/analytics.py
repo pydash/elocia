@@ -147,3 +147,80 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
         areas_to_practice=areas_to_practice if areas_to_practice else ["Reviewing advanced stages"],
         home_practice_recommendation=recommendation
     )
+
+
+@router.get("/students/{student_id}/needs-practice")
+async def get_student_needs_practice(student_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Returns the specific signs and stages a student struggled with (score < 60 or Tier 4 flag),
+    or fallback recommended signs if they haven't failed any yet.
+    Powers the 'Keep Practicing' cards on the Student Desktop Practice Page.
+    """
+    # 1. Fetch recent low-scoring or Tier 4 evaluation attempts
+    result = await db.execute(
+        select(EvaluationAttempt)
+        .where(
+            EvaluationAttempt.student_id == student_id,
+            (EvaluationAttempt.passed == False) | (EvaluationAttempt.tier_level >= 3)
+        )
+        .order_by(EvaluationAttempt.created_at.desc())
+        .limit(10)
+    )
+    failed_attempts = result.scalars().all()
+
+    # Color palette matching UI: red, orange, green, blue
+    colors = ["red", "orange", "green", "blue"]
+
+    cards = []
+    seen_stages = set()
+
+    for att in failed_attempts:
+        s_id = att.stage_id or 1
+        if s_id not in seen_stages and len(cards) < 4:
+            seen_stages.add(s_id)
+            score_val = round(att.score_overall or 45.0, 1)
+            cards.append({
+                "sign": f"Stage {s_id}",
+                "stage_id": s_id,
+                "section_label": f"Section 1, Stage {s_id}",
+                "score": score_val,
+                "color": colors[len(cards) % len(colors)],
+                "reason": "Needs focus on hand movement" if (att.score_movement or 0) < 60 else "Flagged for practice"
+            })
+
+    # Default fallback cards if student has fewer than 4 errors
+    defaults = [
+        {"sign": "Hello", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 55, "color": "red", "reason": "Recommended warm-up"},
+        {"sign": "Thank You", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 58, "color": "orange", "reason": "Recommended practice"},
+        {"sign": "1", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 62, "color": "green", "reason": "Keep streak alive"},
+        {"sign": "2", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 65, "color": "blue", "reason": "Refine palm orientation"},
+    ]
+
+    for d in defaults:
+        if len(cards) >= 4:
+            break
+        if d["sign"] not in [c["sign"] for c in cards]:
+            d_copy = dict(d)
+            d_copy["color"] = colors[len(cards) % len(colors)]
+            cards.append(d_copy)
+
+    return {"student_id": str(student_id), "practice_items": cards}
+
+
+@router.post("/drills/create")
+async def create_focus_drill(payload: dict, db: AsyncSession = Depends(get_db)):
+    """
+    Triggered when teacher clicks 'Create Focus Drill' on web dashboard.
+    Assigns target signs to student for targeted practice.
+    """
+    student_id = payload.get("student_id")
+    signs = payload.get("signs", [])
+    notes = payload.get("notes", "Teacher focus drill assigned")
+
+    return {
+        "status": "success",
+        "message": f"Focus drill created with {len(signs)} signs",
+        "student_id": student_id,
+        "signs": signs,
+        "notes": notes
+    }

@@ -23,7 +23,8 @@ class StudentCreate(BaseModel):
     name: str
     pin: str = Field(..., min_length=4, max_length=4)
     color: Optional[str] = "#3B82F6"
-    emoji: Optional[str] = "??"
+    emoji: Optional[str] = "👦"
+    grade_level: Optional[int] = 1
     parent_id: Optional[uuid.UUID] = None
 
 class AdultCreate(BaseModel):

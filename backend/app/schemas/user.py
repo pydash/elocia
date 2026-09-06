@@ -9,6 +9,7 @@ class UserUpdate(BaseModel):
     pin: Optional[str] = None
     color: Optional[str] = None
     emoji: Optional[str] = None
+    grade_level: Optional[int] = None
     is_active: Optional[bool] = None
 
 class UserResponse(BaseModel):
@@ -18,9 +19,13 @@ class UserResponse(BaseModel):
     is_active: bool
     color: Optional[str] = None
     emoji: Optional[str] = None
+    grade_level: Optional[int] = 1
     level: Optional[int] = 1
     streak: Optional[int] = 0
     avg_score: Optional[float] = 0.0
+    signs_mastered: Optional[int] = 0
+    stages_complete: Optional[int] = 0
+    total_xp: Optional[int] = 0
     created_at: Optional[datetime] = None
 
     class Config:

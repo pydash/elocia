@@ -213,6 +213,59 @@
   z-index: 10;
 }
 
+/* Red "recording" countdown / timer badge while 3-second evaluation runs */
+.eval-recording-badge {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(229, 72, 77, 0.95);
+  color: white;
+  font-weight: 800;
+  font-size: 1.3rem;
+  padding: 10px 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 15;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  animation: evalPulse 1s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+.eval-recording-dot {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+}
+
+@keyframes evalPulse {
+  0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.75; transform: translateX(-50%) scale(0.98); }
+}
+
+/* Timeout / Server / Baseline message overlay */
+.eval-timeout-msg,
+.eval-baseline-error {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 12px 24px;
+  border-radius: 14px;
+  z-index: 15;
+  max-width: 85%;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.25s ease;
+}
+
 .eval-submit-btn {
   height: 64px;
   background: #22C55E;

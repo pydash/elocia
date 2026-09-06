@@ -5,6 +5,8 @@ from typing import List, Optional
 import uuid
 
 from app.database.connection import get_db
+from app.models.user import User
+from app.models.session import EvaluationAttempt
 from app.models.minigame import MiniGameConfig, MiniGameSession, GameType
 from app.schemas.minigame import (
     MiniGameConfigCreate,
@@ -12,6 +14,7 @@ from app.schemas.minigame import (
     MiniGameScoreSubmit,
     MiniGameScoreResponse
 )
+from app.api.scores import compute_level_from_xp
 
 router = APIRouter(prefix="/minigames", tags=["Mini-Games (Modules 7, 8, 9)"])
 
@@ -75,6 +78,27 @@ async def submit_minigame_score(data: MiniGameScoreSubmit, db: AsyncSession = De
         rounds_completed=data.rounds_completed
     )
     db.add(session)
+
+    # Automatically recalculate user total XP and level
+    user_res = await db.execute(select(User).where(User.id == data.student_id))
+    user = user_res.scalar_one_or_none()
+    if user:
+        eval_xp_res = await db.execute(
+            select(func.coalesce(func.sum(EvaluationAttempt.xp_earned), 0))
+            .where(EvaluationAttempt.student_id == data.student_id)
+        )
+        total_eval_xp = eval_xp_res.scalar() or 0
+
+        game_xp_res = await db.execute(
+            select(func.coalesce(func.sum(MiniGameSession.score), 0))
+            .where(MiniGameSession.student_id == data.student_id)
+        )
+        # Note: data.score is being added in this transaction, include it
+        total_game_xp = (game_xp_res.scalar() or 0) + data.score
+
+        total_xp = int(total_eval_xp + total_game_xp)
+        user.level = compute_level_from_xp(total_xp)
+
     await db.commit()
     await db.refresh(session)
     return session

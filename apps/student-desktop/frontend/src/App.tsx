@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import Login from './pages/Login/Login';
 import LessonNavigation from './pages/Lessons/LessonNavigation';
@@ -12,15 +12,46 @@ import Settings from './pages/Settings/Settings';
 import Achievements from './pages/Achievements/Achievements';
 import Practice from './pages/Practice/Practice';
 import PuzzleSign from './pages/Mini Games/Puzzle Sign';
-
 import SeeItSignIt from './pages/Mini Games/SeeItSignIt';
 import MagicFingers from './pages/Mini Games/MagicFingers';
+import { fetchStudentProgress } from './utils/api';
 
 function App() {
   const [currentView, setCurrentView] = useState<'login' | 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers'>('login');
   const [activeStage, setActiveStage] = useState<number | null>(null);
   const [completedStage, setCompletedStage] = useState<number | null>(null);
-  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]); // Stage 1 is unlocked by default
+  const [unlockedStages, setUnlockedStages] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem('elocia_unlocked_stages');
+      return stored ? JSON.parse(stored) : [1];
+    } catch {
+      return [1];
+    }
+  });
+
+  // Sync unlocked stages from database when entering navigation or login
+  const refreshProgress = () => {
+    const rawStudent = localStorage.getItem('elocia_current_student');
+    if (rawStudent) {
+      try {
+        const student = JSON.parse(rawStudent);
+        if (student.id) {
+          fetchStudentProgress(student.id).then(prog => {
+            if (prog && prog.unlocked_stages && prog.unlocked_stages.length > 0) {
+              setUnlockedStages(prog.unlocked_stages);
+              localStorage.setItem('elocia_unlocked_stages', JSON.stringify(prog.unlocked_stages));
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to sync student progress:', e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    refreshProgress();
+  }, [currentView]);
 
   // This function handles transitioning from Module 3 to Module 4
   const handleStartLesson = (stageId: number) => {
@@ -55,7 +86,7 @@ function App() {
       )}
 
       {currentView === 'practice' && (
-        <Practice onNavigate={setCurrentView} />
+        <Practice onNavigate={setCurrentView} onStartLesson={handleStartLesson} />
       )}
 
       {currentView === 'puzzle-sign' && (
@@ -100,7 +131,11 @@ function App() {
           onComplete={(completedStageId) => {
             // Unlock next stage if it exists
             const nextStageId = completedStageId + 1;
-            setUnlockedStages(prev => prev.includes(nextStageId) ? prev : [...prev, nextStageId]);
+            setUnlockedStages(prev => {
+              const updated = prev.includes(nextStageId) ? prev : [...prev, nextStageId];
+              localStorage.setItem('elocia_unlocked_stages', JSON.stringify(updated));
+              return updated;
+            });
             // Celebrate with the Stage Complete milestone screen
             setCompletedStage(completedStageId);
             setCurrentView('stageComplete');

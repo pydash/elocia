@@ -211,6 +211,15 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             setScore(newScore);
             setHighScore(prev => Math.max(prev, newScore));
             setStreak(prev => prev + 1);
+
+            try {
+              if (newScore >= 500) {
+                localStorage.setItem('elocia_game_score_500', 'true');
+              }
+              localStorage.setItem('elocia_magic_fingers_finished', 'true');
+            } catch (err) {
+              console.warn('Failed to save magic fingers game stats:', err);
+            }
           } else {
             setRoundPassed(false);
             setStreak(0); // V4.1 rule: Reset streak on incorrect answer
@@ -294,13 +303,14 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
       setRoundPassed(false);
       setFeedbackError(null);
     } else {
-      // Game Complete - save score to backend
+      // Game Complete - save score to backend (capped at 500 XP max for mini-games)
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
       if (student.id) {
+        const finalXp = Math.min(500, score);
         saveMiniGameScore({
           student_id: student.id,
           game_type: 'magic_fingers',
-          score: score,
+          score: finalXp,
           streak: streak,
           rounds_completed: totalRounds
         });

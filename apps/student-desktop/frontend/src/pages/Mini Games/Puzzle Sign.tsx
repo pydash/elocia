@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
-import { saveScore, saveMiniGameScore } from '../../utils/api';
+import { saveMiniGameScore } from '../../utils/api';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import './Puzzle Sign.css';
@@ -179,10 +179,12 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     } else {
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
       if (student.id) {
+        // Capped at 500 XP max for mini games
+        const finalXp = Math.min(500, score);
         saveMiniGameScore({
           student_id: student.id,
           game_type: 'puzzle_sign',
-          score: score,
+          score: finalXp,
           streak: streak,
           rounds_completed: rounds.length
         });
@@ -268,35 +270,37 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             setAttempts(prev => prev + 1);
 
             const currentStreak = streakRef.current;
-            const currentScore = scoreRef.current;
             let earned = 0;
 
             if (passed) {
               const multiplier = 1 + (currentStreak * 0.2);
               earned = Math.round(overall * multiplier);
-              setScore(prev => prev + earned);
-              setStreak(prev => prev + 1);
+              setScore(prev => {
+                const nextScore = prev + earned;
+                if (nextScore >= 500) {
+                  try {
+                    localStorage.setItem('elocia_game_score_500', 'true');
+                  } catch (err) {
+                    console.warn('Failed to save game_score_500:', err);
+                  }
+                }
+                return nextScore;
+              });
+              setStreak(prev => {
+                const nextStreak = prev + 1;
+                try {
+                  const savedMax = parseInt(localStorage.getItem('elocia_puzzle_streak') || '0', 10);
+                  if (nextStreak > savedMax) {
+                    localStorage.setItem('elocia_puzzle_streak', nextStreak.toString());
+                  }
+                } catch (err) {
+                  console.warn('Failed to save puzzle streak:', err);
+                }
+                return nextStreak;
+              });
             } else {
               setStreak(0); // Reset streak on incorrect sign
             }
-
-            // Save score to database
-            const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
-            saveScore({
-              student_id: student.id,
-              activity_type: 'puzzle_sign',
-              stage_id: roundIndexRef.current,
-              attempt_number: attemptsRef.current + 1,
-              tier_level: 1,
-              score_handshape: data.scores.handshape,
-              score_palm_orientation: data.scores.palmOrientation,
-              score_location: data.scores.location,
-              score_movement: data.scores.movement,
-              score_overall: overall,
-              passed: overall >= 60,
-              streak: currentStreak,
-              xp_earned: currentScore + earned,
-            });
           } else if (data.error) {
           // e.g. "Baseline not found for stage 2" -> friendly message
           setIsEvaluating(false);

@@ -76,3 +76,67 @@ export async function saveScore(payload: {
     console.warn('Score save failed (offline?):', err);
   }
 }
+
+export interface StudentProgress {
+  student_id: string;
+  student_name: string;
+  unlocked_stages: number[];
+  stages: {
+    stage_id: number;
+    unlocked: boolean;
+    passed: boolean;
+    best_score: number;
+    stars: number;
+  }[];
+  total_signs_mastered: number;
+  current_streak: number;
+  avg_score: number;
+}
+
+import type { Section } from '../data/curriculum';
+
+export async function fetchCurriculum(): Promise<Section[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/curriculum`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.sections || null;
+  } catch (err) {
+    console.warn('Failed to fetch curriculum from backend (using offline cache):', err);
+    return null;
+  }
+}
+
+export async function fetchStudentProgress(studentId: string): Promise<StudentProgress | null> {
+  try {
+    const res = await fetch(`${API_BASE}/users/${studentId}/progress`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch student progress (using offline cache):', err);
+    return null;
+  }
+}
+
+export interface PracticeItem {
+  sign: string;
+  stage_id: number;
+  section_label: string;
+  score: number;
+  color: 'red' | 'orange' | 'green' | 'blue';
+  reason?: string;
+}
+
+export async function fetchNeedsPractice(studentId: string): Promise<PracticeItem[]> {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/students/${studentId}/needs-practice`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.practice_items || [];
+  } catch (err) {
+    console.warn('Failed to fetch needs practice items (offline?):', err);
+    return [];
+  }
+}
+
+

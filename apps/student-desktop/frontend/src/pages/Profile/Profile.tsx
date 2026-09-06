@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
+import { ACHIEVEMENTS, loadStudentStats } from '../../data/achievements';
 const viewAllBtnImg = "/images/View all Button.png";
 import './Profile.css';
 
@@ -8,6 +9,7 @@ interface StudentData {
   name: string;
   color?: string;
   emoji?: string;
+  grade_level?: number;
   level?: number;
   streak?: number;
   signs_mastered?: number;
@@ -96,6 +98,10 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
             <div className="hero-info">
               <h1 className="student-name">{student.name}</h1>
               <div className="hero-pills">
+                <div className="pill" style={{ background: '#EEF2FF', color: '#4F46E5', fontWeight: 'bold' }}>
+                  <span className="pill-icon">{"\uD83C\uDF92"}</span>
+                  <span className="pill-text">Grade {student.grade_level ?? 1}</span>
+                </div>
                 <div className="pill streak-pill">
                   <span className="pill-icon">{"\uD83D\uDD25"}</span>
                   <span className="pill-text">{student.streak ?? 0} Day Streak</span>
@@ -150,40 +156,78 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
             </div>
 
             <div className="achievements-grid">
-              {/* Achievement 1 */}
-              <div className="achievement-card card-trophy">
-                <div className="achievement-icon-circle icon-trophy">{"\uD83C\uDFC6"}</div>
-                <h3>Fast Learner</h3>
-                <p>Complete 5 stages in under 10 minutes</p>
-              </div>
+              {(() => {
+                const stats = loadStudentStats(student);
+                
+                // Sort by: unlocked first, then by completion percentage descending
+                const sorted = [...ACHIEVEMENTS].sort((a, b) => {
+                  const aProg = a.getProgress(stats);
+                  const bProg = b.getProgress(stats);
+                  const aUnlocked = aProg >= a.maxProgress ? 1 : 0;
+                  const bUnlocked = bProg >= b.maxProgress ? 1 : 0;
+                  
+                  if (aUnlocked !== bUnlocked) {
+                    return bUnlocked - aUnlocked;
+                  }
+                  
+                  const aPct = aProg / a.maxProgress;
+                  const bPct = bProg / b.maxProgress;
+                  return bPct - aPct;
+                }).slice(0, 5);
 
-              {/* Achievement 2 */}
-              <div className="achievement-card card-flame active-border">
-                <div className="achievement-icon-circle icon-flame">{"\uD83D\uDD25"}</div>
-                <h3>On Fire</h3>
-                <p>Maintain a 10-day learning streak</p>
-              </div>
+                return sorted.map((ach) => {
+                  const currentProg = ach.getProgress(stats);
+                  const isUnlocked = currentProg >= ach.maxProgress;
+                  const fillPct = Math.min(100, Math.round((currentProg / ach.maxProgress) * 100));
 
-              {/* Achievement 3 */}
-              <div className="achievement-card card-medal">
-                <div className="achievement-icon-circle icon-medal">{"\uD83C\uDF85"}</div>
-                <h3>Perfect Score</h3>
-                <p>Get 100% on 3 consecutive evaluations</p>
-              </div>
-
-              {/* Achievement 4 (Locked) */}
-              <div className="achievement-card locked">
-                <div className="achievement-icon-circle icon-lock">{"\uD83D\uDD12"}</div>
-                <h3>Mastermind</h3>
-                <p>Complete Module 4</p>
-              </div>
-
-              {/* Achievement 5 (Locked) */}
-              <div className="achievement-card locked">
-                <div className="achievement-icon-circle icon-lock">{"\uD83D\uDD12"}</div>
-                <h3>Mastermind</h3>
-                <p>Complete Module 4</p>
-              </div>
+                  return (
+                    <div 
+                      key={ach.id} 
+                      className={`achievement-card ${isUnlocked ? 'active-border' : 'locked'}`}
+                      style={{
+                        borderColor: isUnlocked ? ach.borderColor : 'transparent',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => onNavigate?.('achievements')}
+                      title={isUnlocked ? `${ach.title} (Unlocked!)` : `${ach.title} (${fillPct}% complete)`}
+                    >
+                      <div 
+                        className="achievement-icon-circle"
+                        style={{
+                          backgroundColor: isUnlocked ? ach.color : '#F1F5F9',
+                          border: isUnlocked ? `2px solid ${ach.borderColor}` : '2px solid #E2E8F0',
+                          fontSize: '32px'
+                        }}
+                      >
+                        {isUnlocked ? ach.icon : '\uD83D\uDD12'}
+                      </div>
+                      <h3>{ach.title}</h3>
+                      <p>{ach.description}</p>
+                      
+                      {/* Realistic tangible progress indicator */}
+                      <div className="profile-ach-status">
+                        {isUnlocked ? (
+                          <span className="profile-ach-unlocked-badge">
+                            {"\u2705"} Unlocked
+                          </span>
+                        ) : (
+                          <div className="profile-ach-progress-box">
+                            <div className="profile-ach-track">
+                              <div 
+                                className="profile-ach-bar" 
+                                style={{ width: `${fillPct}%` }}
+                              />
+                            </div>
+                            <span className="profile-ach-progress-text">
+                              {ach.formatProgress ? ach.formatProgress(currentProg, ach.maxProgress) : `${fillPct}%`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </section>
 
