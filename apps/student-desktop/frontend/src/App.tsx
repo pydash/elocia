@@ -29,6 +29,8 @@ function App() {
     }
   });
 
+  const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false);
+
   // Sync unlocked stages from database when entering navigation or login
   const refreshProgress = () => {
     const rawStudent = localStorage.getItem('elocia_current_student');
@@ -54,8 +56,9 @@ function App() {
   }, [currentView]);
 
   // This function handles transitioning from Module 3 to Module 4
-  const handleStartLesson = (stageId: number) => {
+  const handleStartLesson = (stageId: number, practiceMode: boolean = false) => {
     setActiveStage(stageId);
+    setIsPracticeMode(practiceMode);
     setCurrentView('setup'); // Goes to Camera Setup first
   };
 
@@ -120,16 +123,23 @@ function App() {
       {currentView === 'setup' && (
         <CameraSetup
           onDone={() => setCurrentView('evaluation')}
-          onCancel={() => setCurrentView('navigation')}
+          onCancel={() => setCurrentView(isPracticeMode ? 'practice' : 'navigation')}
         />
       )}
 
       {currentView === 'evaluation' && (
         <EvaluationSession
           stageId={activeStage}
-          onExit={() => setCurrentView('navigation')}
+          isPracticeMode={isPracticeMode}
+          onExit={() => setCurrentView(isPracticeMode ? 'practice' : 'navigation')}
           onComplete={(completedStageId) => {
-            // Unlock next stage if it exists
+            if (isPracticeMode) {
+              // In practice mode, return back to the Practice page smoothly
+              setCurrentView('practice');
+              return;
+            }
+
+            // In official Learn mode: Unlock next stage if it exists
             const nextStageId = completedStageId + 1;
             setUnlockedStages(prev => {
               const updated = prev.includes(nextStageId) ? prev : [...prev, nextStageId];

@@ -10,6 +10,7 @@ class UserUpdate(BaseModel):
     color: Optional[str] = None
     emoji: Optional[str] = None
     grade_level: Optional[int] = None
+    student_code: Optional[str] = None
     is_active: Optional[bool] = None
 
 class UserResponse(BaseModel):
@@ -20,6 +21,8 @@ class UserResponse(BaseModel):
     color: Optional[str] = None
     emoji: Optional[str] = None
     grade_level: Optional[int] = 1
+    student_number: Optional[int] = None
+    student_code: Optional[str] = None
     level: Optional[int] = 1
     streak: Optional[int] = 0
     avg_score: Optional[float] = 0.0

@@ -29,6 +29,8 @@ class User(Base):
     streak = Column(Integer, default=0)
     level = Column(Integer, default=1)
     grade_level = Column(Integer, default=1)
+    student_number = Column(Integer, nullable=True)
+    student_code = Column(String(20), unique=True, index=True, nullable=True)
     signs_mastered = Column(Integer, default=0)
     avg_score = Column(Float, default=0.0)
     stages_complete = Column(Integer, default=0)

@@ -1,6 +1,8 @@
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
+  width: 100vw;
   overflow: hidden; 
   font-family: 'Quicksand', sans-serif;
   margin: 0;
@@ -8,12 +10,13 @@
 }
 
 .main-content-area {
-  margin-left: 240px; 
-  width: calc(100% - 240px);
+  margin-left: clamp(180px, 16vw, 240px); 
+  width: calc(100% - clamp(180px, 16vw, 240px));
   height: 100vh;
+  height: 100dvh;
   background-color: #69DCFF;
   position: relative;
-  overflow-y: scroll; 
+  overflow-y: auto; 
   overflow-x: hidden; 
 }
 
@@ -86,17 +89,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 150px; 
-  gap: 60px; 
+  padding-top: clamp(60px, 12vh, 150px); 
+  padding-bottom: clamp(60px, 10vh, 120px);
+  gap: clamp(30px, 5vh, 60px); 
+  width: 100%;
 }
 
 .section-banner {
   background-color: #FF9800; 
   color: #ffffff;
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
   font-weight: 800;
-  width: 700px;
-  height: 70px;
+  width: clamp(300px, 60vw, 700px);
+  height: clamp(50px, 7vh, 70px);
   border-radius: 16px; 
   display: flex;
   align-items: center;
@@ -109,11 +114,13 @@
 .stages-path {
   display: flex;
   flex-direction: row; 
-  gap: 40px; 
+  gap: clamp(15px, 2.5vw, 40px); 
   align-items: center;
   justify-content: center;
   position: relative; 
   z-index: 1; 
+  flex-wrap: wrap;
+  max-width: 90%;
 }
 
 .path-line {
@@ -130,22 +137,22 @@
 
 
 .stage-card {
-  width: 180px;
-  height: 240px;
-  border-radius: 20px;
+  width: clamp(140px, 14vw, 180px);
+  height: clamp(180px, 22vh, 240px);
+  border-radius: clamp(14px, 1.5vw, 20px);
   box-sizing: border-box; 
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center; 
-  gap: 20px;
-  padding: 20px;
+  gap: clamp(10px, 1.5vh, 20px);
+  padding: clamp(12px, 1.5vw, 20px);
   transition: transform 0.1s, box-shadow 0.1s;
 }
 
 .active-card {
   background-color: #ffffff;
-  border: 4px solid #FF9800;
+  border: clamp(3px, 0.3vw, 4px) solid #FF9800;
   box-shadow: 0 5px 0 #FF9800; 
   cursor: pointer;
 }
@@ -157,7 +164,7 @@
 
 .locked-card {
   background-color: rgba(253, 253, 253, 0.6); 
-  border: 4px solid rgba(189, 195, 199, 0.8); 
+  border: clamp(3px, 0.3vw, 4px) solid rgba(189, 195, 199, 0.8); 
   box-shadow: 0 5px 0 rgba(189, 195, 199, 0.8); 
   cursor: not-allowed; 
   backdrop-filter: blur(4px); 
@@ -190,14 +197,14 @@
 }
 
 .stage-label {
-  font-size: 1.1rem;
+  font-size: clamp(0.85rem, 1.1vw, 1.1rem);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .stage-number {
-  font-size: 3.5rem; 
+  font-size: clamp(2.2rem, 3.5vw, 3.5rem); 
   font-weight: 900;
   line-height: 1; 
 }
@@ -213,23 +220,23 @@
 }
 
 .details-rectangle {
-  width: 720px; 
-  height: 220px; 
+  width: clamp(340px, 65vw, 720px); 
+  min-height: clamp(180px, 20vh, 220px); 
   background-color: #ffffff;
-  border-radius: 24px; 
+  border-radius: clamp(16px, 2vw, 24px); 
   box-shadow: 0 10px 0 rgba(0,0,0,0.05); 
-  padding: 30px 40px; 
+  padding: clamp(16px, 2vh, 30px) clamp(20px, 2.5vw, 40px); 
   box-sizing: border-box;
   position: relative;
   z-index: 1; 
 }
 
 .details-mascot {
-  width: 175px; 
-  height: 175px; 
+  width: clamp(110px, 14vw, 175px); 
+  height: auto; 
   position: absolute;
   bottom: -15px; 
-  right: -25px;  
+  right: clamp(-15px, -2vw, -25px);  
   z-index: 5;  
   transform: scaleX(-1);
   filter: drop-shadow(0 8px 8px rgba(0,0,0,0.1));
@@ -240,7 +247,7 @@
   flex-direction: column;
   justify-content: space-between; 
   height: 100%;
-  padding-right: 150px; 
+  padding-right: clamp(80px, 12vw, 150px); 
 }
 
 

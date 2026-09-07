@@ -56,6 +56,7 @@ export default function ProfileSelect({ students, onSelectStudent }: ProfileSele
                 )}
               </div>
               <span className="ps-name">{student.name}</span>
+              <span className="ps-code-badge">{student.student_code || `G${student.grade_level || 1}-01`}</span>
             </button>
           ))}
         </div>

@@ -10,6 +10,7 @@ interface StudentData {
   color?: string;
   emoji?: string;
   grade_level?: number;
+  student_code?: string;
   level?: number;
   streak?: number;
   signs_mastered?: number;
@@ -101,6 +102,10 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
                 <div className="pill" style={{ background: '#EEF2FF', color: '#4F46E5', fontWeight: 'bold' }}>
                   <span className="pill-icon">{"\uD83C\uDF92"}</span>
                   <span className="pill-text">Grade {student.grade_level ?? 1}</span>
+                </div>
+                <div className="pill" style={{ background: '#F0FDF4', color: '#16A34A', fontWeight: 'bold', border: '2px solid #86EFAC' }}>
+                  <span className="pill-icon">{"\uD83E\uDEAA"}</span>
+                  <span className="pill-text">{student.student_code || `G${student.grade_level ?? 1}-01`}</span>
                 </div>
                 <div className="pill streak-pill">
                   <span className="pill-icon">{"\uD83D\uDD25"}</span>

@@ -23,6 +23,7 @@ const amazingMascot = '/images/Amazing.png';
 
 interface EvaluationSessionProps {
   stageId: number | null;
+  isPracticeMode?: boolean;
   onExit: () => void;
   onComplete: (stageId: number) => void;
   onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
@@ -72,7 +73,7 @@ const HAND_CONNECTIONS = [
   [0, 17]
 ];
 
-export default function EvaluationSession({ stageId, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
+export default function EvaluationSession({ stageId, isPracticeMode = false, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
   const currentStageId = stageId ?? 1;
   const stageData = getStageData(currentStageId);
   const items = stageData?.items || [{ globalId: 1, name: "1" }];
@@ -95,6 +96,27 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
   const landmarksRef = useRef<LandmarksData | null>(null);
   const trailRef = useRef<{ x: number, y: number, a: number }[]>([]);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+
+  const currentItemRef = useRef(currentItem);
+  const currentTierRef = useRef(currentTier);
+  const failCountRef = useRef(failCount);
+  const isPracticeModeRef = useRef(isPracticeMode);
+
+  useEffect(() => {
+    currentItemRef.current = currentItem;
+  }, [currentItem]);
+
+  useEffect(() => {
+    currentTierRef.current = currentTier;
+  }, [currentTier]);
+
+  useEffect(() => {
+    failCountRef.current = failCount;
+  }, [failCount]);
+
+  useEffect(() => {
+    isPracticeModeRef.current = isPracticeMode;
+  }, [isPracticeMode]);
 
   // Sync state to ref so setInterval can access latest value without re-triggering useEffect
   useEffect(() => {
@@ -193,20 +215,23 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
             console.warn('Could not update evaluation parameters localStorage:', e);
           }
 
-          saveScore({
-            student_id: student.id,
-            activity_type: 'evaluation',
-            stage_id: currentItem?.globalId ?? 0,
-            attempt_number: failCount + 1,
-            tier_level: currentTier,
-            score_handshape: data.scores.handshape,
-            score_palm_orientation: data.scores.palmOrientation,
-            score_location: data.scores.location,
-            score_movement: data.scores.movement,
-            score_overall: overall,
-            passed: isPassed,
-            xp_earned: xpEarned,
-          });
+          // Save score to database with max 50 XP for proper learn signing (only in official Learn evaluation mode)
+          if (!isPracticeModeRef.current) {
+            saveScore({
+              student_id: student.id,
+              activity_type: 'evaluation',
+              stage_id: currentItemRef.current?.globalId ?? 0,
+              attempt_number: failCountRef.current + 1,
+              tier_level: currentTierRef.current,
+              score_handshape: data.scores.handshape,
+              score_palm_orientation: data.scores.palmOrientation,
+              score_location: data.scores.location,
+              score_movement: data.scores.movement,
+              score_overall: overall,
+              passed: isPassed,
+              xp_earned: xpEarned,
+            });
+          }
         } else if (data.action === 'landmarks') {
           landmarksRef.current = data;
           setDiagData({ scores: data.scores, frames: data.frames });
@@ -491,6 +516,7 @@ export default function EvaluationSession({ stageId, onExit, onComplete, onNavig
 
         <div className="eval-title-block">
           <div className="eval-main-title">
+            {isPracticeMode && <span style={{ background: '#F59E0B', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', marginRight: '8px', verticalAlign: 'middle', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Practice Mode</span>}
             Stage {currentStageId}: {stageData?.title}
           </div>
           <div className="eval-progress-track">

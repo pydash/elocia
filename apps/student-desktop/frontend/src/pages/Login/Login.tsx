@@ -9,6 +9,7 @@ export interface StudentProfile {
   color: string;
   emoji: string;
   grade_level?: number;
+  student_code?: string;
   level?: number;
   streak?: number;
 }

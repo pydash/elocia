@@ -10,7 +10,7 @@ class EvaluationAttempt(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     activity_type = Column(String, nullable=False)
-    stage_id = Column(Integer, nullable=True)
+    stage_id = Column(Integer, ForeignKey("fsl_baselines.stage_id", ondelete="SET NULL"), nullable=True, index=True)
     attempt_number = Column(Integer, default=1)
     tier_level = Column(Integer, default=1)
     score_handshape = Column(Integer, nullable=True)
