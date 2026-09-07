@@ -35,6 +35,7 @@ import ParentLoginPage from "./pages/parent/LoginPage.tsx";
 import ParentLayout from "./layouts/ParentLayout.tsx";
 import ParentHomePage from "@/pages/parent/HomePage.tsx";
 import ParentStudentProfilePage from "./pages/parent/StudentProfilePage.tsx";
+import ParentProgressPage from "./pages/parent/ProgressPage.tsx";
 
 //
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -113,6 +114,7 @@ function App() {
             path="home/student/:username"
             element={<ParentStudentProfilePage />}
           />
+          <Route path="progress" element={<ParentProgressPage />} />
         </Route>
 
         {/* System Admin */}
