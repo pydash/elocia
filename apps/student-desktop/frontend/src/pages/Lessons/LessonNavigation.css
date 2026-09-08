@@ -1,0 +1,334 @@
+.app-layout {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden; 
+  font-family: 'Quicksand', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.main-content-area {
+  margin-left: clamp(180px, 16vw, 240px); 
+  width: calc(100% - clamp(180px, 16vw, 240px));
+  height: 100vh;
+  height: 100dvh;
+  background-color: #69DCFF;
+  position: relative;
+  overflow-y: auto; 
+  overflow-x: hidden; 
+}
+
+
+.clouds-wrapper {
+  position: absolute; 
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%; 
+  overflow: hidden; 
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-decor {
+  position: absolute; 
+}
+
+.sun { 
+  width: 256px; 
+  height: 256px; 
+  top: 30px; 
+  right: 30px; 
+}
+
+@keyframes floatAndBob {
+  0%   { transform: translate(100vw, 0px); }
+  50%  { transform: translate(50vw, -15px); } 
+  100% { transform: translate(-300px, 0px); } 
+}
+
+.cloud-1 {
+  width: 139px; height: 101px; top: 15%; left: 0; 
+  animation: floatAndBob 30s linear infinite; 
+  animation-delay: -5s; 
+}
+
+.cloud-2 { 
+  width: 251px; height: 161px; top: 5%; left: 0;
+  animation: floatAndBob 40s linear infinite; 
+  animation-delay: -15s; 
+  z-index: 1; 
+}
+
+.cloud-3 { 
+  width: 180px; height: auto; top: 35%; left: 0;
+  animation: floatAndBob 50s linear infinite; 
+  animation-delay: -25s; 
+  opacity: 0.7; 
+}
+
+.cloud-5 { 
+  width: 120px; height: auto; bottom: 45%; left: 0;
+  animation: floatAndBob 55s linear infinite; 
+  animation-delay: -45s; 
+  opacity: 0.5; 
+}
+
+.cloud-6 { 
+  width: 200px; height: 107px; bottom: 8%; left: 0;
+  animation: floatAndBob 45s linear infinite; 
+  animation-delay: -55s; 
+}
+
+
+.map-container {
+  position: relative;
+  z-index: 10; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: clamp(60px, 12vh, 150px); 
+  padding-bottom: clamp(60px, 10vh, 120px);
+  gap: clamp(30px, 5vh, 60px); 
+  width: 100%;
+}
+
+.section-banner {
+  background-color: #FF9800; 
+  color: #ffffff;
+  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+  font-weight: 800;
+  width: clamp(300px, 60vw, 700px);
+  height: clamp(50px, 7vh, 70px);
+  border-radius: 16px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 0 #E65100; 
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stages-path {
+  display: flex;
+  flex-direction: row; 
+  gap: clamp(15px, 2.5vw, 40px); 
+  align-items: center;
+  justify-content: center;
+  position: relative; 
+  z-index: 1; 
+  flex-wrap: wrap;
+  max-width: 90%;
+}
+
+.path-line {
+  position: absolute;
+  top: 50%;
+  left: 90px;  
+  right: 90px; 
+  height: 12px;
+  background-color: #bdc3c7; 
+  transform: translateY(-50%); 
+  z-index: -1; 
+  border-radius: 6px;
+}
+
+
+.stage-card {
+  width: clamp(140px, 14vw, 180px);
+  height: clamp(180px, 22vh, 240px);
+  border-radius: clamp(14px, 1.5vw, 20px);
+  box-sizing: border-box; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; 
+  gap: clamp(10px, 1.5vh, 20px);
+  padding: clamp(12px, 1.5vw, 20px);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.active-card {
+  background-color: #ffffff;
+  border: clamp(3px, 0.3vw, 4px) solid #FF9800;
+  box-shadow: 0 5px 0 #FF9800; 
+  cursor: pointer;
+}
+
+.active-card:active {
+  transform: translateY(5px);
+  box-shadow: 0 0 0 #FF9800;
+}
+
+.locked-card {
+  background-color: rgba(253, 253, 253, 0.6); 
+  border: clamp(3px, 0.3vw, 4px) solid rgba(189, 195, 199, 0.8); 
+  box-shadow: 0 5px 0 rgba(189, 195, 199, 0.8); 
+  cursor: not-allowed; 
+  backdrop-filter: blur(4px); 
+}
+
+.locked-card:active {
+  transform: none;
+  box-shadow: 0 5px 0 #bdc3c7;
+}
+
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-text-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px; 
+}
+
+.active-card .stage-text-group {
+  color: #FF9800;
+}
+
+.locked-card .stage-text-group {
+  color: #7f8c8d;
+}
+
+.stage-label {
+  font-size: clamp(0.85rem, 1.1vw, 1.1rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stage-number {
+  font-size: clamp(2.2rem, 3.5vw, 3.5rem); 
+  font-weight: 900;
+  line-height: 1; 
+}
+
+
+.stage-details-wrapper {
+  margin-top: 0px; 
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.details-rectangle {
+  width: clamp(340px, 65vw, 720px); 
+  min-height: clamp(180px, 20vh, 220px); 
+  background-color: #ffffff;
+  border-radius: clamp(16px, 2vw, 24px); 
+  box-shadow: 0 10px 0 rgba(0,0,0,0.05); 
+  padding: clamp(16px, 2vh, 30px) clamp(20px, 2.5vw, 40px); 
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1; 
+}
+
+.details-mascot {
+  width: clamp(110px, 14vw, 175px); 
+  height: auto; 
+  position: absolute;
+  bottom: -15px; 
+  right: clamp(-15px, -2vw, -25px);  
+  z-index: 5;  
+  transform: scaleX(-1);
+  filter: drop-shadow(0 8px 8px rgba(0,0,0,0.1));
+}
+
+.details-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; 
+  height: 100%;
+  padding-right: clamp(80px, 12vw, 150px); 
+}
+
+
+.details-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; 
+}
+
+.details-stage-name {
+  color: #FF9800; 
+  font-weight: 800;
+  font-size: 0.95rem; 
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+.details-stage-title {
+  color: #2c3e50; 
+  font-size: 1.4rem; 
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.details-stage-description {
+  color: #7f8c8d; 
+  font-size: 0.95rem; 
+  font-weight: 600;
+  line-height: 1.5; 
+  margin: 0;
+}
+
+
+.details-action-row {
+  display: flex;
+  justify-content: space-between; 
+  align-items: flex-end; 
+  width: 100%;
+}
+
+.details-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px; 
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7f8c8d; 
+  font-weight: 700;
+  font-size: 0.95rem; 
+}
+
+.progress-highlight {
+  color: #FF9800; 
+  font-weight: 800;
+}
+
+.start-lesson-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #FF9800;
+  color: #ffffff;
+  border: none;
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1rem; 
+  font-weight: 800;
+  padding: 10px 24px; 
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #E65100;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.start-lesson-btn:active {
+  transform: translateY(4px); 
+  box-shadow: 0 0 0 #E65100;
+}
