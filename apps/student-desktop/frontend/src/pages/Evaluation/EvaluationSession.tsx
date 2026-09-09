@@ -422,7 +422,17 @@ export default function EvaluationSession({ stageId, isPracticeMode = false, onE
       setIsRecording(false);
       setIsEvaluating(true);
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ action: 'evaluate', stageId: currentItem.globalId }));
+        const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+        wsRef.current.send(JSON.stringify({
+          action: 'evaluate',
+          stageId: currentItem.globalId,
+          stageName: currentItem.name,
+          studentId: student.id || '',
+          studentName: student.name || 'Student',
+          attemptNumber: failCountRef.current + 1,
+          tierLevel: currentTierRef.current,
+          activityType: isPracticeModeRef.current ? 'practice' : 'evaluation'
+        }));
       }
     }, 3000);
   };

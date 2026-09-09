@@ -12,8 +12,13 @@ from threading import Thread
 
 from inference import evaluate_sign
 from services.camera_check import analyze_camera_frame
+from services.analytics_logger import log_evaluation_attempt, init_analytics_log
+import time
 
 app = FastAPI()
+
+# Initialize analytics log on startup
+init_analytics_log()
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,6 +82,9 @@ async def evaluate_endpoint(websocket: WebSocket):
         min_tracking_confidence=0.5
     )
     
+    student_sequence = []
+    frame_timestamps = []
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -84,8 +92,9 @@ async def evaluate_endpoint(websocket: WebSocket):
             
             if payload.get('action') == 'clear':
                 student_sequence = []
+                frame_timestamps = []
                 continue
-                
+
             if payload.get('action') == 'start_diagnostic':
                 stage_id = payload.get('stageId', 1)
                 baseline_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'baselines', f'baseline_{stage_id}.json'))
@@ -104,33 +113,82 @@ async def evaluate_endpoint(websocket: WebSocket):
 
             if payload.get('action') == 'evaluate':
                 stage_id = payload.get('stageId', 1)
+                stage_name = payload.get('stageName', f"Stage {stage_id}")
+                student_id = payload.get('studentId', "")
+                student_name = payload.get('studentName', "Student")
+                attempt_num = payload.get('attemptNumber', 1)
+                tier_level = payload.get('tierLevel', 1)
+                activity_type = payload.get('activityType', "evaluation")
+
                 baseline_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'baselines', f'baseline_{stage_id}.json'))
                 
                 if not os.path.exists(baseline_file):
                     await websocket.send_json({"error": f"Baseline not found for stage {stage_id}"})
                     student_sequence = []
+                    frame_timestamps = []
                     continue
                     
                 with open(baseline_file, 'r') as f:
                     baseline_sequence = json.load(f)
                 
-                # Use our new mathematical scoring engine!
+                eval_t0 = time.time()
+                # Use our mathematical scoring engine!
                 scores = evaluate_sign(student_sequence, baseline_sequence)
-                
+                latency_ms = (time.time() - eval_t0) * 1000.0
+
                 overall = (scores['handshape'] * 0.25) + (scores['palmOrientation'] * 0.25) + (scores['location'] * 0.25) + (scores['movement'] * 0.25)
                 
+                # Veto Rule check
+                has_failed_parameter = (
+                    scores['handshape'] < 60 or
+                    scores['palmOrientation'] < 60 or
+                    scores['location'] < 60 or
+                    scores['movement'] < 60
+                )
+                passed = (overall >= 60) and (not has_failed_parameter)
+
+                # Compute FPS over the recording duration
+                fps = 0.0
+                if len(frame_timestamps) > 1:
+                    duration = frame_timestamps[-1] - frame_timestamps[0]
+                    if duration > 0:
+                        fps = len(frame_timestamps) / duration
+
+                # Log directly to Automated System Analytics Log CSV
+                log_evaluation_attempt(
+                    student_id=student_id,
+                    student_name=student_name,
+                    activity_type=activity_type,
+                    stage_id=stage_id,
+                    stage_name=stage_name,
+                    attempt_number=attempt_num,
+                    tier_level=tier_level,
+                    scores=scores,
+                    composite_score=overall,
+                    passed=passed,
+                    fps=fps,
+                    frames_processed=len(student_sequence),
+                    latency_ms=latency_ms
+                )
+
                 await websocket.send_json({
                     "action": "result",
                     "scores": scores,
-                    "overall": overall
+                    "overall": overall,
+                    "fps": round(fps, 1),
+                    "latency_ms": round(latency_ms, 1),
+                    "frames_processed": len(student_sequence)
                 })
                 
                 student_sequence = []
+                frame_timestamps = []
                 continue
 
             image_data = payload.get("image", "")
             if not image_data:
                 continue
+
+            frame_timestamps.append(time.time())
 
             header, encoded = image_data.split(",", 1) if "," in image_data else ("", image_data)
             nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
