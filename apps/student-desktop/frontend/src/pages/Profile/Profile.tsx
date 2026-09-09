@@ -84,7 +84,12 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
 
           {/* Hero Card */}
           <section className="profile-hero-card" style={{ borderColor: student.color || '#3B82F6' }}>
-            <div className="hero-avatar-container" style={{ background: student.color || '#F59E0B' }}>
+            <div 
+              className="hero-avatar-container" 
+              style={{ background: student.color || '#F59E0B', cursor: onNavigate ? 'pointer' : 'default' }}
+              onClick={() => onNavigate?.('settings')}
+              title="Click to customize your avatar in Settings"
+            >
               <div className="avatar-circle" style={{ width: '100%', height: '100%', position: 'relative' }}>
                 {avatar.startsWith('data:') ? (
                   <img src={avatar} alt="Your avatar" style={{ display: 'block', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
@@ -94,6 +99,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
                   </span>
                 )}
               </div>
+              <span className="hero-avatar-edit-badge" title="Change Avatar">✏️</span>
             </div>
 
             <div className="hero-info">
