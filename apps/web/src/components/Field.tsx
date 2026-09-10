@@ -20,6 +20,8 @@ export default function Field({
       )}
 
       <input
+        value={props.value}
+        onChange={props.onChange}
         type={type}
         className={`w-full paragraph-2 rounded-md border-2 border-(--border) bg-(--gray-50) text-(--ghost) px-4 py-3 pl-12 outline-none ${className}`}
         {...props}
