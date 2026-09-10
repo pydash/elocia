@@ -1,9 +1,26 @@
+"use client";
 import { Link } from "react-router-dom";
 import Field from "../../components/Field";
 import Button from "../../components/Button";
 import { User, Lock } from "lucide-react";
+import { useState } from "react";
+import { useAdultLogin } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export default function TeacherLoginPage() {
+  const navigate = useNavigate();
+  const { login, loading, error } = useAdultLogin();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await login(username, password);
+    if (success) {
+      navigate("/teacher/students");
+    }
+  };
+
   return (
     <>
       <main className="flex h-screen w-screen">
@@ -42,21 +59,26 @@ export default function TeacherLoginPage() {
               <p className="paragraph-2 text-(--ghost)">Ready to teach?</p>
             </div>
 
-            <form className="flex flex-col items-end gap-4">
+            <form
+              className="flex flex-col items-end gap-4"
+              onSubmit={handleSubmit}
+            >
               <div className="w-full">
                 <label
-                  htmlFor="email"
+                  htmlFor="username"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Email
+                  Username
                 </label>
 
                 <Field
                   leadingIcon={User}
-                  type="email"
-                  id="email"
-                  name="email"
-                  placeholder="you@example.com"
+                  type="text"
+                  id="username"
+                  name="username"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
 
@@ -74,6 +96,8 @@ export default function TeacherLoginPage() {
                   id="password"
                   name="password"
                   placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
 
                 <div className="mt-1 flex justify-end">
@@ -86,8 +110,18 @@ export default function TeacherLoginPage() {
                 </div>
               </div>
 
+              {/* Error message */}
+              {error && (
+                <div
+                  role="alert"
+                  className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-(--danger)"
+                >
+                  {error}
+                </div>
+              )}
+
               <Button type="submit" className="w-full">
-                Login
+                {loading ? "Logging in..." : "Login"}
               </Button>
             </form>
           </div>
