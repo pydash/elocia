@@ -1,20 +1,7 @@
 import type { LoginRequest, LoginResponse } from "@/interfaces/login.interface";
+import { tokenManager } from "@/helpers/jwt";
 
 const API_BASE_URL = "http://localhost:8000";
-
-export const authService = {
-  setAccessToken: (token: string) => {
-    localStorage.setItem("access_token", token);
-  },
-
-  getAccessToken: () => {
-    return localStorage.getItem("access_token");
-  },
-
-  clearAccessToken: () => {
-    localStorage.removeItem("access_token");
-  },
-};
 
 export async function adultLogin({
   username,
@@ -34,7 +21,11 @@ export async function adultLogin({
   }
 
   const data = await response.json();
-  authService.setAccessToken(data.access_token);
+  tokenManager.setAccessToken(data.access_token);
 
   return data;
+}
+
+export function adultLogout(): void {
+  tokenManager.clearAccessToken();
 }
