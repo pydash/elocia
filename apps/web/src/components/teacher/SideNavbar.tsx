@@ -9,6 +9,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import NavbarMenuItem from "../NavbarMenuItem";
 import { useLocation } from "react-router-dom";
+import { useAdultLogout } from "@/hooks/useAuth";
 
 type NavItem = {
   name: string;
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
 export default function TeacherSideNavbar() {
   const location = useLocation();
   const currentPath = location.pathname.split("/")[2] || "students";
+  const { logout } = useAdultLogout();
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white fixed">
@@ -91,10 +93,7 @@ export default function TeacherSideNavbar() {
 
           <button
             className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-            onClick={() => {
-              // Handle logout logic here
-              console.log("Logout clicked");
-            }}
+            onClick={logout}
           >
             <LogOut className="h-5 w-5" />
             <span>Logout</span>
