@@ -1,12 +1,15 @@
-export default function Avatar({ gender }: { gender: "male" | "female" }) {
+type AvatarProps = {
+  emoji: string;
+  color: string;
+};
+
+export default function Avatar({ emoji, color }: AvatarProps) {
   return (
     <div
-      className={`flex h-24 w-24 items-center justify-center rounded-full bg-(--primary-light) text-(--primary) border-2`}
-      aria-label={`${gender} student`}
+      className={`flex h-24 w-24 items-center justify-center rounded-full text-(--primary) border-2`}
+      style={{ backgroundColor: color }}
     >
-      <span className="text-2xl font-bold">
-        {gender === "male" ? "M" : gender === "female" ? "F" : "O"}
-      </span>
+      <span className="text-2xl font-bold">{emoji}</span>
     </div>
   );
 }
