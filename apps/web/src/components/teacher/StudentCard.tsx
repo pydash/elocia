@@ -42,9 +42,7 @@ export default function StudentCard({
       <div className="flex flex-col gap-0 items-center">
         <h3 className="heading-4 text-(--black)">{name}</h3>
         <div className="bg-(--info-light) p-2 rounded-full">
-          <p className="caption text-(--ghost)">
-            Grade {grade_level} | Student No: {student_number}
-          </p>
+          <p className="caption text-(--ghost)">Grade {grade_level}</p>
         </div>
       </div>
       <p className="paragraph-2 text-(--ghost)">
