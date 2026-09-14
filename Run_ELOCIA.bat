@@ -7,23 +7,10 @@ echo             STARTING ELOCIA DESKTOP SYSTEM
 echo =========================================================
 echo.
 
-set SCRIPT_DIR=%~dp0
-
-:: Auto-detect repository location (supports running from inside elocia or from parent folder)
-if exist "%SCRIPT_DIR%backend" (
-    set ROOT_DIR=%SCRIPT_DIR%
-) else if exist "%SCRIPT_DIR%elocia\backend" (
-    set ROOT_DIR=%SCRIPT_DIR%elocia\
-) else (
-    echo [ERROR] Could not find 'backend' folder relative to %SCRIPT_DIR%
-    echo Make sure Run_ELOCIA.bat is located inside the elocia project folder.
-    pause
-    exit /b 1
-)
-
-set BACKEND_DIR=%ROOT_DIR%backend
-set FRONTEND_DIR=%ROOT_DIR%apps\student-desktop\frontend
-set DESKTOP_DIR=%ROOT_DIR%apps\student-desktop\desktop
+set ROOT_DIR=%~dp0
+set BACKEND_DIR=%ROOT_DIR%elocia\backend
+set FRONTEND_DIR=%ROOT_DIR%elocia\apps\student-desktop\frontend
+set DESKTOP_DIR=%ROOT_DIR%elocia\apps\student-desktop\desktop
 
 :: 1. Verify Directories
 if not exist "%BACKEND_DIR%" (

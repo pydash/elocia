@@ -6,7 +6,7 @@ from jose import jwt
 from passlib.context import CryptContext
 
 from app.database.connection import get_db
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StudentProfile
 from app.schemas.auth import StudentLogin, AdultLogin, Token
 from app.core.config import settings
 
@@ -16,10 +16,18 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 @router.post("/student/login", response_model=Token)
 async def student_login(data: StudentLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(User).where(User.name == data.student_name, User.role == UserRole.student, User.is_active == True)
+        select(User, StudentProfile)
+        .outerjoin(StudentProfile, User.id == StudentProfile.student_id)
+        .where(User.name == data.student_name, User.role == UserRole.student, User.is_active == True)
     )
-    student = result.scalar_one_or_none()
-    if not student or student.pin != data.pin:
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid student name or PIN")
+    
+    student, profile = row
+    # Verify PIN against StudentProfile as source of truth, fallback to User.pin for backward safety
+    profile_pin = profile.pin if profile and profile.pin else student.pin
+    if profile_pin != data.pin:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid student name or PIN")
     
     token = jwt.encode(

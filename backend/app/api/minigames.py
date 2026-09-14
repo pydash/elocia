@@ -5,7 +5,7 @@ from typing import List, Optional
 import uuid
 
 from app.database.connection import get_db
-from app.models.user import User
+from app.models.user import User, StudentProfile
 from app.models.session import EvaluationAttempt
 from app.models.minigame import MiniGameConfig, MiniGameSession, GameType
 from app.schemas.minigame import (
@@ -82,7 +82,11 @@ async def submit_minigame_score(data: MiniGameScoreSubmit, db: AsyncSession = De
     # Automatically recalculate user total XP and level
     user_res = await db.execute(select(User).where(User.id == data.student_id))
     user = user_res.scalar_one_or_none()
-    if user:
+
+    prof_res = await db.execute(select(StudentProfile).where(StudentProfile.student_id == data.student_id))
+    profile = prof_res.scalar_one_or_none()
+
+    if user or profile:
         eval_xp_res = await db.execute(
             select(func.coalesce(func.sum(EvaluationAttempt.xp_earned), 0))
             .where(EvaluationAttempt.student_id == data.student_id)
@@ -97,7 +101,13 @@ async def submit_minigame_score(data: MiniGameScoreSubmit, db: AsyncSession = De
         total_game_xp = (game_xp_res.scalar() or 0) + data.score
 
         total_xp = int(total_eval_xp + total_game_xp)
-        user.level = compute_level_from_xp(total_xp)
+        new_level = compute_level_from_xp(total_xp)
+
+        if profile:
+            profile.total_xp = total_xp
+            profile.level = new_level
+        if user:
+            user.level = new_level
 
     await db.commit()
     await db.refresh(session)

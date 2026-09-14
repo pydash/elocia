@@ -1,22 +1,11 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
 import { ACHIEVEMENTS, loadStudentStats } from '../../data/achievements';
+import { fetchUserById, fetchStudentProgress, type StudentProfileData } from '../../utils/api';
 const viewAllBtnImg = "/images/View all Button.png";
 import './Profile.css';
 
-interface StudentData {
-  id?: string;
-  name: string;
-  color?: string;
-  emoji?: string;
-  grade_level?: number;
-  student_code?: string;
-  level?: number;
-  streak?: number;
-  signs_mastered?: number;
-  avg_score?: number;
-  stages_complete?: number;
-}
+type StudentData = StudentProfileData;
 
 export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void }) {
   const [avatar] = useState<string>(() => localStorage.getItem('elocia_avatar') || '');
@@ -30,6 +19,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
       }
     }
     return {
+      id: '',
       name: 'Ethan',
       level: 1,
       streak: 0,
@@ -44,8 +34,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
   // Fetch real-time updated stats from the backend for the active student
   useEffect(() => {
     if (student.id) {
-      fetch(`http://localhost:8000/users/${student.id}`)
-        .then(res => res.json())
+      fetchUserById(student.id)
         .then(data => {
           if (data && data.name) {
             setStudent(prev => ({
@@ -55,6 +44,21 @@ export default function Profile({ onNavigate }: { onNavigate?: (view: 'navigatio
           }
         })
         .catch(err => console.warn('Could not refresh live student profile:', err));
+
+      fetchStudentProgress(student.id)
+        .then(prog => {
+          if (prog && prog.stages) {
+            const passedCount = prog.stages.filter(s => s.passed).length;
+            setStudent(prev => ({
+              ...prev,
+              stages_complete: passedCount,
+              streak: prog.current_streak,
+              avg_score: prog.avg_score,
+              signs_mastered: prog.total_signs_mastered
+            }));
+          }
+        })
+        .catch(err => console.warn('Could not refresh student progress for profile:', err));
     }
   }, [student.id]);
 

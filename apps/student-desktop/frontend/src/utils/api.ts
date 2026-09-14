@@ -1,4 +1,4 @@
-const API_BASE = 'http://127.0.0.1:8000';
+export const API_BASE = 'http://127.0.0.1:8000';
 
 export interface MiniGameConfigItem {
   id: string;
@@ -9,6 +9,74 @@ export interface MiniGameConfigItem {
   hint_text: string | null;
   options: string | null;
   difficulty: number;
+}
+
+export interface StudentProfileData {
+  id: string;
+  name: string;
+  color: string;
+  emoji: string;
+  grade_level?: number;
+  student_number?: number;
+  student_code?: string;
+  total_xp?: number;
+  level?: number;
+  streak?: number;
+  avg_score?: number;
+  signs_mastered?: number;
+  stages_complete?: number;
+}
+
+export async function fetchStudents(): Promise<StudentProfileData[]> {
+  try {
+    const res = await fetch(`${API_BASE}/students`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch students from backend:', err);
+    return [];
+  }
+}
+
+export async function fetchUserById(userId: string): Promise<StudentProfileData | null> {
+  try {
+    const res = await fetch(`${API_BASE}/users/${userId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch user by id from backend:', err);
+    return null;
+  }
+}
+
+export async function updateUser(userId: string, data: Partial<StudentProfileData & { pin?: string; is_active?: boolean }>) {
+  try {
+    const res = await fetch(`${API_BASE}/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to update user on backend:', err);
+    return null;
+  }
+}
+
+export async function studentLogin(studentName: string, pin: string): Promise<{ access_token: string } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/student/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_name: studentName, pin }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Student login failed:', err);
+    return null;
+  }
 }
 
 export async function fetchMiniGameConfigs(gameType: string): Promise<MiniGameConfigItem[]> {
@@ -44,6 +112,7 @@ export async function saveScore(payload: {
   student_id: string;
   activity_type: string;
   stage_id: number;
+  sign_id: number;
   attempt_number: number;
   tier_level: number;
   score_handshape: number;
@@ -60,6 +129,7 @@ export async function saveScore(payload: {
       student_id: payload.student_id,
       activity_type: payload.activity_type,
       stage_id: String(payload.stage_id),
+      sign_id: String(payload.sign_id),
       attempt_number: String(payload.attempt_number),
       tier_level: String(payload.tier_level),
       score_handshape: String(payload.score_handshape),
@@ -139,4 +209,27 @@ export async function fetchNeedsPractice(studentId: string): Promise<PracticeIte
   }
 }
 
+export interface EducationalVideoItem {
+  id: string;
+  title: string;
+  description: string | null;
+  subject: string;
+  grade_level: number;
+  duration_minutes: number;
+  video_url: string;
+  thumbnail_url: string | null;
+  created_at: string;
+}
+
+export async function fetchEducationalVideos(gradeLevel?: number): Promise<EducationalVideoItem[]> {
+  try {
+    const url = gradeLevel ? `${API_BASE}/educational-videos?grade_level=${gradeLevel}` : `${API_BASE}/educational-videos`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch educational videos from backend:', err);
+    return [];
+  }
+}
 

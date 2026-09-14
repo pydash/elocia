@@ -2,17 +2,9 @@ import { useState, useEffect } from 'react';
 import './Login.css';
 import ProfileSelect from './Profile Select';
 import PinEntry from './Student Pin';
+import { fetchStudents, type StudentProfileData } from '../../utils/api';
 
-export interface StudentProfile {
-  id: string;
-  name: string;
-  color: string;
-  emoji: string;
-  grade_level?: number;
-  student_code?: string;
-  level?: number;
-  streak?: number;
-}
+export type StudentProfile = StudentProfileData;
 
 interface LoginProps {
   onStart: () => void;
@@ -24,9 +16,8 @@ export default function Login({ onStart }: LoginProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
 
   useEffect(() => {
-    // Fetch real students from your backend
-    fetch('http://localhost:8000/students')
-      .then(res => res.json())
+    // Fetch real students from backend /students backed by student_profiles
+    fetchStudents()
       .then(data => setStudents(data))
       .catch(err => console.error("Failed to load students:", err));
   }, []);

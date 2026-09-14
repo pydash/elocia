@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
+import { updateUser } from '../../utils/api';
 import './Settings.css';
 
 type View = 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice';
@@ -49,11 +50,7 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
           // Save to backend database
           if (currentStudent.id) {
-            await fetch(`http://localhost:8000/users/${currentStudent.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ emoji: pendingAvatar })
-            });
+            await updateUser(currentStudent.id, { emoji: pendingAvatar });
           }
         } catch (err) {
           console.warn('Failed to sync avatar with student database profile:', err);

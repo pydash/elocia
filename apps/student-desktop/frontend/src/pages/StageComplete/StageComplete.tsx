@@ -11,8 +11,11 @@ const cloud3Img = '/images/Cloud 3.png';
 const cloud5Img = '/images/Cloud 5.png';
 const cloud6Img = '/images/Cloud 6.png';
 
+import type { Section } from '../../data/curriculum';
+
 interface StageCompleteProps {
   stageId: number | null;
+  dynamicCurriculum?: Section[] | null;
   onBackToLearn: () => void;
   onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
 }
@@ -66,9 +69,9 @@ const BookIcon = () => (
   </svg>
 );
 
-export default function StageComplete({ stageId, onBackToLearn, onNavigate }: StageCompleteProps) {
+export default function StageComplete({ stageId, dynamicCurriculum, onBackToLearn, onNavigate }: StageCompleteProps) {
   const currentStageId = stageId ?? 1;
-  const stageData = getStageData(currentStageId);
+  const stageData = getStageData(currentStageId, dynamicCurriculum);
   const signs = stageData?.items ?? [];
   const xpEarned = signs.length * 10;
 

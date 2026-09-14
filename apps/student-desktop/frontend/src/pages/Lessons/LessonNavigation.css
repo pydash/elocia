@@ -89,10 +89,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: clamp(60px, 12vh, 150px); 
+  padding-top: clamp(60px, 10vh, 120px); 
   padding-bottom: clamp(60px, 10vh, 120px);
-  gap: clamp(30px, 5vh, 60px); 
+  gap: clamp(40px, 6vh, 70px); 
   width: 100%;
+}
+
+.section-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(35px, 5vh, 60px);
 }
 
 .section-banner {
@@ -100,7 +108,7 @@
   color: #ffffff;
   font-size: clamp(1.1rem, 1.8vw, 1.5rem);
   font-weight: 800;
-  width: clamp(300px, 60vw, 700px);
+  width: clamp(300px, 50vw, 700px);
   height: clamp(50px, 7vh, 70px);
   border-radius: 16px; 
   display: flex;
@@ -114,20 +122,19 @@
 .stages-path {
   display: flex;
   flex-direction: row; 
-  gap: clamp(15px, 2.5vw, 40px); 
+  gap: clamp(24px, 3vw, 48px); 
   align-items: center;
   justify-content: center;
   position: relative; 
   z-index: 1; 
-  flex-wrap: wrap;
-  max-width: 90%;
+  max-width: 95%;
 }
 
 .path-line {
   position: absolute;
   top: 50%;
-  left: 90px;  
-  right: 90px; 
+  left: 60px;  
+  right: 60px; 
   height: 12px;
   background-color: #bdc3c7; 
   transform: translateY(-50%); 

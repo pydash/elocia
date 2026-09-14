@@ -12,6 +12,7 @@ from app.api.minigames import router as minigames_router
 from app.api.analytics import router as analytics_router
 from app.api.baselines import router as baselines_router
 from app.api.curriculum import router as curriculum_router
+from app.api.classroom import router as classes_router, videos_router
 
 app = FastAPI(
     title="ELOCIA Backend API",
@@ -44,6 +45,8 @@ app.include_router(scores_router)
 app.include_router(minigames_router)
 app.include_router(analytics_router)
 app.include_router(curriculum_router)
+app.include_router(classes_router)
+app.include_router(videos_router)
 app.include_router(baselines_router, prefix="/baselines", tags=["Baselines & Content Management"])
 
 @app.get("/")

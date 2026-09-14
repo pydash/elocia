@@ -14,12 +14,15 @@ import Practice from './pages/Practice/Practice';
 import PuzzleSign from './pages/Mini Games/Puzzle Sign';
 import SeeItSignIt from './pages/Mini Games/SeeItSignIt';
 import MagicFingers from './pages/Mini Games/MagicFingers';
-import { fetchStudentProgress } from './utils/api';
+import { fetchStudentProgress, fetchCurriculum } from './utils/api';
+import type { Section } from './data/curriculum';
+import { CURRICULUM } from './data/curriculum';
 
 function App() {
   const [currentView, setCurrentView] = useState<'login' | 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers'>('login');
   const [activeStage, setActiveStage] = useState<number | null>(null);
   const [completedStage, setCompletedStage] = useState<number | null>(null);
+  const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [unlockedStages, setUnlockedStages] = useState<number[]>(() => {
     try {
       const stored = localStorage.getItem('elocia_unlocked_stages');
@@ -30,6 +33,15 @@ function App() {
   });
 
   const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false);
+
+  // Sync curriculum dynamically from database
+  useEffect(() => {
+    fetchCurriculum().then(sections => {
+      if (sections && sections.length > 0) {
+        setCurriculumData(sections);
+      }
+    });
+  }, []);
 
   // Sync unlocked stages from database when entering navigation or login
   const refreshProgress = () => {
@@ -130,6 +142,7 @@ function App() {
       {currentView === 'evaluation' && (
         <EvaluationSession
           stageId={activeStage}
+          dynamicCurriculum={curriculumData}
           isPracticeMode={isPracticeMode}
           onExit={() => setCurrentView(isPracticeMode ? 'practice' : 'navigation')}
           onComplete={(completedStageId) => {
@@ -139,13 +152,24 @@ function App() {
               return;
             }
 
-            // In official Learn mode: Unlock next stage if it exists
-            const nextStageId = completedStageId + 1;
-            setUnlockedStages(prev => {
-              const updated = prev.includes(nextStageId) ? prev : [...prev, nextStageId];
-              localStorage.setItem('elocia_unlocked_stages', JSON.stringify(updated));
-              return updated;
-            });
+            // In official Learn mode: Query authoritative backend progress
+            const rawStudent = localStorage.getItem('elocia_current_student');
+            if (rawStudent) {
+              try {
+                const student = JSON.parse(rawStudent);
+                if (student.id) {
+                  fetchStudentProgress(student.id).then(prog => {
+                    if (prog && prog.unlocked_stages && prog.unlocked_stages.length > 0) {
+                      setUnlockedStages(prog.unlocked_stages);
+                      localStorage.setItem('elocia_unlocked_stages', JSON.stringify(prog.unlocked_stages));
+                    }
+                  });
+                }
+              } catch (e) {
+                console.warn('Could not sync progress on stage complete:', e);
+              }
+            }
+
             // Celebrate with the Stage Complete milestone screen
             setCompletedStage(completedStageId);
             setCurrentView('stageComplete');
@@ -157,6 +181,7 @@ function App() {
       {currentView === 'stageComplete' && (
         <StageComplete
           stageId={completedStage}
+          dynamicCurriculum={curriculumData}
           onBackToLearn={() => setCurrentView('navigation')}
           onNavigate={setCurrentView}
         />

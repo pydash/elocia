@@ -22,6 +22,7 @@ export interface Section {
   units: Unit[];
 }
 
+// Fallback canonical offline curriculum matching the backend and database
 export const CURRICULUM: Section[] = [
   {
     id: 1,
@@ -79,6 +80,13 @@ export const CURRICULUM: Section[] = [
               { globalId: 21, name: "A" },
               { globalId: 22, name: "B" },
               { globalId: 23, name: "C" },
+              { globalId: 24, name: "D" },
+              { globalId: 25, name: "E" },
+              { globalId: 26, name: "F" },
+              { globalId: 27, name: "G" },
+              { globalId: 28, name: "H" },
+              { globalId: 29, name: "I" },
+              { globalId: 30, name: "J" },
             ]
           }
         ]
@@ -87,8 +95,9 @@ export const CURRICULUM: Section[] = [
   }
 ];
 
-export function getStageData(stageId: number): Stage | null {
-  for (const section of CURRICULUM) {
+export function getStageData(stageId: number, dynamicCurriculum?: Section[] | null): Stage | null {
+  const source = (dynamicCurriculum && dynamicCurriculum.length > 0) ? dynamicCurriculum : CURRICULUM;
+  for (const section of source) {
     for (const unit of section.units) {
       for (const stage of unit.stages) {
         if (stage.id === stageId) {
@@ -99,4 +108,3 @@ export function getStageData(stageId: number): Stage | null {
   }
   return null;
 }
-
