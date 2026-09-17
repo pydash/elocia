@@ -146,15 +146,21 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
         lowest = min(params, key=params.get)
         recommendation = f"Encourage {student.name} to focus on '{lowest}' during home practice. Try doing the signs together slowly!"
 
-    level = profile.level if profile else (student.level or 1)
-    streak = profile.streak if profile else (student.streak or 0)
+    level = profile.level if profile else 1
+    streak = profile.streak if profile else 0
+
+    avg_score_res = await db.execute(
+        select(func.avg(EvaluationAttempt.score_overall))
+        .where(EvaluationAttempt.student_id == student_id)
+    )
+    avg_score = round(float(avg_score_res.scalar() or 0.0), 2)
 
     return ParentProgressSummary(
         student_id=student.id,
         student_name=student.name,
         level=level,
         streak=streak,
-        avg_score=student.avg_score or 0.0,
+        avg_score=avg_score,
         total_practice_sessions=total_sessions,
         strengths=strengths if strengths else ["Showing great persistence!"],
         areas_to_practice=areas_to_practice if areas_to_practice else ["Reviewing advanced stages"],
