@@ -19,6 +19,8 @@ class Tier4FlagItem(BaseModel):
     student_id: uuid.UUID
     student_name: str
     stage_id: Optional[int]
+    sign_id: Optional[int] = None
+    sign_name: Optional[str] = None
     score_overall: Optional[float]
     score_handshape: Optional[int]
     score_palm_orientation: Optional[int]

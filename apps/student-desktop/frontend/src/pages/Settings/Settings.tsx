@@ -1,10 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
+import { updateUser } from '../../utils/api';
 import './Settings.css';
 
 type View = 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice';
 
-const PRESET_AVATARS = ['\uD83D\uDC31', '\uD83D\uDC36', '\uD83E\uDD8A', '\uD83D\uDC3C', '\uD83D\uDC38', '\uD83E\uDD81', '\uD83D\uDC2F', '\uD83D\uDC28'];
+const PRESET_AVATARS = [
+  '🐱', '🐶', '🦊', '🐼', '🐸', '🦁', '🐯', '🐨',
+  '🐰', '🐻', '🐵', '🦄', '🐧', '🦉', '🐙', '🐬',
+  '🦖', '🐢', '🦋', '🐝', '🚀', '⭐', '🌈', '🎨'
+];
 
 const getStoredAvatar = (): string => {
   if (typeof window === 'undefined' || !window.localStorage) return '';
@@ -15,7 +20,6 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
   // ── Avatar state ──────────────────────────────────────────────────────────
   const [savedAvatar, setSavedAvatar] = useState<string>(getStoredAvatar);
   const [pendingAvatar, setPendingAvatar] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty = pendingAvatar !== '' && pendingAvatar !== savedAvatar;
 
@@ -32,15 +36,6 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
   function selectEmoji(emoji: string) { setPendingAvatar(emoji); }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPendingAvatar(ev.target?.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  }
-
   async function saveAvatar() {
     if (!pendingAvatar) return;
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -55,11 +50,7 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
 
           // Save to backend database
           if (currentStudent.id) {
-            await fetch(`http://localhost:8000/users/${currentStudent.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ emoji: pendingAvatar })
-            });
+            await updateUser(currentStudent.id, { emoji: pendingAvatar });
           }
         } catch (err) {
           console.warn('Failed to sync avatar with student database profile:', err);
@@ -192,24 +183,7 @@ export default function Settings({ onNavigate }: { onNavigate?: (view: View) => 
                     {emoji}
                   </button>
                 ))}
-
-                {/* Upload button */}
-                <button
-                  className="avatar-upload-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {"\uD83D\uDCF7"}<span>Upload Photo</span>
-                </button>
               </div>
-
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
 
               {/* Save button — only shown when there's an unsaved change */}
               {isDirty && (

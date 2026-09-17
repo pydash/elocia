@@ -90,9 +90,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   flex-shrink: 0;
   box-shadow: inset 0 -10px 20px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-avatar-container:hover {
+  transform: scale(1.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.hero-avatar-edit-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: clamp(24px, 2.5vw, 34px);
+  height: clamp(24px, 2.5vw, 34px);
+  background: #FFFFFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(12px, 1.2vw, 16px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 2px solid #7C3AED;
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+.hero-avatar-container:hover .hero-avatar-edit-badge {
+  transform: scale(1.15) rotate(10deg);
 }
 
 .avatar-emoji {

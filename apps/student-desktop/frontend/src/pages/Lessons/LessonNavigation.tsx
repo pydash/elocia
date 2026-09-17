@@ -82,11 +82,11 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
     setSelectedStage(prev => (prev === stageId ? null : stageId));
   };
 
-  const currentSection = curriculumData[0] || CURRICULUM[0];
-  const currentUnit = currentSection.units[0];
+  // Gather all stages across all sections and units dynamically created by the teacher
+  const allStages = curriculumData.flatMap(sec => sec.units.flatMap(u => u.stages));
 
   const selectedStageData = selectedStage 
-    ? currentSection.units.flatMap(u => u.stages).find(s => s.id === selectedStage) 
+    ? allStages.find(s => s.id === selectedStage) 
     : null;
 
   return (
@@ -106,35 +106,39 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
 
         <div className="map-container">
 
-          <div className="section-banner">
-            {currentSection.title}, {currentUnit.title}
-          </div>
+          {curriculumData.map(section => (
+            <div key={section.id} className="section-group">
+              <div className="section-banner">
+                {section.title}
+              </div>
 
-          <div className="stages-path">
-            <div className="path-line"></div>
+              <div className="stages-path">
+                <div className="path-line"></div>
 
-            {currentUnit.stages.map((stage) => {
-              const isLocked = !unlockedStages.includes(stage.id);
-              
-              return (
-                <div
-                  key={stage.id}
-                  className={`stage-card ${isLocked ? 'locked-card' : 'active-card'} ${selectedStage === stage.id ? 'selected' : ''}`}
-                  onClick={() => handleStageClick(stage.id, isLocked)}
-                  role="button"
-                  tabIndex={isLocked ? -1 : 0}
-                >
-                  <div className="stage-text-group">
-                    <span className="stage-label">Stage</span>
-                    <span className="stage-number">{stage.id}</span>
-                  </div>
-                  <div className="icon-container">
-                    {isLocked ? <LockIcon /> : <PlayIcon />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                {section.units.flatMap(u => u.stages).map((stage) => {
+                  const isLocked = !unlockedStages.includes(stage.id);
+                  
+                  return (
+                    <div
+                      key={stage.id}
+                      className={`stage-card ${isLocked ? 'locked-card' : 'active-card'} ${selectedStage === stage.id ? 'selected' : ''}`}
+                      onClick={() => handleStageClick(stage.id, isLocked)}
+                      role="button"
+                      tabIndex={isLocked ? -1 : 0}
+                    >
+                      <div className="stage-text-group">
+                        <span className="stage-label">Stage</span>
+                        <span className="stage-number">{stage.id}</span>
+                      </div>
+                      <div className="icon-container">
+                        {isLocked ? <LockIcon /> : <PlayIcon />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
 
           {selectedStageData && (
             <div className="stage-details-wrapper">

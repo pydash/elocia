@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
 import { ACHIEVEMENTS, loadStudentStats, type StudentStats } from '../../data/achievements';
+import { fetchUserById } from '../../utils/api';
 import './Achievements.css';
 
 const backButtonImg = '/images/Back Button.png';
@@ -32,8 +33,7 @@ export default function Achievements({ onNavigate }: AchievementsProps) {
       try {
         const student = JSON.parse(saved);
         if (student.id) {
-          fetch(`http://localhost:8000/users/${student.id}`)
-            .then(res => res.json())
+          fetchUserById(student.id)
             .then(data => {
               if (data && data.name) {
                 setStats(loadStudentStats(data));

@@ -21,8 +21,11 @@ const star5 = '/images/5 star.png';
 const confettiImg = '/images/Confetti.png';
 const amazingMascot = '/images/Amazing.png';
 
+import type { Section } from '../../data/curriculum';
+
 interface EvaluationSessionProps {
   stageId: number | null;
+  dynamicCurriculum?: Section[] | null;
   isPracticeMode?: boolean;
   onExit: () => void;
   onComplete: (stageId: number) => void;
@@ -73,9 +76,9 @@ const HAND_CONNECTIONS = [
   [0, 17]
 ];
 
-export default function EvaluationSession({ stageId, isPracticeMode = false, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
+export default function EvaluationSession({ stageId, dynamicCurriculum, isPracticeMode = false, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
   const currentStageId = stageId ?? 1;
-  const stageData = getStageData(currentStageId);
+  const stageData = getStageData(currentStageId, dynamicCurriculum);
   const items = stageData?.items || [{ globalId: 1, name: "1" }];
   const totalQuestions = items.length;
 
@@ -220,7 +223,8 @@ export default function EvaluationSession({ stageId, isPracticeMode = false, onE
             saveScore({
               student_id: student.id,
               activity_type: 'evaluation',
-              stage_id: currentItemRef.current?.globalId ?? 0,
+              stage_id: currentStageId,
+              sign_id: currentItemRef.current?.globalId ?? 1,
               attempt_number: failCountRef.current + 1,
               tier_level: currentTierRef.current,
               score_handshape: data.scores.handshape,
@@ -422,7 +426,17 @@ export default function EvaluationSession({ stageId, isPracticeMode = false, onE
       setIsRecording(false);
       setIsEvaluating(true);
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ action: 'evaluate', stageId: currentItem.globalId }));
+        const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+        wsRef.current.send(JSON.stringify({
+          action: 'evaluate',
+          stageId: currentItem.globalId,
+          stageName: currentItem.name,
+          studentId: student.id || '',
+          studentName: student.name || 'Student',
+          attemptNumber: failCountRef.current + 1,
+          tierLevel: currentTierRef.current,
+          activityType: isPracticeModeRef.current ? 'practice' : 'evaluation'
+        }));
       }
     }, 3000);
   };

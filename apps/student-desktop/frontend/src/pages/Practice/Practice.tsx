@@ -3,8 +3,8 @@ import './Practice.css';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import { CURRICULUM } from '../../data/curriculum';
 import type { Section } from '../../data/curriculum';
-import { fetchNeedsPractice, fetchCurriculum, fetchStudentProgress } from '../../utils/api';
-import type { PracticeItem, StudentProgress } from '../../utils/api';
+import { fetchNeedsPractice, fetchCurriculum, fetchStudentProgress, fetchEducationalVideos } from '../../utils/api';
+import type { PracticeItem, StudentProgress, EducationalVideoItem } from '../../utils/api';
 
 // Assuming images are in public/images
 const seeItSignItImg = '/images/See it, Sign it!.png';
@@ -27,6 +27,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
     { sign: '7', stage_id: 1, section_label: 'Section 1, Stage 1', score: 62, color: 'blue' },
   ]);
 
+  const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
 
@@ -38,7 +39,14 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
       }
     });
 
-    // 2. Load student progress & needs-practice
+    // 2. Load educational videos from backend
+    fetchEducationalVideos().then(videos => {
+      if (videos && videos.length > 0) {
+        setEducationalVideos(videos);
+      }
+    });
+
+    // 3. Load student progress & needs-practice
     const rawStudent = localStorage.getItem('elocia_current_student');
     if (rawStudent) {
       try {
@@ -127,32 +135,63 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             </div>
 
             <div className="video-cards-row">
-              {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="video-card">
-                  <div className="video-thumbnail">
-                    <div className="science-placeholder-art">
-                      {/* Using CSS shapes/backgrounds to simulate an illustration */}
-                      <div className="science-doodle dna"></div>
-                      <div className="science-doodle stars"></div>
-                      <div className="science-doodle molecules"></div>
-                      <div className="science-text-container">
-                        <span className="science-text">SCIENCE</span>
-                        <span className="science-sub">PLANETS</span>
+              {educationalVideos.length > 0 ? (
+                educationalVideos.map((video) => (
+                  <div key={video.id} className="video-card">
+                    <div className="video-thumbnail">
+                      {video.thumbnail_url ? (
+                        <img src={video.thumbnail_url} alt={video.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div className="science-placeholder-art">
+                          <div className="science-doodle dna"></div>
+                          <div className="science-doodle stars"></div>
+                          <div className="science-doodle molecules"></div>
+                          <div className="science-text-container">
+                            <span className="science-text">{video.subject.toUpperCase()}</span>
+                            <span className="science-sub">{video.title.toUpperCase()}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="video-info">
+                      <span className="grade-badge">Grade {video.grade_level}</span>
+                      <h3 className="video-title">{video.title}</h3>
+                      <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
+                      <div className="video-divider"></div>
+                      <div className="video-footer">
+                        <svg className="time-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span className="time-text">{video.duration_minutes} min</span>
                       </div>
                     </div>
                   </div>
-                  <div className="video-info">
-                    <span className="grade-badge">Grade 1</span>
-                    <h3 className="video-title">Different Types of<br/>Planets</h3>
-                    <p className="video-desc">Explore the different types of planets in our universe.</p>
-                    <div className="video-divider"></div>
-                    <div className="video-footer">
-                      <svg className="time-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                      <span className="time-text">10 min</span>
+                ))
+              ) : (
+                [1, 2, 3, 4].map((item) => (
+                  <div key={item} className="video-card">
+                    <div className="video-thumbnail">
+                      <div className="science-placeholder-art">
+                        <div className="science-doodle dna"></div>
+                        <div className="science-doodle stars"></div>
+                        <div className="science-doodle molecules"></div>
+                        <div className="science-text-container">
+                          <span className="science-text">SCIENCE</span>
+                          <span className="science-sub">PLANETS</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="video-info">
+                      <span className="grade-badge">Grade 1</span>
+                      <h3 className="video-title">Different Types of<br/>Planets</h3>
+                      <p className="video-desc">Explore the different types of planets in our universe.</p>
+                      <div className="video-divider"></div>
+                      <div className="video-footer">
+                        <svg className="time-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span className="time-text">10 min</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 

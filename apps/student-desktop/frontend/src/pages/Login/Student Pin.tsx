@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { StudentProfile } from './Login';
+import { studentLogin } from '../../utils/api';
 import './Student Pin.css';
 
 const studentPinMascot = '/images/Student Pin Monkey.png';
@@ -37,14 +38,8 @@ export default function PinEntry({ student, onBack, onSuccess }: PinEntryProps) 
     if (newPin.length === PIN_LENGTH) {
       setIsLoading(true);
       try {
-        const res = await fetch('http://localhost:8000/auth/student/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ student_name: student.name, pin: newPin })
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
+        const data = await studentLogin(student.name, newPin);
+        if (data && data.access_token) {
           // Correct PIN!
           onSuccess(data.access_token);
         } else {

@@ -5,8 +5,9 @@ from typing import List
 import uuid
 
 from app.database.connection import get_db
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StudentProfile
 from app.models.session import EvaluationAttempt
+from app.models.baseline import FSLBaseline, CurriculumStage
 from app.schemas.analytics import (
     ClassRadarAnalytics,
     ParameterBreakdown,
@@ -65,15 +66,16 @@ async def get_class_radar_analytics(db: AsyncSession = Depends(get_db)):
 @router.get("/tier4-flags", response_model=List[Tier4FlagItem])
 async def get_tier4_flags(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(EvaluationAttempt, User.name.label("student_name"))
+        select(EvaluationAttempt, User.name.label("student_name"), FSLBaseline.sign_name)
         .join(User, EvaluationAttempt.student_id == User.id)
+        .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
         .where(EvaluationAttempt.tier_level == 4)
         .order_by(EvaluationAttempt.created_at.desc())
     )
     rows = result.all()
 
     flags = []
-    for attempt, student_name in rows:
+    for attempt, student_name, sign_name in rows:
         # Determine which parameter scored lowest
         scores = {
             "Handshape": attempt.score_handshape or 0,
@@ -88,7 +90,9 @@ async def get_tier4_flags(db: AsyncSession = Depends(get_db)):
                 attempt_id=attempt.id,
                 student_id=attempt.student_id,
                 student_name=student_name,
-                stage_id=attempt.stage_id,
+                stage_id=attempt.stage_id_new or attempt.stage_id,
+                sign_id=attempt.sign_id,
+                sign_name=sign_name,
                 score_overall=attempt.score_overall,
                 score_handshape=attempt.score_handshape,
                 score_palm_orientation=attempt.score_palm_orientation,
@@ -102,10 +106,16 @@ async def get_tier4_flags(db: AsyncSession = Depends(get_db)):
 
 @router.get("/parent/{student_id}", response_model=ParentProgressSummary)
 async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    stud_res = await db.execute(select(User).where(User.id == student_id, User.role == UserRole.student))
-    student = stud_res.scalar_one_or_none()
-    if not student:
+    stud_res = await db.execute(
+        select(User, StudentProfile)
+        .outerjoin(StudentProfile, User.id == StudentProfile.student_id)
+        .where(User.id == student_id, User.role == UserRole.student)
+    )
+    row = stud_res.first()
+    if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+    student, profile = row
 
     # Aggregate student stats
     tot_att_res = await db.execute(
@@ -136,11 +146,14 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
         lowest = min(params, key=params.get)
         recommendation = f"Encourage {student.name} to focus on '{lowest}' during home practice. Try doing the signs together slowly!"
 
+    level = profile.level if profile else (student.level or 1)
+    streak = profile.streak if profile else (student.streak or 0)
+
     return ParentProgressSummary(
         student_id=student.id,
         student_name=student.name,
-        level=student.level or 1,
-        streak=student.streak or 0,
+        level=level,
+        streak=streak,
         avg_score=student.avg_score or 0.0,
         total_practice_sessions=total_sessions,
         strengths=strengths if strengths else ["Showing great persistence!"],
@@ -158,7 +171,8 @@ async def get_student_needs_practice(student_id: uuid.UUID, db: AsyncSession = D
     """
     # 1. Fetch recent low-scoring or Tier 4 evaluation attempts
     result = await db.execute(
-        select(EvaluationAttempt)
+        select(EvaluationAttempt, FSLBaseline.sign_name)
+        .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
         .where(
             EvaluationAttempt.student_id == student_id,
             (EvaluationAttempt.passed == False) | (EvaluationAttempt.tier_level >= 3)
@@ -166,21 +180,22 @@ async def get_student_needs_practice(student_id: uuid.UUID, db: AsyncSession = D
         .order_by(EvaluationAttempt.created_at.desc())
         .limit(10)
     )
-    failed_attempts = result.scalars().all()
+    failed_attempts = result.all()
 
     # Color palette matching UI: red, orange, green, blue
     colors = ["red", "orange", "green", "blue"]
 
     cards = []
-    seen_stages = set()
+    seen_signs = set()
 
-    for att in failed_attempts:
-        s_id = att.stage_id or 1
-        if s_id not in seen_stages and len(cards) < 4:
-            seen_stages.add(s_id)
+    for att, sign_name in failed_attempts:
+        sign_label = sign_name if sign_name else f"Sign {att.sign_id or att.stage_id or 1}"
+        s_id = att.stage_id_new or att.stage_id or 1
+        if sign_label not in seen_signs and len(cards) < 4:
+            seen_signs.add(sign_label)
             score_val = round(att.score_overall or 45.0, 1)
             cards.append({
-                "sign": f"Stage {s_id}",
+                "sign": sign_label,
                 "stage_id": s_id,
                 "section_label": f"Section 1, Stage {s_id}",
                 "score": score_val,

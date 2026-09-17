@@ -6,7 +6,8 @@ from datetime import datetime
 class ScoreSaveRequest(BaseModel):
     student_id: uuid.UUID
     activity_type: str = "evaluation"
-    stage_id: Optional[int] = 1
+    stage_id: Optional[int] = None
+    sign_id: Optional[int] = None
     attempt_number: Optional[int] = 1
     tier_level: Optional[int] = 1
     score_handshape: Optional[int] = 0
@@ -23,6 +24,7 @@ class ScoreResponse(BaseModel):
     student_id: uuid.UUID
     activity_type: str
     stage_id: Optional[int]
+    sign_id: Optional[int] = None
     attempt_number: int
     tier_level: int
     score_handshape: Optional[int]

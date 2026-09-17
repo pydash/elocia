@@ -3,7 +3,7 @@ import sys
 import json
 import subprocess
 import shutil
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,9 @@ for d in [PUBLIC_VIDEOS_DIR, BASELINES_DIR, STORAGE_VIDEOS_DIR, STORAGE_BASELINE
 async def upload_baseline_video(
     stage_id: int = Form(...),
     sign_name: str = Form(...),
+    sign_id: Optional[int] = Form(None),
+    stage_id_new: Optional[int] = Form(None),
+    order_index: Optional[int] = Form(None),
     video: UploadFile = File(...),
     db: AsyncSession = Depends(get_db)
 ):
@@ -112,6 +115,7 @@ async def upload_baseline_video(
     fps = extract_result.get("fps", 30.0)
 
     # 5. Upsert baseline record in the database
+    resolved_sign_id = sign_id if sign_id is not None else stage_id
     existing = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id == stage_id))
     baseline_record = existing.scalar_one_or_none()
 
@@ -122,9 +126,18 @@ async def upload_baseline_video(
         baseline_record.hands_detected_frames = hands_detected
         baseline_record.fps = fps
         baseline_record.is_active = True
+        if sign_id is not None:
+            baseline_record.sign_id = sign_id
+        if stage_id_new is not None:
+            baseline_record.stage_id_new = stage_id_new
+        if order_index is not None:
+            baseline_record.order_index = order_index
     else:
         baseline_record = FSLBaseline(
             stage_id=stage_id,
+            sign_id=resolved_sign_id,
+            stage_id_new=stage_id_new,
+            order_index=order_index,
             sign_name=sign_name,
             video_filename=video_filename,
             total_frames=total_frames,
@@ -140,6 +153,8 @@ async def upload_baseline_video(
         success=True,
         message=f"Successfully extracted {total_frames} frames from '{video_filename}'.",
         stage_id=stage_id,
+        sign_id=baseline_record.sign_id,
+        stage_id_new=baseline_record.stage_id_new,
         sign_name=sign_name,
         total_frames=total_frames,
         hands_detected_frames=hands_detected,
@@ -150,7 +165,7 @@ async def upload_baseline_video(
 async def list_baselines(db: AsyncSession = Depends(get_db)):
     """List all registered FSL sign baselines."""
     result = await db.execute(
-        select(FSLBaseline).where(FSLBaseline.is_active == True).order_by(FSLBaseline.stage_id.asc())
+        select(FSLBaseline).where(FSLBaseline.is_active == True).order_by(FSLBaseline.sign_id.asc().nulls_last(), FSLBaseline.stage_id.asc())
     )
     return result.scalars().all()
 

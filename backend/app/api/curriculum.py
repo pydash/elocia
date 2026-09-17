@@ -2,114 +2,112 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from app.database.connection import get_db
-from app.models.baseline import FSLBaseline
-from app.models.session import EvaluationAttempt
-from app.models.user import User
+from app.models.baseline import FSLBaseline, CurriculumStage
+from app.models.session import EvaluationAttempt, StudentStageProgress
+from app.models.user import User, StudentProfile
 from typing import List, Optional, Dict, Any
 import uuid
 
 router = APIRouter(tags=["Curriculum & Progression"])
 
-DEFAULT_CURRICULUM = [
-    {
-        "id": 1,
-        "title": "SECTION 1",
-        "units": [
-            {
-                "id": 1,
-                "title": "UNIT 1",
-                "stages": [
-                    {
-                        "id": 1,
-                        "title": "Numbers 1-10",
-                        "description": "Let's dive into sign language using numbers 1 to 10.",
-                        "items": [
-                            {"globalId": 1, "name": "1"},
-                            {"globalId": 2, "name": "2"},
-                            {"globalId": 3, "name": "3"},
-                            {"globalId": 4, "name": "4"},
-                            {"globalId": 5, "name": "5"},
-                            {"globalId": 6, "name": "6"},
-                            {"globalId": 7, "name": "7"},
-                            {"globalId": 8, "name": "8"},
-                            {"globalId": 9, "name": "9"},
-                            {"globalId": 10, "name": "10"}
-                        ]
-                    },
-                    {
-                        "id": 2,
-                        "title": "Numbers 11-20",
-                        "description": "Keep counting with numbers 11 to 20.",
-                        "items": [
-                            {"globalId": 11, "name": "11"},
-                            {"globalId": 12, "name": "12"},
-                            {"globalId": 13, "name": "13"},
-                            {"globalId": 14, "name": "14"},
-                            {"globalId": 15, "name": "15"},
-                            {"globalId": 16, "name": "16"},
-                            {"globalId": 17, "name": "17"},
-                            {"globalId": 18, "name": "18"},
-                            {"globalId": 19, "name": "19"},
-                            {"globalId": 20, "name": "20"}
-                        ]
-                    }
-                ]
-            },
-            {
-                "id": 2,
-                "title": "UNIT 2",
-                "stages": [
-                    {
-                        "id": 3,
-                        "title": "Alphabet A-J",
-                        "description": "Learn the first letters of the alphabet.",
-                        "items": [
-                            {"globalId": 21, "name": "A"},
-                            {"globalId": 22, "name": "B"},
-                            {"globalId": 23, "name": "C"}
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
-]
-
 @router.get("/curriculum")
 async def get_curriculum(db: AsyncSession = Depends(get_db)):
-    curriculum = [dict(sec) for sec in DEFAULT_CURRICULUM]
-
+    """
+    Returns curriculum structure built dynamically from curriculum_stages and fsl_baselines.
+    """
     try:
-        result = await db.execute(
+        # 1. Fetch all active curriculum stages
+        stages_res = await db.execute(
+            select(CurriculumStage)
+            .where(CurriculumStage.is_active == True)
+            .order_by(CurriculumStage.stage_number.asc())
+        )
+        stages = stages_res.scalars().all()
+
+        # 2. Fetch all active baselines
+        baselines_res = await db.execute(
             select(FSLBaseline)
             .where(FSLBaseline.is_active == True)
-            .order_by(FSLBaseline.stage_id)
+            .order_by(FSLBaseline.order_index.asc().nulls_last(), FSLBaseline.sign_id.asc().nulls_last())
         )
-        baselines = result.scalars().all()
+        baselines = baselines_res.scalars().all()
 
-        custom_stages = []
+        # Group baselines by stage_id_new
+        baselines_by_stage: Dict[int, List[Dict[str, Any]]] = {}
+        custom_baselines: List[Dict[str, Any]] = []
+
         for b in baselines:
-            if b.stage_id > 3:
-                custom_stages.append({
-                    "id": b.stage_id,
-                    "title": f"FSL Sign: {b.sign_name}",
-                    "description": f"Custom stage created by teacher for sign '{b.sign_name}'.",
-                    "items": [
-                        {"globalId": 1000 + b.stage_id, "name": b.sign_name}
-                    ]
-                })
+            if b.sign_id is None or b.sign_id == 0:
+                continue
+            item = {
+                "globalId": b.sign_id,
+                "name": b.sign_name
+            }
+            if b.stage_id_new is not None:
+                if b.stage_id_new not in baselines_by_stage:
+                    baselines_by_stage[b.stage_id_new] = []
+                baselines_by_stage[b.stage_id_new].append(item)
+            else:
+                # Baselines without a standard stage (custom/unassigned)
+                custom_baselines.append(item)
 
-        if custom_stages:
-            curriculum[0]["units"].append({
-                "id": 3,
-                "title": "UNIT 3 (Teacher Custom Signs)",
-                "stages": custom_stages
+        # Build nested section -> unit -> stage hierarchy
+        sections_map: Dict[int, Dict[str, Any]] = {}
+
+        for st in stages:
+            sec_num = st.section_number
+            if sec_num not in sections_map:
+                sections_map[sec_num] = {
+                    "id": sec_num,
+                    "title": st.section_title,
+                    "units": []
+                }
+
+            sec = sections_map[sec_num]
+            # Find or create unit
+            unit = next((u for u in sec["units"] if u["id"] == st.unit_number), None)
+            if not unit:
+                unit = {
+                    "id": st.unit_number,
+                    "title": st.unit_title,
+                    "stages": []
+                }
+                sec["units"].append(unit)
+
+            unit["stages"].append({
+                "id": st.stage_number,
+                "title": st.title,
+                "description": st.description or "",
+                "items": baselines_by_stage.get(st.id, [])
             })
 
-    except Exception as e:
-        print(f"Curriculum DB warning: {e}")
+        # Sort sections and units
+        curriculum = [sections_map[k] for k in sorted(sections_map.keys())]
 
-    return {"sections": curriculum}
+        # Add teacher custom signs if present
+        if custom_baselines:
+            custom_stages = [
+                {
+                    "id": 1000 + idx,
+                    "title": f"FSL Sign: {cb['name']}",
+                    "description": f"Custom sign '{cb['name']}'",
+                    "items": [cb]
+                }
+                for idx, cb in enumerate(custom_baselines)
+            ]
+            if curriculum:
+                curriculum[0]["units"].append({
+                    "id": 99,
+                    "title": "Teacher Custom Signs",
+                    "stages": custom_stages
+                })
+
+        return {"sections": curriculum}
+
+    except Exception as e:
+        # Fallback in case of DB error
+        print(f"Curriculum DB warning: {e}")
+        return {"sections": []}
 
 
 @router.get("/users/{student_id}/progress")
@@ -124,58 +122,59 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
-    attempts_res = await db.execute(
-        select(EvaluationAttempt)
-        .where(EvaluationAttempt.student_id == stud_uuid)
-        .order_by(EvaluationAttempt.stage_id, desc(EvaluationAttempt.score_overall))
+    profile_res = await db.execute(select(StudentProfile).where(StudentProfile.student_id == stud_uuid))
+    profile = profile_res.scalar_one_or_none()
+
+    # Query progression from student_stage_progress (source of truth)
+    prog_res = await db.execute(
+        select(StudentStageProgress, CurriculumStage)
+        .join(CurriculumStage, StudentStageProgress.stage_id == CurriculumStage.id)
+        .where(StudentStageProgress.student_id == stud_uuid)
+        .order_by(CurriculumStage.stage_number.asc())
     )
-    attempts = attempts_res.scalars().all()
+    rows = prog_res.all()
 
-    stage_scores: Dict[int, float] = {}
-    passed_stages = set()
-
-    for att in attempts:
-        if att.stage_id is not None:
-            score = att.score_overall or 0.0
-            if att.stage_id not in stage_scores or score > stage_scores[att.stage_id]:
-                stage_scores[att.stage_id] = score
-            if att.passed or score >= 60.0:
-                passed_stages.add(att.stage_id)
-
-    unlocked_stages = [1]
-    max_evaluated_stage = max(stage_scores.keys()) if stage_scores else 1
-    for s in range(1, max_evaluated_stage + 2):
-        if s in passed_stages:
-            next_stage = s + 1
-            if next_stage not in unlocked_stages:
-                unlocked_stages.append(next_stage)
-
-    def calculate_stars(score: float) -> int:
-        if score >= 90: return 5
-        if score >= 75: return 4
-        if score >= 60: return 3
-        if score >= 40: return 2
-        if score > 0: return 1
-        return 0
-
+    unlocked_stages = []
     stage_progress = []
-    for s_id in sorted(unlocked_stages):
-        best_score = stage_scores.get(s_id, 0.0)
+
+    for ssp, stage in rows:
+        if ssp.unlocked:
+            unlocked_stages.append(stage.stage_number)
         stage_progress.append({
-            "stage_id": s_id,
-            "unlocked": True,
-            "passed": s_id in passed_stages,
-            "best_score": round(best_score, 1),
-            "stars": calculate_stars(best_score)
+            "stage_id": stage.stage_number,
+            "unlocked": ssp.unlocked,
+            "passed": ssp.passed,
+            "best_score": round(float(ssp.best_score or 0.0), 1),
+            "stars": ssp.stars
         })
+
+    # If student has no unlocked stages yet, dynamically unlock the first active curriculum stage
+    if not unlocked_stages:
+        first_st_res = await db.execute(
+            select(CurriculumStage)
+            .where(CurriculumStage.is_active == True)
+            .order_by(CurriculumStage.stage_number.asc())
+            .limit(1)
+        )
+        first_st = first_st_res.scalar_one_or_none()
+        default_stage_num = first_st.stage_number if first_st else 1
+        unlocked_stages = [default_stage_num]
+        stage_progress.append({
+            "stage_id": default_stage_num,
+            "unlocked": True,
+            "passed": False,
+            "best_score": 0.0,
+            "stars": 0
+        })
+
+    streak = profile.streak if profile else (user.streak or 0)
 
     return {
         "student_id": student_id,
         "student_name": user.name,
         "unlocked_stages": sorted(unlocked_stages),
         "stages": stage_progress,
-        "total_signs_mastered": user.signs_mastered or len(passed_stages),
-        "current_streak": user.streak or 0,
+        "total_signs_mastered": user.signs_mastered or 0,
+        "current_streak": streak,
         "avg_score": user.avg_score or 0.0
     }
-
