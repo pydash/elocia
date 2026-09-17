@@ -32,15 +32,7 @@ async def create_student(data: StudentCreate, db: AsyncSession = Depends(get_db)
     student = User(
         id=stud_id,
         name=data.name,
-        role=UserRole.student,
-        # Legacy columns populated for backward-compatibility
-        pin=data.pin,
-        color=data.color or "#3B82F6",
-        emoji=data.emoji or "👦",
-        grade_level=grade,
-        student_number=next_num,
-        student_code=code,
-        parent_id=data.parent_id
+        role=UserRole.student
     )
     db.add(student)
 
@@ -128,7 +120,7 @@ async def get_students(db: AsyncSession = Depends(get_db)):
             "student_code": sp.student_code or f"G{sp.grade_level or 1}-01",
             "level": sp.level,
             "streak": sp.streak,
-            "avg_score": u.avg_score
+            "avg_score": 0.0
         }
         for u, sp in rows
     ]
@@ -153,16 +145,16 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
                 name=u.name,
                 role=u.role,
                 is_active=u.is_active,
-                color=sp.color if sp else u.color,
-                emoji=sp.emoji if sp else u.emoji,
-                grade_level=sp.grade_level if sp else (u.grade_level or 1),
-                student_number=sp.student_number if sp else u.student_number,
-                student_code=sp.student_code if sp else u.student_code,
-                level=sp.level if sp else u.level,
-                streak=sp.streak if sp else u.streak,
-                avg_score=u.avg_score or 0.0,
-                signs_mastered=u.signs_mastered or 0,
-                stages_complete=u.stages_complete or 0,
+                color=sp.color if sp else None,
+                emoji=sp.emoji if sp else None,
+                grade_level=sp.grade_level if sp else 1,
+                student_number=sp.student_number if sp else None,
+                student_code=sp.student_code if sp else None,
+                level=sp.level if sp else 1,
+                streak=sp.streak if sp else 0,
+                avg_score=0.0,
+                signs_mastered=0,
+                stages_complete=0,
                 total_xp=sp.total_xp if sp else 0,
                 created_at=u.created_at
             )
@@ -202,16 +194,16 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         name=user.name,
         role=user.role,
         is_active=user.is_active,
-        color=profile.color if profile else user.color,
-        emoji=profile.emoji if profile else user.emoji,
-        grade_level=profile.grade_level if profile else (user.grade_level or 1),
-        student_number=profile.student_number if profile else user.student_number,
-        student_code=profile.student_code if profile else user.student_code,
-        level=profile.level if profile else user.level,
-        streak=profile.streak if profile else user.streak,
-        avg_score=user.avg_score or 0.0,
-        signs_mastered=user.signs_mastered or 0,
-        stages_complete=user.stages_complete or 0,
+        color=profile.color if profile else None,
+        emoji=profile.emoji if profile else None,
+        grade_level=profile.grade_level if profile else 1,
+        student_number=profile.student_number if profile else None,
+        student_code=profile.student_code if profile else None,
+        level=profile.level if profile else 1,
+        streak=profile.streak if profile else 0,
+        avg_score=0.0,
+        signs_mastered=0,
+        stages_complete=0,
         total_xp=profile.total_xp if profile else computed_xp,
         created_at=user.created_at
     )
@@ -237,26 +229,14 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
     if profile:
         if data.pin is not None:
             profile.pin = data.pin
-            user.pin = data.pin
         if data.color is not None:
             profile.color = data.color
-            user.color = data.color
         if data.emoji is not None:
             profile.emoji = data.emoji
-            user.emoji = data.emoji
         if data.grade_level is not None:
             profile.grade_level = data.grade_level
-            user.grade_level = data.grade_level
         if data.student_code is not None:
             profile.student_code = data.student_code
-            user.student_code = data.student_code
-    else:
-        if data.pin is not None:
-            user.pin = data.pin
-        if data.color is not None:
-            user.color = data.color
-        if data.emoji is not None:
-            user.emoji = data.emoji
 
     await db.commit()
     await db.refresh(user)
@@ -268,16 +248,16 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
         name=user.name,
         role=user.role,
         is_active=user.is_active,
-        color=profile.color if profile else user.color,
-        emoji=profile.emoji if profile else user.emoji,
-        grade_level=profile.grade_level if profile else (user.grade_level or 1),
-        student_number=profile.student_number if profile else user.student_number,
-        student_code=profile.student_code if profile else user.student_code,
-        level=profile.level if profile else user.level,
-        streak=profile.streak if profile else user.streak,
-        avg_score=user.avg_score or 0.0,
-        signs_mastered=user.signs_mastered or 0,
-        stages_complete=user.stages_complete or 0,
+        color=profile.color if profile else None,
+        emoji=profile.emoji if profile else None,
+        grade_level=profile.grade_level if profile else 1,
+        student_number=profile.student_number if profile else None,
+        student_code=profile.student_code if profile else None,
+        level=profile.level if profile else 1,
+        streak=profile.streak if profile else 0,
+        avg_score=0.0,
+        signs_mastered=0,
+        stages_complete=0,
         total_xp=profile.total_xp if profile else 0,
         created_at=user.created_at
     )

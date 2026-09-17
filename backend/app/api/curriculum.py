@@ -167,14 +167,31 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
             "stars": 0
         })
 
-    streak = profile.streak if profile else (user.streak or 0)
+    streak = profile.streak if profile else 0
+
+    # Total signs mastered (Tier 1 passes)
+    mastered_res = await db.execute(
+        select(func.count(func.distinct(EvaluationAttempt.sign_id)))
+        .where(
+            EvaluationAttempt.student_id == student_id,
+            EvaluationAttempt.passed == True,
+            EvaluationAttempt.tier_level == 1
+        )
+    )
+    total_signs_mastered = mastered_res.scalar() or 0
+
+    avg_res = await db.execute(
+        select(func.avg(EvaluationAttempt.score_overall))
+        .where(EvaluationAttempt.student_id == student_id)
+    )
+    avg_score = round(float(avg_res.scalar() or 0.0), 2)
 
     return {
         "student_id": student_id,
         "student_name": user.name,
         "unlocked_stages": sorted(unlocked_stages),
         "stages": stage_progress,
-        "total_signs_mastered": user.signs_mastered or 0,
+        "total_signs_mastered": total_signs_mastered,
         "current_streak": streak,
-        "avg_score": user.avg_score or 0.0
+        "avg_score": avg_score
     }

@@ -25,8 +25,8 @@ async def student_login(data: StudentLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid student name or PIN")
     
     student, profile = row
-    # Verify PIN against StudentProfile as source of truth, fallback to User.pin for backward safety
-    profile_pin = profile.pin if profile and profile.pin else student.pin
+    # Verify PIN against StudentProfile as source of truth
+    profile_pin = profile.pin if profile else None
     if profile_pin != data.pin:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid student name or PIN")
     

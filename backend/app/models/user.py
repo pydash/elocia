@@ -22,21 +22,6 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Legacy fields maintained for backward compatibility (non-destructive)
-    pin = Column(String, nullable=True)
-    color = Column(String, nullable=True)
-    emoji = Column(String, nullable=True)
-    parent_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-
-    streak = Column(Integer, default=0)
-    level = Column(Integer, default=1)
-    grade_level = Column(Integer, default=1)
-    student_number = Column(Integer, nullable=True)
-    student_code = Column(String(20), unique=True, index=True, nullable=True)
-    signs_mastered = Column(Integer, default=0)
-    avg_score = Column(Float, default=0.0)
-    stages_complete = Column(Integer, default=0)
-
     username = Column(String, unique=True, nullable=True)
     password_hash = Column(String, nullable=True)
 

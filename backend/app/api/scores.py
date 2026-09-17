@@ -141,20 +141,13 @@ async def save_score(
     user_res = await db.execute(select(User).where(User.id == stud_uuid))
     user = user_res.scalar_one_or_none()
 
-    if user or profile:
+    if profile:
         now = datetime.utcnow()
         # Streak handling
-        last_date = (profile.updated_at if profile else user.updated_at)
+        last_date = profile.updated_at
         today_date = now.date()
         if passed and (last_date is None or last_date.date() != today_date):
-            if profile:
-                profile.streak = (profile.streak or 0) + 1
-            if user:
-                user.streak = (user.streak or 0) + 1
-
-        # Signs mastered (Tier 1 passes)
-        if passed and tier_level == 1 and user:
-            user.signs_mastered = (user.signs_mastered or 0) + 1
+            profile.streak = (profile.streak or 0) + 1
 
         # Calculate live total XP
         eval_xp_res = await db.execute(
@@ -172,21 +165,9 @@ async def save_score(
         total_xp = int(total_eval_xp + total_game_xp)
         new_lvl = compute_level_from_xp(total_xp)
 
-        if profile:
-            profile.total_xp = total_xp
-            profile.level = new_lvl
-            profile.updated_at = now
-        if user:
-            user.level = new_lvl
-
-        # Recalculate student avg_score
-        avg_res = await db.execute(
-            select(func.avg(EvaluationAttempt.score_overall))
-            .where(EvaluationAttempt.student_id == stud_uuid)
-        )
-        avg_val = avg_res.scalar()
-        if avg_val is not None and user:
-            user.avg_score = round(float(avg_val), 2)
+        profile.total_xp = total_xp
+        profile.level = new_lvl
+        profile.updated_at = now
 
     # 4. Curriculum Progression & Stage Unlocking Rule
     # Only applies to official 'evaluation' activity with an assigned stage_id_new
