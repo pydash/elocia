@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import List, Optional
@@ -34,6 +34,22 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
     await db.commit()
     await db.refresh(config)
     return config
+
+@router.get("/config", response_model=List[MiniGameConfigResponse])
+async def list_all_minigame_configs(
+    game_type: Optional[GameType] = Query(None, description="Optional filter by game type"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Fetch all active mini-game configurations across all games.
+    Used by the Teacher Lessons Web Portal to display all created games.
+    """
+    query = select(MiniGameConfig).where(MiniGameConfig.is_active == True)
+    if game_type:
+        query = query.where(MiniGameConfig.game_type == game_type)
+    query = query.order_by(MiniGameConfig.game_type.asc(), MiniGameConfig.difficulty.asc(), MiniGameConfig.created_at.asc())
+    result = await db.execute(query)
+    return result.scalars().all()
 
 @router.get("/config/{game_type}", response_model=List[MiniGameConfigResponse])
 async def get_minigame_configs(game_type: GameType, db: AsyncSession = Depends(get_db)):
