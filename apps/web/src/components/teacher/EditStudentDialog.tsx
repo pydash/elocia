@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Button from "../Button";
 import Input from "../Input ";
-import type { CreateStudentPayload } from "@/services/students";
+import type { Student } from "@/interfaces/student.interface";
+import type { UpdateStudentPayload } from "@/services/students";
 
-type AddStudentDialogProps = {
-  onSave: (student: CreateStudentPayload) => Promise<unknown>;
+type EditStudentDialogProps = {
+  student: Student;
+  onSave: (payload: UpdateStudentPayload) => Promise<unknown>;
 };
 
 type StudentForm = {
@@ -13,39 +15,44 @@ type StudentForm = {
   color: string;
   emoji: string;
   grade_level: number;
-  parent_id: string;
+  student_code: string;
+  is_active: boolean;
 };
 
-const initialStudent: StudentForm = {
-  name: "",
+const getInitialForm = (student: Student): StudentForm => ({
+  name: student.name,
   pin: "",
-  color: "#3B82F6",
-  emoji: "👦",
-  grade_level: 1,
-  parent_id: "",
-};
+  color: student.color,
+  emoji: student.emoji,
+  grade_level: student.grade_level,
+  student_code: student.student_code,
+  is_active: student.is_active ?? true,
+});
 
-export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
+export default function EditStudentDialog({
+  student,
+  onSave,
+}: EditStudentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [student, setStudent] = useState(initialStudent);
+  const [form, setForm] = useState(() => getInitialForm(student));
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setForm(getInitialForm(student));
+  }, [student]);
 
   const closeDialog = () => {
     if (isSaving) return;
     setIsOpen(false);
-    setStudent(initialStudent);
     setError("");
   };
 
-  const updateStudent = <K extends keyof StudentForm>(
+  const updateField = <K extends keyof StudentForm>(
     field: K,
     value: StudentForm[K],
   ) => {
-    setStudent((currentStudent) => ({
-      ...currentStudent,
-      [field]: value,
-    }));
+    setForm((currentForm) => ({ ...currentForm, [field]: value }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -54,14 +61,12 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
     setError("");
 
     try {
-      const { parent_id, ...studentDetails } = student;
-      await onSave(
-        parent_id ? { ...studentDetails, parent_id } : studentDetails,
-      );
+      const { pin, ...studentDetails } = form;
+      await onSave(pin ? { ...studentDetails, pin } : studentDetails);
       setIsOpen(false);
-      setStudent(initialStudent);
+      setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create student");
+      setError(err instanceof Error ? err.message : "Failed to update student");
     } finally {
       setIsSaving(false);
     }
@@ -71,10 +76,10 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
     <>
       <Button
         type="button"
-        className="whitespace-nowrap"
+        className="shrink-0 gap-2"
         onClick={() => setIsOpen(true)}
       >
-        Add Student
+        Edit Profile
       </Button>
 
       {isOpen && (
@@ -89,101 +94,102 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
             className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="add-student-title"
+            aria-labelledby="edit-student-title"
           >
             <div className="mb-6">
-              <h2 id="add-student-title" className="heading-3 text-(--black)">
-                Add Student
+              <h2 id="edit-student-title" className="heading-3 text-(--black)">
+                Edit Profile
               </h2>
               <p className="paragraph-2 mt-2 text-(--ghost)">
-                Create a student account.
+                Update the student profile details.
               </p>
             </div>
 
             <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-              <label className="caption text-(--black)" htmlFor="student-name">
+              <label className="caption text-(--black)" htmlFor="edit-name">
                 Name
                 <Input
-                  id="student-name"
+                  id="edit-name"
                   className="mt-2"
-                  value={student.name}
-                  onChange={(event) =>
-                    updateStudent("name", event.target.value)
-                  }
+                  value={form.name}
+                  onChange={(event) => updateField("name", event.target.value)}
                   required
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-pin">
-                PIN
+              <label className="caption text-(--black)" htmlFor="edit-pin">
+                New PIN
                 <Input
-                  id="student-pin"
+                  id="edit-pin"
                   className="mt-2"
                   type="password"
                   inputMode="numeric"
-                  minLength={4}
-                  maxLength={4}
-                  pattern="[0-9]{4}"
-                  value={student.pin}
-                  onChange={(event) => updateStudent("pin", event.target.value)}
-                  required
+                  value={form.pin}
+                  onChange={(event) => updateField("pin", event.target.value)}
+                  placeholder="Leave blank to keep current PIN"
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-color">
+              <label className="caption text-(--black)" htmlFor="edit-color">
                 Avatar color
                 <Input
-                  id="student-color"
+                  id="edit-color"
                   className="mt-2"
-                  type="color"
-                  value={student.color}
-                  onChange={(event) =>
-                    updateStudent("color", event.target.value)
-                  }
+                  value={form.color}
+                  onChange={(event) => updateField("color", event.target.value)}
                   required
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-emoji">
+              <label className="caption text-(--black)" htmlFor="edit-emoji">
                 Avatar emoji
                 <Input
-                  id="student-emoji"
+                  id="edit-emoji"
                   className="mt-2"
-                  value={student.emoji}
-                  onChange={(event) =>
-                    updateStudent("emoji", event.target.value)
-                  }
+                  value={form.emoji}
+                  onChange={(event) => updateField("emoji", event.target.value)}
                   required
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-grade">
+              <label className="caption text-(--black)" htmlFor="edit-grade">
                 Grade level
                 <Input
-                  id="student-grade"
+                  id="edit-grade"
                   className="mt-2"
                   type="number"
                   min="1"
                   max="12"
-                  value={student.grade_level}
+                  value={form.grade_level}
                   onChange={(event) =>
-                    updateStudent("grade_level", Number(event.target.value))
+                    updateField("grade_level", Number(event.target.value))
                   }
                   required
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-parent">
-                Parent ID (optional)
+              <label className="caption text-(--black)" htmlFor="edit-code">
+                Student code
                 <Input
-                  id="student-parent"
+                  id="edit-code"
                   className="mt-2"
-                  value={student.parent_id}
+                  value={form.student_code}
                   onChange={(event) =>
-                    updateStudent("parent_id", event.target.value)
+                    updateField("student_code", event.target.value)
                   }
-                  placeholder="Parent UUID"
+                  required
                 />
+              </label>
+
+              <label className="flex items-center gap-2 caption text-(--black)">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(event) =>
+                    updateField("is_active", event.target.checked)
+                  }
+                />
+                Active student
               </label>
 
               {error && (

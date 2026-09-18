@@ -4,9 +4,28 @@ import StudentCard from "../../components/teacher/StudentCard";
 import AddStudentDialog from "../../components/teacher/AddStudentDialog";
 import { Search } from "lucide-react";
 import { useGetStudents } from "@/hooks/useStudents";
+import { useMemo, useState } from "react";
 
 export default function TeacherStudentsPage() {
-  const { students, loading, error } = useGetStudents();
+  const { students, loading, error, addStudent } = useGetStudents();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredStudents = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return students;
+    }
+
+    return students.filter((student) =>
+      [
+        student.name,
+        student.student_code,
+        student.student_number,
+        student.grade_level,
+      ].some((value) => String(value).toLowerCase().includes(normalizedQuery)),
+    );
+  }, [searchQuery, students]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -23,17 +42,20 @@ export default function TeacherStudentsPage() {
         <div className="flex justify-between items-center">
           <h2 className="heading-2 text-(--black)">Student Roster</h2>
           <div className="flex gap-2">
-            <Input leadingIcon={Search} placeholder="Search students..." />
-            <AddStudentDialog
-              onSave={(newStudent) =>
-                console.log("New student added:", newStudent)
-              }
+            <Input
+              leadingIcon={Search}
+              placeholder="Search students..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              aria-label="Search students"
             />
+            <AddStudentDialog onSave={addStudent} />
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-          {students.map((student) => (
+          {filteredStudents.map((student) => (
             <StudentCard
+              key={student.id}
               id={student.id}
               name={student.name}
               color={student.color}
@@ -44,6 +66,11 @@ export default function TeacherStudentsPage() {
             />
           ))}
         </div>
+        {filteredStudents.length === 0 && (
+          <p className="mt-8 text-center paragraph-2 text-(--ghost)">
+            No students found.
+          </p>
+        )}
       </section>
     </div>
   );
