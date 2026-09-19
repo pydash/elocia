@@ -48,29 +48,6 @@ export default function StudentCard({
       <p className="paragraph-2 text-(--ghost)">
         <strong>Student Code:</strong> {student_code}
       </p>
-      <div className="flex w-full items-center justify-around gap-3">
-        <Button
-          className="whitespace-nowrap rounded-full! px-3!"
-          onClick={(event: MouseEvent<HTMLButtonElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onResetPin?.(id);
-          }}
-        >
-          Reset PIN
-        </Button>
-        <Button
-          className="whitespace-nowrap rounded-full! px-3!"
-          variant="destructive"
-          onClick={(event: MouseEvent<HTMLButtonElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onDeactivate?.(id);
-          }}
-        >
-          Deactivate
-        </Button>
-      </div>
     </Link>
   );
 }

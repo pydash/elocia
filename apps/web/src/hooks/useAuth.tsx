@@ -29,12 +29,12 @@ export function useAdultLogin() {
   };
 }
 
-export function useAdultLogout() {
+export function useAdultLogout(redirectTo = "/") {
   const navigate = useNavigate();
 
   const logout = (): void => {
     adultLogout();
-    navigate("/", { replace: true });
+    navigate(redirectTo, { replace: true });
   };
 
   return {

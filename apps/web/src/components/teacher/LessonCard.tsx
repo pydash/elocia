@@ -4,7 +4,7 @@ import Separator from "../Separator";
 import { Link } from "react-router";
 
 type LessonCardProps = {
-  id: number;
+  id: string | number;
   imageUrl: string;
   title: string;
   description: string;

@@ -9,6 +9,7 @@ import TeacherLoginPage from "./pages/teacher/LoginPage.tsx";
 import TeacherStudentsPage from "./pages/teacher/StudentsPage.tsx";
 import TeacherStudentProfilePage from "./pages/teacher/StudentProfilePage.tsx";
 import TeacherLessonsPage from "./pages/teacher/LessonsPage.tsx";
+import TeacherViewLessonPage from "./pages/teacher/ViewActivityPage.tsx";
 import {
   TeacherAddLessonStepOnePage,
   TeacherAddLessonStepTwoPage,
@@ -54,13 +55,11 @@ function App() {
         <Route path="/teacher" element={<TeacherLayout />}>
           {/* Students */}
           <Route path="students" index element={<TeacherStudentsPage />} />
-          <Route
-            path="students/:username"
-            element={<TeacherStudentProfilePage />}
-          />
+          <Route path="students/:id" element={<TeacherStudentProfilePage />} />
 
           {/* Lessons */}
           <Route path="lessons" element={<TeacherLessonsPage />} />
+          <Route path="lessons/:id" element={<TeacherViewLessonPage />} />
           <Route path="lessons/new" element={<TeacherAddLessonLayout />}>
             <Route
               index

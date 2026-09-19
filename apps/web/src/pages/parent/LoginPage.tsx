@@ -2,8 +2,25 @@ import { Link } from "react-router-dom";
 import Field from "../../components/Field";
 import Button from "../../components/Button";
 import { User, Lock } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { useAdultLogin } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export default function ParentLoginPage() {
+  const navigate = useNavigate();
+  const { login, loading, error } = useAdultLogin();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const response = await login(username, password);
+
+    if (response) {
+      navigate("/parent/home");
+    }
+  };
+
   return (
     <>
       <main className="flex h-screen w-screen">
@@ -44,21 +61,27 @@ export default function ParentLoginPage() {
               </p>
             </div>
 
-            <form className="flex flex-col items-end gap-4">
+            <form
+              className="flex flex-col items-end gap-4"
+              onSubmit={handleSubmit}
+            >
               <div className="w-full">
                 <label
-                  htmlFor="email"
+                  htmlFor="username"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Email
+                  Username
                 </label>
 
                 <Field
                   leadingIcon={User}
-                  type="email"
-                  id="email"
-                  name="email"
-                  placeholder="you@example.com"
+                  type="text"
+                  id="username"
+                  name="username"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  required
                 />
               </div>
 
@@ -76,6 +99,9 @@ export default function ParentLoginPage() {
                   id="password"
                   name="password"
                   placeholder="********"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
                 />
 
                 <div className="mt-1 flex justify-end">
@@ -88,8 +114,17 @@ export default function ParentLoginPage() {
                 </div>
               </div>
 
+              {error && (
+                <div
+                  role="alert"
+                  className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-(--danger)"
+                >
+                  {error}
+                </div>
+              )}
+
               <Button type="submit" className="w-full">
-                Login
+                {loading ? "Logging in..." : "Login"}
               </Button>
             </form>
           </div>

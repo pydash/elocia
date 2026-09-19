@@ -1,6 +1,5 @@
 import Avatar from "@/components/Avatar";
-import { Pencil, GraduationCap } from "lucide-react";
-import Button from "../Button";
+import { GraduationCap } from "lucide-react";
 import Separator from "../Separator";
 
 type StudentBannerProps = {
@@ -16,7 +15,10 @@ export default function StudentBanner({ name, grade }: StudentBannerProps) {
       </span>
       <Separator />
       <div className="flex items-center gap-4">
-        <Avatar gender="male" />
+        <Avatar
+          emoji={name.charAt(0).toUpperCase() || "-"}
+          color="var(--primary)"
+        />
 
         <div className="min-w-0 flex-1 space-y-2">
           <h2 className="heading-2 text-(--black)">{name}</h2>

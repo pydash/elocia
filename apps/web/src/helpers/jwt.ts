@@ -60,6 +60,3 @@ export function getRoleFromToken(token: string): string | null {
   }
   return decoded.role;
 }
-
-const token = tokenManager.getAccessToken();
-console.log(decodeToken(token));
