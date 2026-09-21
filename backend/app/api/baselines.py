@@ -7,17 +7,20 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.database.connection import get_db
-from app.models.baseline import FSLBaseline
+from app.models.baseline import FSLBaseline, CurriculumStage
+from app.models.session import StudentStageProgress
+from app.models.user import User, UserRole
+from app.models.classroom import EducationalVideo
 from app.schemas.baseline import BaselineResponse, BaselineUploadResult
 
 router = APIRouter()
 
 # Directories for videos and baselines
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-DESKTOP_PYTHON = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "venv", "Scripts", "python.exe")
+DESKTOP_PYTHON = sys.executable
 EXTRACTOR_SCRIPT = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines", "extract_baseline.py")
 
 PUBLIC_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "videos")
@@ -31,8 +34,10 @@ for d in [PUBLIC_VIDEOS_DIR, BASELINES_DIR, STORAGE_VIDEOS_DIR, STORAGE_BASELINE
 
 @router.post("/upload", response_model=BaselineUploadResult)
 async def upload_baseline_video(
-    stage_id: int = Form(...),
     sign_name: str = Form(...),
+    stage_id: Optional[int] = Form(None),
+    grade_level: Optional[int] = Form(1),
+    description: Optional[str] = Form(None),
     sign_id: Optional[int] = Form(None),
     stage_id_new: Optional[int] = Form(None),
     order_index: Optional[int] = Form(None),
@@ -52,7 +57,15 @@ async def upload_baseline_video(
             detail=f"Unsupported video format '{ext}'. Please upload an .mp4, .webm, or .mov file."
         )
 
-    # 2. Save video file to public videos and storage
+    # 2. Auto-resolve stage_id if not provided
+    if stage_id is None:
+        max_stage_res = await db.execute(select(func.coalesce(func.max(FSLBaseline.stage_id), 0)))
+        max_stage = max_stage_res.scalar() or 0
+        stage_id = max(max_stage + 1, 101)
+
+    resolved_sign_id = sign_id if sign_id is not None else stage_id
+
+    # 3. Save video file to public videos and storage
     video_filename = f"{stage_id}{ext}"
     target_video_path = os.path.join(PUBLIC_VIDEOS_DIR, video_filename)
     backup_video_path = os.path.join(STORAGE_VIDEOS_DIR, video_filename)
@@ -61,12 +74,12 @@ async def upload_baseline_video(
         shutil.copyfileobj(video.file, f_out)
     shutil.copyfile(target_video_path, backup_video_path)
 
-    # 3. Output baseline JSON target paths
+    # 4. Output baseline JSON target paths
     target_json_filename = f"baseline_{stage_id}.json"
     desktop_json_path = os.path.join(BASELINES_DIR, target_json_filename)
     backup_json_path = os.path.join(STORAGE_BASELINES_DIR, target_json_filename)
 
-    # 4. Execute extraction subprocess using Python 3.10 with MediaPipe
+    # 5. Execute extraction subprocess using Python with MediaPipe
     cmd = [
         DESKTOP_PYTHON,
         EXTRACTOR_SCRIPT,
@@ -114,8 +127,33 @@ async def upload_baseline_video(
     hands_detected = extract_result.get("hands_detected_frames", 0)
     fps = extract_result.get("fps", 30.0)
 
-    # 5. Upsert baseline record in the database
-    resolved_sign_id = sign_id if sign_id is not None else stage_id
+    # 6. Find or create CurriculumStage for this grade level and stage
+    curr_stage = None
+    if stage_id_new is not None:
+        curr_stage_res = await db.execute(select(CurriculumStage).where(CurriculumStage.id == stage_id_new))
+        curr_stage = curr_stage_res.scalar_one_or_none()
+
+    if not curr_stage:
+        curr_stage_res = await db.execute(select(CurriculumStage).where(CurriculumStage.stage_number == stage_id))
+        curr_stage = curr_stage_res.scalar_one_or_none()
+
+    if not curr_stage:
+        grade_sec_title = f"Grade {grade_level} Lessons" if grade_level else "Teacher Lessons"
+        curr_stage = CurriculumStage(
+            stage_number=stage_id,
+            section_number=grade_level or 1,
+            section_title=grade_sec_title,
+            unit_number=1,
+            unit_title="FSL Practice Signs",
+            title=sign_name,
+            description=description or f"Learn to sign {sign_name}",
+            is_active=True
+        )
+        db.add(curr_stage)
+        await db.flush()
+        await db.refresh(curr_stage)
+
+    # 7. Upsert baseline record in the database
     existing = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id == stage_id))
     baseline_record = existing.scalar_one_or_none()
 
@@ -126,17 +164,15 @@ async def upload_baseline_video(
         baseline_record.hands_detected_frames = hands_detected
         baseline_record.fps = fps
         baseline_record.is_active = True
-        if sign_id is not None:
-            baseline_record.sign_id = sign_id
-        if stage_id_new is not None:
-            baseline_record.stage_id_new = stage_id_new
+        baseline_record.sign_id = resolved_sign_id
+        baseline_record.stage_id_new = curr_stage.id
         if order_index is not None:
             baseline_record.order_index = order_index
     else:
         baseline_record = FSLBaseline(
             stage_id=stage_id,
             sign_id=resolved_sign_id,
-            stage_id_new=stage_id_new,
+            stage_id_new=curr_stage.id,
             order_index=order_index,
             sign_name=sign_name,
             video_filename=video_filename,
@@ -146,6 +182,49 @@ async def upload_baseline_video(
             is_active=True
         )
         db.add(baseline_record)
+
+    # 8. Unlock this stage for all students matching the grade level!
+    stud_query = select(User).where(User.role == UserRole.student, User.is_active == True)
+    if grade_level is not None:
+        stud_query = stud_query.where(User.grade_level == grade_level)
+    students_res = await db.execute(stud_query)
+    students = students_res.scalars().all()
+
+    for stud in students:
+        ssp_res = await db.execute(
+            select(StudentStageProgress).where(
+                StudentStageProgress.student_id == stud.id,
+                StudentStageProgress.stage_id == curr_stage.id
+            )
+        )
+        ssp = ssp_res.scalar_one_or_none()
+        if not ssp:
+            ssp = StudentStageProgress(
+                student_id=stud.id,
+                stage_id=curr_stage.id,
+                unlocked=True,
+                passed=False,
+                best_score=0.0,
+                stars=0
+            )
+            db.add(ssp)
+        else:
+            ssp.unlocked = True
+
+    # 9. Also record an EducationalVideo entry so it appears in both Practice and Lesson Navigation
+    try:
+        edu_vid = EducationalVideo(
+            title=sign_name,
+            description=description or f"Learn to sign {sign_name}",
+            subject="FSL Demonstration",
+            grade_level=grade_level or 1,
+            duration_minutes=5,
+            video_url=f"/videos/{video_filename}",
+            thumbnail_url=None
+        )
+        db.add(edu_vid)
+    except Exception:
+        pass
 
     await db.commit()
 
