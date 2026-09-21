@@ -1,6 +1,11 @@
-import type { Class } from "@/interfaces/class.interface";
-import { fetchTeacherClasses } from "@/services/classes";
 import { useEffect, useState } from "react";
+
+import {
+  createClass,
+  fetchTeacherClasses,
+  type CreateClassPayload,
+} from "@/services/classes";
+import type { Class } from "@/interfaces/class.interface";
 
 export function useGetClasses() {
   const [classes, setClasses] = useState<Class[]>([]);
@@ -8,7 +13,7 @@ export function useGetClasses() {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    async function getClasses() {
+    const getClasses = async () => {
       try {
         const data = await fetchTeacherClasses();
         setClasses(data);
@@ -21,10 +26,16 @@ export function useGetClasses() {
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     getClasses();
   }, []);
 
-  return { classes, loading, error };
+  const addClass = async (payload: CreateClassPayload) => {
+    const createdClass = await createClass(payload);
+    setClasses((currentClasses) => [...currentClasses, createdClass]);
+    return createdClass;
+  };
+
+  return { classes, loading, error, addClass };
 }
