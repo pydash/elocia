@@ -125,6 +125,27 @@ async def get_students(db: AsyncSession = Depends(get_db)):
         for u, sp in rows
     ]
 
+@router.get("/parents", response_model=List[dict])
+async def get_parents(
+    search: Optional[str] = Query(None, description="Search parent by name or username"),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(User).where(User.role == UserRole.parent, User.is_active == True)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.where((User.name.ilike(term)) | (User.username.ilike(term)))
+    query = query.order_by(User.name.asc())
+    result = await db.execute(query)
+    parents = result.scalars().all()
+    return [
+        {
+            "id": str(p.id),
+            "name": p.name,
+            "username": p.username
+        }
+        for p in parents
+    ]
+
 @router.get("/users", response_model=List[UserResponse])
 async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = Depends(get_db)):
     query = (

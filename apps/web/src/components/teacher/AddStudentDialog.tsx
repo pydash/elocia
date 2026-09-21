@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import Button from "../Button";
 import Input from "../Input ";
 import type { CreateStudentPayload } from "@/services/students";
+import { fetchParents, type ParentUser } from "@/services/students";
+import { Search, UserCheck, X } from "lucide-react";
 
 type AddStudentDialogProps = {
   onSave: (student: CreateStudentPayload) => Promise<unknown>;
@@ -31,10 +33,39 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Parent selection state
+  const [parents, setParents] = useState<ParentUser[]>([]);
+  const [parentSearch, setParentSearch] = useState("");
+  const [selectedParent, setSelectedParent] = useState<ParentUser | null>(null);
+  const [isLoadingParents, setIsLoadingParents] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    setIsLoadingParents(true);
+    fetchParents(parentSearch.trim() || undefined)
+      .then((data) => {
+        if (isMounted) setParents(data);
+      })
+      .catch((err) => console.error("Error fetching parents:", err))
+      .finally(() => {
+        if (isMounted) setIsLoadingParents(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, parentSearch]);
+
   const closeDialog = () => {
     if (isSaving) return;
     setIsOpen(false);
     setStudent(initialStudent);
+    setSelectedParent(null);
+    setParentSearch("");
+    setShowDropdown(false);
     setError("");
   };
 
@@ -173,18 +204,87 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-parent">
-                Parent ID (optional)
-                <Input
-                  id="student-parent"
-                  className="mt-2"
-                  value={student.parent_id}
-                  onChange={(event) =>
-                    updateStudent("parent_id", event.target.value)
-                  }
-                  placeholder="Parent UUID"
-                />
-              </label>
+              <div className="relative">
+                <label className="caption text-(--black)" htmlFor="student-parent-search">
+                  Assign Parent (optional)
+                </label>
+
+                {selectedParent ? (
+                  <div className="mt-2 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                        <UserCheck className="size-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-(--black)">{selectedParent.name}</p>
+                        {selectedParent.username && (
+                          <p className="text-xs text-(--ghost)">@{selectedParent.username}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedParent(null);
+                        updateStudent("parent_id", "");
+                      }}
+                      className="rounded p-1 text-gray-400 hover:bg-white hover:text-red-500 transition-colors"
+                      title="Remove assigned parent"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative mt-2">
+                    <div className="relative flex items-center">
+                      <Input
+                        id="student-parent-search"
+                        value={parentSearch}
+                        onChange={(event) => {
+                          setParentSearch(event.target.value);
+                          setShowDropdown(true);
+                        }}
+                        onFocus={() => setShowDropdown(true)}
+                        placeholder="Search parent by name or username..."
+                      />
+                      <Search className="pointer-events-none absolute right-3 size-4 text-(--ghost)" />
+                    </div>
+
+                    {showDropdown && (
+                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                        {isLoadingParents ? (
+                          <div className="p-3 text-center text-xs text-(--ghost)">
+                            Loading parents...
+                          </div>
+                        ) : parents.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-(--ghost)">
+                            No parents found
+                          </div>
+                        ) : (
+                          parents.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedParent(p);
+                                updateStudent("parent_id", p.id);
+                                setShowDropdown(false);
+                                setParentSearch("");
+                              }}
+                              className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-50 transition-colors"
+                            >
+                              <span className="text-sm font-medium text-(--black)">{p.name}</span>
+                              {p.username && (
+                                <span className="text-xs text-(--ghost)">@{p.username}</span>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {error && (
                 <p className="paragraph-2 text-(--danger)" role="alert">

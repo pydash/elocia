@@ -93,3 +93,29 @@ export async function updateStudent(
 
   return response.json();
 }
+
+export interface ParentUser {
+  id: string;
+  name: string;
+  username?: string;
+}
+
+export async function fetchParents(search?: string): Promise<ParentUser[]> {
+  const url = search
+    ? `${API_BASE_URL}/parents?search=${encodeURIComponent(search)}`
+    : `${API_BASE_URL}/parents`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to fetch parents");
+  }
+
+  return response.json();
+}
