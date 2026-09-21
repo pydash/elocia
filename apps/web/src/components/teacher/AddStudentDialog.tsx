@@ -1,14 +1,13 @@
 import { useState, useEffect, type FormEvent } from "react";
 import Button from "../Button";
 import Input from "../Input ";
-import type { CreateStudentPayload } from "@/services/students";
-import { fetchParents, type ParentUser } from "@/services/students";
+import {
+  createStudent,
+  fetchParents,
+  type ParentUser,
+} from "@/services/students";
 import { Search, UserCheck, X } from "lucide-react";
 import Dropdown from "../Dropdown";
-
-type AddStudentDialogProps = {
-  onSave: (student: CreateStudentPayload) => Promise<unknown>;
-};
 
 type StudentForm = {
   name: string;
@@ -65,9 +64,9 @@ const initialStudent: StudentForm = {
   parent_id: "",
 };
 
-export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function AddStudentDialog() {
   const [student, setStudent] = useState(initialStudent);
+  const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -100,6 +99,10 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
   const closeDialog = () => {
     if (isSaving) return;
     setIsOpen(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setStudent(initialStudent);
     setSelectedParent(null);
     setParentSearch("");
@@ -124,11 +127,11 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
 
     try {
       const { parent_id, ...studentDetails } = student;
-      await onSave(
+      await createStudent(
         parent_id ? { ...studentDetails, parent_id } : studentDetails,
       );
       setIsOpen(false);
-      setStudent(initialStudent);
+      resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create student");
     } finally {

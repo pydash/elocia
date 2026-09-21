@@ -7,7 +7,7 @@ import { useGetStudents } from "@/hooks/useStudents";
 import { useMemo, useState } from "react";
 
 export default function TeacherStudentsPage() {
-  const { students, loading, error, addStudent } = useGetStudents();
+  const { students, loading, error } = useGetStudents();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredStudents = useMemo(() => {
@@ -49,7 +49,7 @@ export default function TeacherStudentsPage() {
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Search students"
             />
-            <AddStudentDialog onSave={addStudent} />
+            <AddStudentDialog />
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
