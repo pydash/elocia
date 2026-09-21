@@ -47,3 +47,30 @@ export async function fetchEducationalVideos(): Promise<EducationalVideo[]> {
 
   return response.json() as Promise<EducationalVideo[]>;
 }
+
+export async function uploadBaselineVideo(payload: {
+  sign_name: string;
+  grade_level: number;
+  description?: string;
+  video: File;
+}): Promise<any> {
+  const formData = new FormData();
+  formData.append("sign_name", payload.sign_name);
+  formData.append("grade_level", String(payload.grade_level));
+  if (payload.description) {
+    formData.append("description", payload.description);
+  }
+  formData.append("video", payload.video);
+
+  const response = await fetch(`${API_BASE_URL}/baselines/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to upload video for evaluation");
+  }
+
+  return response.json();
+}
