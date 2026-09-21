@@ -1,5 +1,5 @@
 import { getIdFromToken, tokenManager } from "@/helpers/jwt";
-import type { Class } from "@/interfaces/class.interface";
+import type { Class, Roster } from "@/interfaces/class.interface";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -8,6 +8,32 @@ export type CreateClassPayload = {
   grade_level: number;
   school_year: string;
 };
+
+export async function fetchClassRoster(
+  classId: string | undefined,
+): Promise<Roster> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("No access token found");
+  }
+  if (!classId) {
+    throw new Error("No class ID provided");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/classes/${classId}/students/`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Error fetching students for class ${classId}: ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
 
 export async function fetchTeacherClasses(): Promise<Class[]> {
   const token = tokenManager.getAccessToken();
@@ -25,9 +51,7 @@ export async function fetchTeacherClasses(): Promise<Class[]> {
   return response.json();
 }
 
-export async function createClass(
-  payload: CreateClassPayload,
-): Promise<Class> {
+export async function createClass(payload: CreateClassPayload): Promise<Class> {
   const token = tokenManager.getAccessToken();
   if (!token) {
     throw new Error("No access token found");
