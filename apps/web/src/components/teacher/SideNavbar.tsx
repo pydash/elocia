@@ -19,6 +19,11 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
+    name: "Classes",
+    icon: Users,
+    to: "/teacher/classes",
+  },
+  {
     name: "Students",
     icon: Users,
     to: "/teacher/students",

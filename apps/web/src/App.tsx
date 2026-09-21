@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage.tsx";
 import TeacherLayout from "./layouts/TeacherLayout.tsx";
 import TeacherAddLessonLayout from "./layouts/TeacherAddLessonLayout.tsx";
 import TeacherLoginPage from "./pages/teacher/LoginPage.tsx";
+import TeacherClassesPage from "./pages/teacher/ClassesPage.tsx";
 import TeacherStudentsPage from "./pages/teacher/StudentsPage.tsx";
 import TeacherStudentProfilePage from "./pages/teacher/StudentProfilePage.tsx";
 import TeacherLessonsPage from "./pages/teacher/LessonsPage.tsx";
@@ -53,6 +54,8 @@ function App() {
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherLayout />}>
+          {/* Classes */}
+          <Route path="classes" index element={<TeacherClassesPage />} />
           {/* Students */}
           <Route path="students" index element={<TeacherStudentsPage />} />
           <Route path="students/:id" element={<TeacherStudentProfilePage />} />
