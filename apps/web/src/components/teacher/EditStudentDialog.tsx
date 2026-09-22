@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
+
 import Button from "../Button";
+import Dropdown from "../Dropdown";
 import Input from "../Input ";
 import type { Student } from "@/interfaces/student.interface";
 import type { UpdateStudentPayload } from "@/services/students";
@@ -18,6 +20,43 @@ type StudentForm = {
   student_code: string;
   is_active: boolean;
 };
+
+const avatarColors = [
+  { name: "Red", value: "#EF4444" },
+  { name: "Orange", value: "#F97316" },
+  { name: "Yellow", value: "#EAB308" },
+  { name: "Green", value: "#22C55E" },
+  { name: "Blue", value: "#3B82F6" },
+  { name: "Indigo", value: "#6366F1" },
+  { name: "Violet", value: "#8B5CF6" },
+];
+
+const avatarEmojis = [
+  "🐱",
+  "🐶",
+  "🦊",
+  "🐼",
+  "🐸",
+  "🦁",
+  "🐯",
+  "🐨",
+  "🐰",
+  "🐻",
+  "🐵",
+  "🦄",
+  "🐧",
+  "🦉",
+  "🐙",
+  "🐬",
+  "🦖",
+  "🐢",
+  "🦋",
+  "🐝",
+  "🚀",
+  "⭐",
+  "🌈",
+  "🎨",
+];
 
 const getInitialForm = (student: Student): StudentForm => ({
   name: student.name,
@@ -130,41 +169,62 @@ export default function EditStudentDialog({
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="edit-color">
-                Avatar color
-                <Input
-                  id="edit-color"
-                  className="mt-2"
-                  value={form.color}
-                  onChange={(event) => updateField("color", event.target.value)}
-                  required
-                />
-              </label>
+              <fieldset className="caption text-(--black)">
+                <legend>Avatar color</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {avatarColors.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      aria-label={`${color.name} avatar color`}
+                      aria-pressed={form.color === color.value}
+                      className={`h-10 w-10 rounded-full border-2 transition-transform hover:scale-105 ${
+                        form.color === color.value
+                          ? "border-(--black) ring-2 ring-(--black) ring-offset-2"
+                          : "border-white"
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      onClick={() => updateField("color", color.value)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
 
-              <label className="caption text-(--black)" htmlFor="edit-emoji">
-                Avatar emoji
-                <Input
-                  id="edit-emoji"
-                  className="mt-2"
-                  value={form.emoji}
-                  onChange={(event) => updateField("emoji", event.target.value)}
-                  required
-                />
-              </label>
+              <fieldset className="caption text-(--black)">
+                <legend>Avatar emoji</legend>
+                <div className="mt-2 grid grid-cols-8 gap-2">
+                  {avatarEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      aria-label={`Select ${emoji} avatar`}
+                      aria-pressed={form.emoji === emoji}
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg border text-2xl transition-colors ${
+                        form.emoji === emoji
+                          ? "border-(--primary) bg-(--primary-light) ring-2 ring-(--primary)"
+                          : "border-(--border) bg-white hover:bg-(--gray-50)"
+                      }`}
+                      onClick={() => updateField("emoji", emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
               <label className="caption text-(--black)" htmlFor="edit-grade">
                 Grade level
-                <Input
-                  id="edit-grade"
+                <Dropdown
                   className="mt-2"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={form.grade_level}
-                  onChange={(event) =>
-                    updateField("grade_level", Number(event.target.value))
+                  value={String(form.grade_level)}
+                  onChange={(value) =>
+                    updateField("grade_level", Number(value))
                   }
-                  required
+                  options={[
+                    { label: "Grade 1", value: "grade-1" },
+                    { label: "Grade 2", value: "grade-2" },
+                    { label: "Grade 3", value: "grade-3" },
+                  ]}
                 />
               </label>
 
@@ -181,15 +241,35 @@ export default function EditStudentDialog({
                 />
               </label>
 
-              <label className="flex items-center gap-2 caption text-(--black)">
-                <input
-                  type="checkbox"
-                  checked={form.is_active}
-                  onChange={(event) =>
-                    updateField("is_active", event.target.checked)
-                  }
-                />
-                Active student
+              <label
+                className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition-colors ${
+                  form.is_active
+                    ? "border-(--success) bg-(--success-light)"
+                    : "border-(--border) bg-(--gray-50)"
+                }`}
+              >
+                <span>
+                  <span className="block text-sm font-semibold text-(--black)">
+                    Active student
+                  </span>
+                  <span className="mt-1 block text-xs text-(--ghost)">
+                    {form.is_active
+                      ? "This student can access the platform."
+                      : "This student is inactive and cannot access the platform."}
+                  </span>
+                </span>
+                <span className="relative ml-4 inline-flex shrink-0 items-center">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={form.is_active}
+                    onChange={(event) =>
+                      updateField("is_active", event.target.checked)
+                    }
+                  />
+                  <span className="h-6 w-11 rounded-full bg-(--gray-300) transition-colors peer-checked:bg-(--success)" />
+                  <span className="absolute left-1 size-4 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+                </span>
               </label>
 
               {error && (
