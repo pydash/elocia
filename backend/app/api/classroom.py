@@ -94,7 +94,7 @@ async def get_class_roster(class_id: uuid.UUID, db: AsyncSession = Depends(get_d
     roster = []
     for cs, u, sp in res.all():
         roster.append({
-            "id": str(u.id),
+            "student_id": str(u.id),
             "name": u.name,
             "student_code": sp.student_code if sp else None,
             "student_number": sp.student_number if sp else None,
