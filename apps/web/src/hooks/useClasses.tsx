@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 
-import {
-  createClass,
-  fetchTeacherClasses,
-  fetchClassRoster,
-  type CreateClassPayload,
-} from "@/services/classes";
+import { fetchTeacherClasses, fetchClassRoster } from "@/services/classes";
 import type { Class, Roster } from "@/interfaces/class.interface";
 
 export function useGetClasses() {
@@ -32,13 +27,7 @@ export function useGetClasses() {
     getClasses();
   }, []);
 
-  const addClass = async (payload: CreateClassPayload) => {
-    const createdClass = await createClass(payload);
-    setClasses((currentClasses) => [...currentClasses, createdClass]);
-    return createdClass;
-  };
-
-  return { classes, loading, error, addClass };
+  return { classes, loading, error };
 }
 
 export function useGetClassRoster(classId: string | undefined) {

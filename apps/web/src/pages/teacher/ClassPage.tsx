@@ -3,7 +3,7 @@ import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import { useGetClassRoster } from "@/hooks/useClasses";
 import { Link, useParams } from "react-router-dom";
 import Input from "@/components/Input ";
-import AddStudentDialog from "@/components/teacher/AddStudentDialog";
+import EnrollStudentDialog from "@/components/teacher/EnrollStudentDialog";
 
 export default function TeacherClassPage() {
   const { id } = useParams<{ id: string }>();
@@ -70,7 +70,7 @@ export default function TeacherClassPage() {
         >
           <ArrowLeft size={20} aria-hidden="true" />
         </Link>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between my-4">
           <div>
             <h1 className="mt-3 text-3xl font-bold text-(--black)">
               Class Roster
@@ -78,7 +78,10 @@ export default function TeacherClassPage() {
           </div>
           <div className="flex gap-4 items-center">
             <Input placeholder="Search students..." />
-            <AddStudentDialog />
+            {/* <AddStudentDialog /> */}
+            <EnrollStudentDialog
+              studentIds={roster.students.map((student) => student.id)}
+            />
           </div>
         </div>
 
@@ -106,7 +109,7 @@ export default function TeacherClassPage() {
                   </div>
                 </div>
                 <div className="mt-5 border-t border-(--border) pt-4 text-sm text-(--ghost)">
-                  Student #{student.student_number}
+                  {student.student_code}
                 </div>
               </li>
             ))}
