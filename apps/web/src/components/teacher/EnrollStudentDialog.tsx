@@ -23,8 +23,8 @@ export default function EnrollStudentDialog({
 
   const filteredStudents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    const availableStudents = students.filter((student) =>
-      !studentIds.includes(student.id),
+    const availableStudents = students.filter(
+      (student) => !studentIds.includes(student.id),
     );
 
     if (!query) {
@@ -148,9 +148,14 @@ export default function EnrollStudentDialog({
                           onChange={() => toggleStudent(student.id)}
                         />
 
-                        <span className="text-sm font-medium text-(--black)">
-                          {student.name}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span className="paragraph-2 text-(--black)">
+                            {student.name}
+                          </span>
+                          <span className="item-label text-(--ghost)">
+                            {student.student_code}
+                          </span>
+                        </div>
                       </label>
                     );
                   })

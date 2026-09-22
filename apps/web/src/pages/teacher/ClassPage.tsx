@@ -2,12 +2,36 @@ import { ArrowLeft } from "lucide-react";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import { useGetClassRoster } from "@/hooks/useClasses";
 import { Link, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+
 import Input from "@/components/Input ";
 import EnrollStudentDialog from "@/components/teacher/EnrollStudentDialog";
+import StudentCard from "@/components/teacher/StudentCard";
 
 export default function TeacherClassPage() {
   const { id } = useParams<{ id: string }>();
   const { roster, loading, error } = useGetClassRoster(id);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredStudents = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const students = roster?.students ?? [];
+
+    if (!normalizedQuery) {
+      return students;
+    }
+
+    return students.filter((student) =>
+      [
+        student.name,
+        student.student_code,
+        student.student_number,
+        student.grade_level,
+      ].some((value) =>
+        String(value).toLowerCase().includes(normalizedQuery),
+      ),
+    );
+  }, [roster, searchQuery]);
 
   if (loading) {
     return (
@@ -77,43 +101,42 @@ export default function TeacherClassPage() {
             </h1>
           </div>
           <div className="flex gap-4 items-center">
-            <Input placeholder="Search students..." />
-            {/* <AddStudentDialog /> */}
+            <Input
+              placeholder="Search students..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              aria-label="Search students"
+            />
             <EnrollStudentDialog
               studentIds={roster.students.map((student) => student.id)}
             />
           </div>
         </div>
 
-        {roster.students.length > 0 ? (
+        {filteredStudents.length > 0 ? (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {roster.students.map((student) => (
-              <li
+            {filteredStudents.map((student) => (
+              <StudentCard
                 key={student.id}
-                className="rounded-2xl border border-(--border) bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-(--primary) hover:shadow-md"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="flex size-14 shrink-0 items-center justify-center rounded-full text-2xl"
-                    style={{ backgroundColor: student.color }}
-                  >
-                    {student.emoji}
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-semibold text-(--black)">
-                      {student.name}
-                    </h2>
-                    <p className="mt-1 text-sm text-(--ghost)">
-                      Grade {student.grade_level}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-5 border-t border-(--border) pt-4 text-sm text-(--ghost)">
-                  {student.student_code}
-                </div>
-              </li>
+                id={student.id}
+                name={student.name}
+                color={student.color}
+                emoji={student.emoji}
+                grade_level={student.grade_level}
+                student_code={student.student_code}
+                student_number={student.student_number}
+              />
             ))}
           </ul>
+        ) : roster.students.length > 0 ? (
+          <div className="rounded-2xl border border-dashed border-(--border) bg-white px-6 py-12 text-center">
+            <p className="text-lg font-semibold text-(--black)">
+              No students match your search.
+            </p>
+            <p className="mt-2 text-(--ghost)">
+              Try searching by name, student code, number, or grade.
+            </p>
+          </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-(--border) bg-white px-6 py-12 text-center">
             <p className="text-lg font-semibold text-(--black)">
