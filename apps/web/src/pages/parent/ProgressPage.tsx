@@ -1,76 +1,119 @@
-import { BarChart } from "@/components/BarChart";
 import TopHeaderBar from "@/components/parent/TopHeaderBar";
-import ProgressBar from "@/components/ProgressBar";
-
-const parameterMastery = [
-  {
-    name: "Handshape",
-    value: 80,
-  },
-  {
-    name: "Location",
-    value: 60,
-  },
-  {
-    name: "Movement",
-    value: 90,
-  },
-  {
-    name: "Palm Orientation",
-    value: 70,
-  },
-];
-
-const performanceTrend = [
-  {
-    label: "Week 1",
-    percentage: 60,
-  },
-  {
-    label: "Week 2",
-    percentage: 70,
-  },
-  {
-    label: "Week 3",
-    percentage: 80,
-  },
-  {
-    label: "Week 4",
-    percentage: 90,
-  },
-];
+import { useParentDashboard } from "@/hooks/useParentDashboard";
 
 export default function ParentProgressPage() {
+  const { parameterMastery, performanceTrend, loading, error, selectedChild } =
+    useParentDashboard();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <TopHeaderBar />
+        <div className="p-8 flex items-center justify-center flex-1">
+          <div className="flex flex-col items-center gap-3">
+            <div className="size-10 border-4 border-[#FF8A00] border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-gray-500">Loading progress analytics...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !selectedChild) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <TopHeaderBar />
+        <div className="p-8 max-w-4xl mx-auto w-full">
+          <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center shadow-sm">
+            <h2 className="text-xl font-bold text-gray-800">No Student Linked</h2>
+            <p className="text-sm text-gray-500 mt-2">
+              Please link a student to your account to view detailed signing parameter mastery.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50/50 pb-16">
       <TopHeaderBar />
 
-      <section className="flex flex-col p-6 gap-4 text-(--black)">
-        <div className="space-y-4">
-          <h1 className="text-2xl font-bold">Parameter Mastery</h1>
-          <article className="space-y-6 border-2 border-(--border) rounded-2xl p-6">
-            {parameterMastery.map((parameter) => (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="paragraph-2 font-semibold!">
-                    {parameter.name}
+      <main className="px-8 py-6 space-y-8 max-w-7xl mx-auto">
+        {/* Section 1: Parameter Mastery */}
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+            Parameter Mastery
+          </h2>
+
+          <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm space-y-6">
+            {parameterMastery.map((param) => (
+              <div key={param.key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-800 tracking-wide">
+                    {param.name}
                   </span>
-                  <span className="py-1 px-3 rounded-full bg-(--primary) text-white text-sm font-medium border-b-4 border-(--primary-shadow)">
-                    {parameter.value}%
+                  <span className="px-3.5 py-0.5 rounded-full bg-[#FF8A00] text-white text-xs font-bold shadow-xs">
+                    {param.value}
                   </span>
                 </div>
-                <ProgressBar percentage={parameter.value} />
+
+                {/* Orange Horizontal Progress Bar */}
+                <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#FF8A00] rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${Math.min(100, Math.max(5, param.value))}%` }}
+                  />
+                </div>
               </div>
             ))}
-          </article>
-        </div>
-        <div className="space-y-4">
-          <h1 className="text-2xl font-bold">Performance Trend</h1>
-          <article className="flex space-y-6 border-2 border-(--border) rounded-2xl p-6 h-64">
-            <BarChart data={performanceTrend} />
-          </article>
-        </div>
-      </section>
+          </div>
+        </section>
+
+        {/* Section 2: Performance Trend (Stepped Bar Chart Matching Figma) */}
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+            Performance Trend
+          </h2>
+
+          <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+            {/* Chart Area */}
+            <div className="h-72 w-full flex items-end justify-center gap-1 sm:gap-2 px-4 pt-8 pb-4">
+              {performanceTrend.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex-1 flex flex-col items-center justify-end h-full max-w-xs"
+                >
+                  {/* Stepped Bar */}
+                  <div
+                    className={`w-full rounded-t-2xl transition-all duration-700 ease-out flex items-center justify-center ${
+                      item.isCurrent
+                        ? "bg-[#FF8A00] shadow-md border-b-4 border-amber-800"
+                        : "bg-[#FBBF24]/70 hover:bg-[#FBBF24]"
+                    }`}
+                    style={{ height: `${Math.min(100, Math.max(20, item.score))}%` }}
+                  >
+                    {item.isCurrent && (
+                      <span className="text-white font-extrabold text-sm sm:text-base drop-shadow-xs">
+                        {item.score}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* X-axis Label below bar */}
+                  <span
+                    className={`mt-3 text-xs sm:text-sm font-semibold tracking-wide ${
+                      item.isCurrent ? "text-gray-900 font-bold" : "text-gray-400"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
