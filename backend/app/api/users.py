@@ -146,6 +146,104 @@ async def get_parents(
         for p in parents
     ]
 
+@router.get("/parents/{parent_id}/students", response_model=List[dict])
+async def get_parent_students(parent_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Fetch all students linked to a specific parent account.
+    Used by the Parent Portal to display the parent's children.
+    """
+    parent_check = await db.execute(
+        select(User).where(User.id == parent_id, User.is_active == True)
+    )
+    parent = parent_check.scalar_one_or_none()
+    if not parent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent user not found")
+
+    query = (
+        select(ParentStudent, User, StudentProfile)
+        .join(User, ParentStudent.student_id == User.id)
+        .outerjoin(StudentProfile, User.id == StudentProfile.student_id)
+        .where(ParentStudent.parent_id == parent_id, User.is_active == True)
+        .order_by(StudentProfile.grade_level.asc(), User.name.asc())
+    )
+    result = await db.execute(query)
+    rows = result.all()
+
+    students = []
+    for ps, u, sp in rows:
+        students.append({
+            "student_id": str(u.id),
+            "id": str(u.id),
+            "name": u.name,
+            "student_code": sp.student_code if sp else None,
+            "student_number": sp.student_number if sp else None,
+            "grade_level": sp.grade_level if sp else 1,
+            "color": sp.color if sp else "#3B82F6",
+            "emoji": sp.emoji if sp else "👦",
+            "relationship": ps.relationship or "Parent",
+            "total_xp": sp.total_xp if sp else 0,
+            "level": sp.level if sp else 1,
+            "streak": sp.streak if sp else 0
+        })
+    return students
+
+@router.post("/parents/{parent_id}/students/{student_id}", status_code=status.HTTP_201_CREATED)
+async def link_parent_student(
+    parent_id: uuid.UUID,
+    student_id: uuid.UUID,
+    relationship: str = Query("Parent", description="Relationship label, e.g. Mother, Father, Guardian"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Link a child to a parent. Supports multiple parents per child (e.g. Mother and Father).
+    """
+    p_res = await db.execute(
+        select(User).where(User.id == parent_id, User.role == UserRole.parent, User.is_active == True)
+    )
+    if not p_res.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent user not found or inactive")
+
+    s_res = await db.execute(
+        select(User).where(User.id == student_id, User.role == UserRole.student, User.is_active == True)
+    )
+    if not s_res.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student user not found or inactive")
+
+    existing = await db.execute(
+        select(ParentStudent).where(ParentStudent.parent_id == parent_id, ParentStudent.student_id == student_id)
+    )
+    if existing.scalar_one_or_none():
+        return {"status": "already_linked", "parent_id": str(parent_id), "student_id": str(student_id)}
+
+    new_link = ParentStudent(
+        parent_id=parent_id,
+        student_id=student_id,
+        relationship=relationship
+    )
+    db.add(new_link)
+    await db.commit()
+    return {"status": "linked", "parent_id": str(parent_id), "student_id": str(student_id), "relationship": relationship}
+
+@router.delete("/parents/{parent_id}/students/{student_id}", status_code=status.HTTP_200_OK)
+async def unlink_parent_student(
+    parent_id: uuid.UUID,
+    student_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Remove a parent-child connection without deleting either user account.
+    """
+    existing = await db.execute(
+        select(ParentStudent).where(ParentStudent.parent_id == parent_id, ParentStudent.student_id == student_id)
+    )
+    link = existing.scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent-student relationship not found")
+
+    await db.delete(link)
+    await db.commit()
+    return {"status": "unlinked", "parent_id": str(parent_id), "student_id": str(student_id)}
+
 @router.get("/users", response_model=List[UserResponse])
 async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = Depends(get_db)):
     query = (
