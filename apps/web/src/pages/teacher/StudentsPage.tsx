@@ -2,6 +2,7 @@ import TopHeaderBar from "../../components/teacher/TopHeaderBar";
 import Input from "../../components/Input ";
 import StudentCard from "../../components/teacher/StudentCard";
 import AddStudentDialog from "../../components/teacher/AddStudentDialog";
+import { StudentsLoadingPage } from "./loading-pages/LoadingPage";
 import { Search } from "lucide-react";
 import { useGetStudents } from "@/hooks/useStudents";
 import { useMemo, useState } from "react";
@@ -28,7 +29,7 @@ export default function TeacherStudentsPage() {
   }, [searchQuery, students]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <StudentsLoadingPage />;
   }
 
   if (error) {
