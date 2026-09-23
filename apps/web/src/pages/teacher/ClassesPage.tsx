@@ -6,6 +6,7 @@ import Separator from "@/components/Separator";
 import CreateClassDialog from "@/components/teacher/CreateClassDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import { useGetClasses } from "@/hooks/useClasses";
+import { ClassesLoadingPage } from "./loading-pages/LoadingPage";
 
 export default function TeacherClassesPage() {
   const { classes, loading, error } = useGetClasses();
@@ -26,7 +27,7 @@ export default function TeacherClassesPage() {
   }, [classes, searchQuery]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <ClassesLoadingPage />;
   }
 
   if (error) {
