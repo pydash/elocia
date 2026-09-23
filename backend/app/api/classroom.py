@@ -7,7 +7,7 @@ import uuid
 
 from app.database.connection import get_db
 from app.models.classroom import Class, ClassStudent, EducationalVideo
-from app.models.user import User
+from app.models.user import User, StudentProfile
 
 router = APIRouter(prefix="/classes", tags=["Classes & Rosters"])
 videos_router = APIRouter(prefix="/educational-videos", tags=["Educational Videos"])
@@ -83,13 +83,24 @@ async def enroll_student(class_id: uuid.UUID, payload: AddStudentToClass, db: As
 
 @router.get("/{class_id}/students")
 async def get_class_roster(class_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    query = select(ClassStudent, User).join(User, ClassStudent.student_id == User.id).where(ClassStudent.class_id == class_id)
+    query = (
+        select(ClassStudent, User, StudentProfile)
+        .join(User, ClassStudent.student_id == User.id)
+        .outerjoin(StudentProfile, User.id == StudentProfile.student_id)
+        .where(ClassStudent.class_id == class_id)
+        .order_by(StudentProfile.grade_level.asc(), StudentProfile.student_number.asc(), User.name.asc())
+    )
     res = await db.execute(query)
     roster = []
-    for cs, u in res.all():
+    for cs, u, sp in res.all():
         roster.append({
-            "student_id": str(u.id),
+            "id": str(u.id),
             "name": u.name,
+            "student_code": sp.student_code if sp else None,
+            "student_number": sp.student_number if sp else None,
+            "grade_level": sp.grade_level if sp else 1,
+            "color": sp.color if sp else "#3B82F6",
+            "emoji": sp.emoji if sp else "👦",
             "enrolled_at": cs.enrolled_at
         })
     return {"class_id": str(class_id), "students": roster}

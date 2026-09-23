@@ -1,7 +1,5 @@
-import Button from "../Button";
 import Avatar from "@/components/Avatar";
 import { Link } from "react-router-dom";
-import type { MouseEvent } from "react";
 
 type StudentCardProps = {
   id: string;
@@ -11,16 +9,6 @@ type StudentCardProps = {
   grade_level: number;
   student_number: number;
   student_code: string;
-  onResetPin?: () => void;
-  onDeactivate?: () => void;
-};
-
-const onResetPin = (id: string) => {
-  console.log(`Reset PIN for student with ID: ${id}`);
-};
-
-const onDeactivate = (id: string) => {
-  console.log(`Deactivate student with ID: ${id}`);
 };
 
 export default function StudentCard({
@@ -34,20 +22,35 @@ export default function StudentCard({
 }: StudentCardProps) {
   return (
     <Link
-      key={id}
       to={`/teacher/students/${encodeURIComponent(id)}`}
-      className="flex flex-col items-center justify-center gap-6 rounded-3xl border border-(--border) bg-white p-6 shadow-md transition-all hover:scale-101 hover:bg-(--gray-50)"
+      className="group flex flex-col items-center rounded-3xl border border-(--border) bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-(--primary) hover:shadow-lg"
     >
       <Avatar emoji={emoji} color={color} />
-      <div className="flex flex-col gap-0 items-center">
-        <h3 className="heading-4 text-(--black)">{name}</h3>
-        <div className="bg-(--info-light) p-2 rounded-full">
-          <p className="caption text-(--ghost)">Grade {grade_level}</p>
-        </div>
+      <div className="mt-5 flex w-full flex-col items-center">
+        <h3 className="heading-4 text-center text-(--black)">{name}</h3>
+        <span className="mt-2 rounded-full bg-(--info-light) px-3 py-1 text-sm font-semibold text-(--ghost)">
+          Grade {grade_level}
+        </span>
       </div>
-      <p className="paragraph-2 text-(--ghost)">
-        <strong>Student Code:</strong> {student_code}
-      </p>
+
+      <dl className="mt-5 grid w-full grid-cols-2 divide-x divide-(--border) rounded-xl bg-(--gray-50) py-3 text-center">
+        <div className="px-2">
+          <dt className="text-xs font-medium uppercase tracking-wide text-(--ghost)">
+            Student code
+          </dt>
+          <dd className="mt-1 truncate text-sm font-semibold text-(--black)">
+            {student_code}
+          </dd>
+        </div>
+        <div className="px-2">
+          <dt className="text-xs font-medium uppercase tracking-wide text-(--ghost)">
+            Student number
+          </dt>
+          <dd className="mt-1 text-sm font-semibold text-(--black)">
+            #{student_number}
+          </dd>
+        </div>
+      </dl>
     </Link>
   );
 }

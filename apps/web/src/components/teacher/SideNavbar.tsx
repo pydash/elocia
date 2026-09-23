@@ -1,10 +1,11 @@
 import {
-  Users,
   BookOpen,
   Settings,
   HelpCircle,
   LogOut,
   ClipboardList,
+  School,
+  GraduationCap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import NavbarMenuItem from "../NavbarMenuItem";
@@ -19,8 +20,13 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
+    name: "Classes",
+    icon: School,
+    to: "/teacher/classes",
+  },
+  {
     name: "Students",
-    icon: Users,
+    icon: GraduationCap,
     to: "/teacher/students",
   },
   {

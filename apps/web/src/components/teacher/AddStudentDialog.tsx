@@ -1,12 +1,17 @@
 import { useState, useEffect, type FormEvent } from "react";
 import Button from "../Button";
 import Input from "../Input ";
-import type { CreateStudentPayload } from "@/services/students";
-import { fetchParents, type ParentUser } from "@/services/students";
+import Dropdown from "../Dropdown";
+import {
+  createStudent,
+  fetchParents,
+  type CreateStudentPayload,
+  type ParentUser,
+} from "@/services/students";
 import { Search, UserCheck, X } from "lucide-react";
 
 type AddStudentDialogProps = {
-  onSave: (student: CreateStudentPayload) => Promise<unknown>;
+  onSave?: (student: CreateStudentPayload) => Promise<unknown>;
 };
 
 type StudentForm = {
@@ -18,6 +23,43 @@ type StudentForm = {
   parent_id: string;
 };
 
+const avatarColors = [
+  { name: "Red", value: "#EF4444" },
+  { name: "Orange", value: "#F97316" },
+  { name: "Yellow", value: "#EAB308" },
+  { name: "Green", value: "#22C55E" },
+  { name: "Blue", value: "#3B82F6" },
+  { name: "Indigo", value: "#6366F1" },
+  { name: "Violet", value: "#8B5CF6" },
+];
+
+const avatarEmojis = [
+  "🐱",
+  "🐶",
+  "🦊",
+  "🐼",
+  "🐸",
+  "🦁",
+  "🐯",
+  "🐨",
+  "🐰",
+  "🐻",
+  "🐵",
+  "🦄",
+  "🐧",
+  "🦉",
+  "🐙",
+  "🐬",
+  "🦖",
+  "🐢",
+  "🦋",
+  "🐝",
+  "🚀",
+  "⭐",
+  "🌈",
+  "🎨",
+];
+
 const initialStudent: StudentForm = {
   name: "",
   pin: "",
@@ -27,9 +69,9 @@ const initialStudent: StudentForm = {
   parent_id: "",
 };
 
-export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {}) {
   const [student, setStudent] = useState(initialStudent);
+  const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,6 +104,10 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
   const closeDialog = () => {
     if (isSaving) return;
     setIsOpen(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setStudent(initialStudent);
     setSelectedParent(null);
     setParentSearch("");
@@ -86,11 +132,17 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
 
     try {
       const { parent_id, ...studentDetails } = student;
-      await onSave(
-        parent_id ? { ...studentDetails, parent_id } : studentDetails,
-      );
+      const payload: CreateStudentPayload = parent_id
+        ? { ...studentDetails, parent_id }
+        : studentDetails;
+
+      if (onSave) {
+        await onSave(payload);
+      } else {
+        await createStudent(payload);
+      }
       setIsOpen(false);
-      setStudent(initialStudent);
+      resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create student");
     } finally {
@@ -100,11 +152,7 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
 
   return (
     <>
-      <Button
-        type="button"
-        className="whitespace-nowrap"
-        onClick={() => setIsOpen(true)}
-      >
+      <Button onClick={() => setIsOpen(true)} className="shrink-0">
         Add Student
       </Button>
 
@@ -146,7 +194,7 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
               </label>
 
               <label className="caption text-(--black)" htmlFor="student-pin">
-                PIN
+                PIN <span className="text-(--ghost) text-xs font-normal">(Max 4 characters)</span>
                 <Input
                   id="student-pin"
                   className="mt-2"
@@ -161,51 +209,71 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
                 />
               </label>
 
-              <label className="caption text-(--black)" htmlFor="student-color">
-                Avatar color
-                <Input
-                  id="student-color"
-                  className="mt-2"
-                  type="color"
-                  value={student.color}
-                  onChange={(event) =>
-                    updateStudent("color", event.target.value)
-                  }
-                  required
-                />
-              </label>
+              <fieldset className="caption text-(--black)">
+                <legend>Avatar color</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {avatarColors.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      aria-label={`${color.name} avatar color`}
+                      aria-pressed={student.color === color.value}
+                      className={`h-10 w-10 rounded-full border-2 transition-transform hover:scale-105 ${
+                        student.color === color.value
+                          ? "border-(--black) ring-2 ring-(--black) ring-offset-2"
+                          : "border-white"
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      onClick={() => updateStudent("color", color.value)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
 
-              <label className="caption text-(--black)" htmlFor="student-emoji">
-                Avatar emoji
-                <Input
-                  id="student-emoji"
-                  className="mt-2"
-                  value={student.emoji}
-                  onChange={(event) =>
-                    updateStudent("emoji", event.target.value)
-                  }
-                  required
-                />
-              </label>
+              <fieldset className="caption text-(--black)">
+                <legend>Avatar emoji</legend>
+                <div className="mt-2 grid grid-cols-8 gap-2">
+                  {avatarEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      aria-label={`Select ${emoji} avatar`}
+                      aria-pressed={student.emoji === emoji}
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg border text-2xl transition-colors ${
+                        student.emoji === emoji
+                          ? "border-(--primary) bg-(--primary-light) ring-2 ring-(--primary)"
+                          : "border-(--border) bg-white hover:bg-(--gray-50)"
+                      }`}
+                      onClick={() => updateStudent("emoji", emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
               <label className="caption text-(--black)" htmlFor="student-grade">
                 Grade level
-                <Input
-                  id="student-grade"
+                <Dropdown
+                  value={`grade-${student.grade_level}`}
+                  onChange={(val) => {
+                    const parsed = parseInt(String(val).replace("grade-", ""), 10);
+                    if (!isNaN(parsed)) updateStudent("grade_level", parsed);
+                  }}
                   className="mt-2"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={student.grade_level}
-                  onChange={(event) =>
-                    updateStudent("grade_level", Number(event.target.value))
-                  }
-                  required
+                  options={[
+                    { label: "Grade 1", value: "grade-1" },
+                    { label: "Grade 2", value: "grade-2" },
+                    { label: "Grade 3", value: "grade-3" },
+                  ]}
                 />
               </label>
 
               <div className="relative">
-                <label className="caption text-(--black)" htmlFor="student-parent-search">
+                <label
+                  className="caption text-(--black)"
+                  htmlFor="student-parent-search"
+                >
                   Assign Parent (optional)
                 </label>
 
@@ -216,9 +284,13 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
                         <UserCheck className="size-4" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-(--black)">{selectedParent.name}</p>
+                        <p className="text-sm font-semibold text-(--black)">
+                          {selectedParent.name}
+                        </p>
                         {selectedParent.username && (
-                          <p className="text-xs text-(--ghost)">@{selectedParent.username}</p>
+                          <p className="text-xs text-(--ghost)">
+                            @{selectedParent.username}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -273,9 +345,13 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps) {
                               }}
                               className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-50 transition-colors"
                             >
-                              <span className="text-sm font-medium text-(--black)">{p.name}</span>
+                              <span className="text-sm font-medium text-(--black)">
+                                {p.name}
+                              </span>
                               {p.username && (
-                                <span className="text-xs text-(--ghost)">@{p.username}</span>
+                                <span className="text-xs text-(--ghost)">
+                                  @{p.username}
+                                </span>
                               )}
                             </button>
                           ))
