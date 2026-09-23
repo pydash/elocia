@@ -3,7 +3,7 @@
 const variants = {
   default: "bg-(--primary) text-white hover:bg-(--primary-hover)",
   outline:
-    "border border-(--primary) bg-transparent text-(--primary) hover:bg-(--primary) hover:text-white",
+    "border border-(--primary) bg-transparent text-(--primary) hover:bg-(--primary-light) disabled:pointer-events-none disabled:opacity-50",
   destructive:
     "bg-(--danger-light) border-1 border-(--danger)! text-(--danger) hover:bg-[#FFC7C7] disabled:pointer-events-none disabled:opacity-50",
   ghost:

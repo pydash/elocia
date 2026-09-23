@@ -141,11 +141,7 @@ export default function AddStudentDialog() {
 
   return (
     <>
-      <Button
-        type="button"
-        className="whitespace-nowrap"
-        onClick={() => setIsOpen(true)}
-      >
+      <Button onClick={() => setIsOpen(true)} className="shrink-0">
         Add Student
       </Button>
 

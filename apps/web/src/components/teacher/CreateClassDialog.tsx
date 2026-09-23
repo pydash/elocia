@@ -4,10 +4,7 @@ import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import Input from "@/components/Input ";
 import type { CreateClassPayload } from "@/services/classes";
-
-type CreateClassDialogProps = {
-  onSave: (classDetails: CreateClassPayload) => Promise<unknown>;
-};
+import { createClass } from "@/services/classes";
 
 const initialClass: CreateClassPayload = {
   name: "",
@@ -21,7 +18,7 @@ const gradeOptions = [
   { label: "Grade 3", value: "3" },
 ];
 
-export default function CreateClassDialog({ onSave }: CreateClassDialogProps) {
+export default function CreateClassDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [classDetails, setClassDetails] = useState(initialClass);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,7 +47,7 @@ export default function CreateClassDialog({ onSave }: CreateClassDialogProps) {
     setError("");
 
     try {
-      await onSave(classDetails);
+      await createClass(classDetails);
       closeDialog();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create class");

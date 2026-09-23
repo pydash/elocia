@@ -6,9 +6,10 @@ import Separator from "@/components/Separator";
 import CreateClassDialog from "@/components/teacher/CreateClassDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import { useGetClasses } from "@/hooks/useClasses";
+import { ClassesLoadingPage } from "./loading-pages/LoadingPage";
 
 export default function TeacherClassesPage() {
-  const { classes, loading, error, addClass } = useGetClasses();
+  const { classes, loading, error } = useGetClasses();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredClasses = useMemo(() => {
@@ -26,7 +27,7 @@ export default function TeacherClassesPage() {
   }, [classes, searchQuery]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <ClassesLoadingPage />;
   }
 
   if (error) {
@@ -48,7 +49,7 @@ export default function TeacherClassesPage() {
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Search classes"
             />
-            <CreateClassDialog onSave={addClass} />
+            <CreateClassDialog />
           </div>
         </div>
 

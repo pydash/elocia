@@ -88,3 +88,32 @@ export async function createClass(payload: CreateClassPayload): Promise<Class> {
     created_at: new Date().toISOString(),
   };
 }
+
+export async function enrollStudentInClass(
+  classId: string | undefined,
+  studentId: string,
+): Promise<void> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("No access token found");
+  }
+  if (!classId) {
+    throw new Error("No class ID provided");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/classes/${classId}/students`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ student_id: studentId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      error?.detail ?? `Error enrolling student: ${response.statusText}`,
+    );
+  }
+}
