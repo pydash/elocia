@@ -1,43 +1,27 @@
-export interface Curriculum {
-  id: string;
-  grade_level: number;
+interface StageItem {
+  globalId: number;
+  name: string;
+}
+
+interface Stage {
+  id: number;
   title: string;
   description: string;
-  is_active: boolean;
-  created_at: string;
+  items: StageItem[];
 }
 
-export interface Section {
+interface Unit {
   id: number;
-  curriculum_id: string;
-  title: string;
-  units: Unit[];
-}
-
-export interface Unit {
-  id: number;
-  section_id: string;
   title: string;
   stages: Stage[];
 }
 
-export interface Stage {
+interface Section {
   id: number;
-  stage_number: number;
-  section_number: number;
-  section_title: string;
-  unit_number: number;
-  unit_title: string;
   title: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  unit_id?: string;
-  items: StageItem[];
+  units: Unit[];
 }
 
-interface StageItem {
-  globalId: number;
-  name: string;
+export interface Curriculum {
+  sections: Section[];
 }
