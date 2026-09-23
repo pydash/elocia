@@ -273,7 +273,15 @@ async def list_curriculums(
     grade_level: Optional[int] = Query(None, description="Filter by grade level"),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Curriculum).where(Curriculum.is_active == True)
+    query = (
+        select(Curriculum)
+        .options(
+            selectinload(Curriculum.sections)
+            .selectinload(CurriculumSection.units)
+            .selectinload(CurriculumUnit.stages)
+        )
+        .where(Curriculum.is_active == True)
+    )
     if grade_level is not None:
         query = query.where(Curriculum.grade_level == grade_level)
     query = query.order_by(Curriculum.grade_level.asc(), Curriculum.created_at.asc())
@@ -342,6 +350,10 @@ async def delete_curriculum(curriculum_id: uuid.UUID, db: AsyncSession = Depends
 async def list_curriculum_sections(curriculum_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     res = await db.execute(
         select(CurriculumSection)
+        .options(
+            selectinload(CurriculumSection.units)
+            .selectinload(CurriculumUnit.stages)
+        )
         .where(CurriculumSection.curriculum_id == curriculum_id)
         .order_by(CurriculumSection.section_number.asc())
     )
@@ -393,6 +405,7 @@ async def delete_curriculum_section(section_id: uuid.UUID, db: AsyncSession = De
 async def list_section_units(section_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     res = await db.execute(
         select(CurriculumUnit)
+        .options(selectinload(CurriculumUnit.stages))
         .where(CurriculumUnit.section_id == section_id)
         .order_by(CurriculumUnit.unit_number.asc())
     )
