@@ -33,7 +33,7 @@ export async function createEducationalVideo(
 }
 
 export async function fetchEducationalVideos(): Promise<EducationalVideo[]> {
-  const response = await fetch(`${API_BASE_URL}/educational-videos`, {
+  const response = await fetch(`${API_BASE_URL}/educational-videos/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
