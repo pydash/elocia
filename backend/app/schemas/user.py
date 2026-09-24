@@ -6,6 +6,7 @@ from app.models.user import UserRole
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    password: Optional[str] = None
     pin: Optional[str] = None
     color: Optional[str] = None
     emoji: Optional[str] = None
@@ -18,17 +19,20 @@ class UserResponse(BaseModel):
     name: str
     role: UserRole
     is_active: bool
+    username: Optional[str] = None
     color: Optional[str] = None
     emoji: Optional[str] = None
-    grade_level: Optional[int] = 1
+    grade_level: Optional[int] = None
     student_number: Optional[int] = None
     student_code: Optional[str] = None
-    level: Optional[int] = 1
-    streak: Optional[int] = 0
-    avg_score: Optional[float] = 0.0
-    signs_mastered: Optional[int] = 0
-    stages_complete: Optional[int] = 0
-    total_xp: Optional[int] = 0
+    children_summary: Optional[str] = None
+    class_name: Optional[str] = None
+    level: Optional[int] = None
+    streak: Optional[int] = None
+    avg_score: Optional[float] = None
+    signs_mastered: Optional[int] = None
+    stages_complete: Optional[int] = None
+    total_xp: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:
