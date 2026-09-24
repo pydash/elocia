@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Link, useParams } from "react-router-dom";
 import TopHeaderBar from "../../components/teacher/TopHeaderBar";
-import StudentBanner from "../../components/teacher/StudentBanner";
+import StudentBanner from "../../components/parent/StudentBanner";
 import ProgressBar from "../../components/ProgressBar";
 import StatCard from "../../components/StatCard";
 import { StageCard, StageConnector } from "../../components/teacher/StageCard";
