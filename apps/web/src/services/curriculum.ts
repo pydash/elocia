@@ -2,18 +2,23 @@ import type { Curriculum } from "@/interfaces/curriculum.interface";
 
 const API_BASE_URL = "http://localhost:8000";
 
-export async function fetchCurriculum(): Promise<Curriculum> {
-  const response = await fetch(`${API_BASE_URL}/curriculum`, {
+export async function fetchCurriculums(): Promise<Curriculum[]> {
+  const response: Response = await fetch(`${API_BASE_URL}/curriculums`, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
+      Accept: "application/json",
     },
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to fetch curriculum");
+    const error: { detail?: string } | null = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(error?.detail ?? "Failed to fetch curriculums");
   }
 
-  return response.json() as Promise<Curriculum>;
+  const data: Curriculum[] = await response.json();
+
+  return data;
 }

@@ -6,43 +6,35 @@ import Button from "../../components/Button";
 import { Search, SquareLibrary, Plus } from "lucide-react";
 import { useGetLessonLibrary } from "@/hooks/useLessonLibrary";
 import MiniGameCard from "@/components/teacher/MiniGameCard";
+import CurriculumCard from "@/components/teacher/CurriculumCard";
 import { useMemo, useState } from "react";
+import { LessonsLoadingPage } from "../../components/teacher/loading-state/LoadingState";
 
 const matchesSearch = (query: string, values: unknown[]) =>
   !query ||
   values.some((value) =>
-    String(value ?? "").toLowerCase().includes(query),
+    String(value ?? "")
+      .toLowerCase()
+      .includes(query),
   );
 
 export default function TeacherLessonsPage() {
-  const { curriculum, videos, miniGames, loading, error } =
+  const { curriculums, videos, miniGames, loading, error } =
     useGetLessonLibrary();
   const [searchQuery, setSearchQuery] = useState("");
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  const filteredSections = useMemo(
+  const filteredCurriculum = useMemo(
     () =>
-      curriculum?.sections
-        .map((section) => ({
-          ...section,
-          units: section.units
-            .map((unit) => ({
-              ...unit,
-              stages: unit.stages.filter((stage) =>
-                matchesSearch(normalizedQuery, [
-                  section.title,
-                  unit.title,
-                  stage.title,
-                  stage.description,
-                  ...stage.items.map((item) => item.name),
-                ]),
-              ),
-            }))
-            .filter((unit) => unit.stages.length > 0),
-        }))
-        .filter((section) => section.units.length > 0) ?? [],
-    [curriculum, normalizedQuery],
+      curriculums?.filter((curriculum) =>
+        matchesSearch(normalizedQuery, [
+          curriculum.title,
+          curriculum.description,
+          curriculum.grade_level,
+        ]),
+      ) ?? [],
+    [curriculums, normalizedQuery],
   );
 
   const filteredVideos = useMemo(
@@ -71,12 +63,12 @@ export default function TeacherLessonsPage() {
   );
 
   const hasResults =
-    filteredSections.length > 0 ||
+    filteredCurriculum.length > 0 ||
     filteredVideos.length > 0 ||
     filteredMiniGames.length > 0;
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LessonsLoadingPage />;
   }
 
   if (error) {
@@ -121,42 +113,20 @@ export default function TeacherLessonsPage() {
 
         {/* Lesson Cards */}
         <div className="mt-8 space-y-10">
-          <div className="flex items-center justify-center gap-4 bg-(--primary) p-4 rounded-2xl">
-            <h2 className="heading-3 text-center text-(--white)">
-              Curriculum Lessons
-            </h2>
+          <div className="w-fit pe-8 pb-4 border-b-4 border-(--primary)">
+            <h2 className="heading-3 text-(--black)">Curriculum</h2>
           </div>
-          {filteredSections?.map((section) => (
-            <section key={section.id} className="space-y-6">
-              <div className="space-y-8">
-                {section.units.map((unit) => (
-                  <div key={unit.id} className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <span className="h-6 w-1 rounded-full bg-(--info)" />
-                      <h3 className="heading-3">{unit.title}</h3>
-                    </div>
-                    <div className="grid gap-6 grid-cols-4">
-                      {unit.stages.map((stage) => (
-                        <div key={stage.id}>
-                          <LessonCard
-                            id={stage.id}
-                            imageUrl="/path/to/image.jpg"
-                            title={stage.title}
-                            description={
-                              stage.description || "Lesson description"
-                            }
-                            status="published"
-                            onEdit={() => {}}
-                            onToggleVisibility={() => {}}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredCurriculum.length ? (
+              filteredCurriculum.map((curriculum) => (
+                <CurriculumCard key={curriculum.id} curriculum={curriculum} />
+              ))
+            ) : (
+              <p className="text-center paragraph-2 text-(--gray)">
+                No curriculum available.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Video Content */}
