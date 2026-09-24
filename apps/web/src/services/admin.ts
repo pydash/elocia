@@ -76,7 +76,11 @@ export async function fetchAdminMetrics(): Promise<AdminSummaryMetrics> {
       fetchAllUsers("student"),
       fetchAllUsers("teacher"),
       fetchAllUsers("parent"),
+<<<<<<< HEAD
       fetch(`${API_BASE_URL}/classrooms`, {
+=======
+      fetch(`${API_BASE_URL}/classes/`, {
+>>>>>>> feature/module-2
         headers: getAuthHeaders(),
       }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]);
@@ -167,4 +171,106 @@ export async function updateUserAccount(
 
   return response.json();
 }
+export interface AdminClassroom {
+  id: string;
+  name: string;
+  grade_level: number;
+  school_year: string;
+  teacher_id: string;
+  teacher_name?: string;
+  student_count?: number;
+  created_at?: string;
+}
 
+export interface CreateClassPayload {
+  name: string;
+  teacher_id: string;
+  grade_level: number;
+  school_year?: string;
+}
+
+export interface UpdateClassPayload {
+  name?: string;
+  teacher_id?: string;
+  grade_level?: number;
+  school_year?: string;
+}
+
+export interface EnrolledStudent {
+  id: string;
+  name: string;
+  student_code?: string;
+  student_number?: number;
+  grade_level?: number;
+  color?: string;
+  emoji?: string;
+  enrolled_at?: string;
+}
+
+export async function fetchClassroomsList(): Promise<AdminClassroom[]> {
+  const response = await fetch(`${API_BASE_URL}/classes/`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch classrooms");
+  }
+
+  return response.json();
+}
+
+export async function createClassroom(payload: CreateClassPayload): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/classes/`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || "Failed to create classroom");
+  }
+
+  return response.json();
+}
+
+export async function updateClassroom(classId: string, payload: UpdateClassPayload): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/classes/${classId}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || "Failed to update classroom");
+  }
+
+  return response.json();
+}
+
+export async function deleteClassroom(classId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/classes/${classId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete classroom");
+  }
+}
+
+export async function fetchClassRoster(classId: string): Promise<EnrolledStudent[]> {
+  const response = await fetch(`${API_BASE_URL}/classes/${classId}/students`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch class roster");
+  }
+
+  const data = await response.json();
+  return data?.students || [];
+}

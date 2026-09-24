@@ -45,6 +45,7 @@ import AdminLoginPage from "./pages/admin/LoginPage.tsx";
 import AdminLayout from "./layouts/AdminLayout.tsx";
 import AdminDashboard from "./pages/admin/Dashboard.tsx";
 import AdminUsersPage from "./pages/admin/UsersPage.tsx";
+import AdminClassesPage from "./pages/admin/ClassesPage.tsx";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute.tsx";
 
 function App() {
@@ -137,6 +138,7 @@ function App() {
         >
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="classes" element={<AdminClassesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
