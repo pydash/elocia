@@ -273,15 +273,7 @@ async def list_curriculums(
     grade_level: Optional[int] = Query(None, description="Filter by grade level"),
     db: AsyncSession = Depends(get_db)
 ):
-    query = (
-        select(Curriculum)
-        .options(
-            selectinload(Curriculum.sections)
-            .selectinload(CurriculumSection.units)
-            .selectinload(CurriculumUnit.stages)
-        )
-        .where(Curriculum.is_active == True)
-    )
+    query = select(Curriculum).where(Curriculum.is_active == True)
     if grade_level is not None:
         query = query.where(Curriculum.grade_level == grade_level)
     query = query.order_by(Curriculum.grade_level.asc(), Curriculum.created_at.asc())
