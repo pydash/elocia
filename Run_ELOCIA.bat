@@ -49,7 +49,7 @@ echo.
 
 :: 3. Start Backend Service (Port 8000)
 echo [1/3] Starting FastAPI Backend on Port 8000...
-start "ELOCIA - Backend Service" /min cmd /c "cd /d ""%BACKEND_DIR%"" && %PYTHON_EXE% -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+start "ELOCIA - Backend Service" /min cmd /c "cd /d ""%BACKEND_DIR%"" && %PYTHON_EXE% -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
 
 :: 4. Start Student Desktop Frontend Dev Server (Port 5173)
 echo [2/3] Starting Student Frontend Dev Server on Port 5173...

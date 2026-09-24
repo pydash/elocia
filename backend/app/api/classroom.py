@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
@@ -19,6 +19,12 @@ class ClassCreate(BaseModel):
     grade_level: int = 1
     school_year: str = "2026-2027"
 
+class ClassUpdate(BaseModel):
+    name: Optional[str] = None
+    teacher_id: Optional[uuid.UUID] = None
+    grade_level: Optional[int] = None
+    school_year: Optional[str] = None
+
 class AddStudentToClass(BaseModel):
     student_id: uuid.UUID
 
@@ -35,22 +41,58 @@ class EducationalVideoCreate(BaseModel):
 # ── Endpoints: Classes ────────────────────────────────────────────────────────
 @router.get("/")
 async def list_classes(teacher_id: Optional[uuid.UUID] = None, db: AsyncSession = Depends(get_db)):
-    query = select(Class)
+    query = (
+        select(Class, User.name.label("teacher_name"), func.count(ClassStudent.id).label("student_count"))
+        .outerjoin(User, Class.teacher_id == User.id)
+        .outerjoin(ClassStudent, Class.id == ClassStudent.class_id)
+        .group_by(Class.id, User.name)
+        .order_by(Class.grade_level.asc(), Class.name.asc())
+    )
     if teacher_id:
         query = query.where(Class.teacher_id == teacher_id)
     res = await db.execute(query)
-    classes = res.scalars().all()
+    classes = res.all()
     return [
         {
             "id": str(c.id),
             "teacher_id": str(c.teacher_id),
+            "teacher_name": teacher_name or "Unassigned",
             "name": c.name,
             "grade_level": c.grade_level,
             "school_year": c.school_year,
+            "student_count": student_count or 0,
             "created_at": c.created_at
         }
-        for c in classes
+        for c, teacher_name, student_count in classes
     ]
+
+@router.put("/{class_id}")
+async def update_class(class_id: uuid.UUID, payload: ClassUpdate, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Class).where(Class.id == class_id))
+    cls = res.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+    if payload.name is not None:
+        cls.name = payload.name
+    if payload.teacher_id is not None:
+        cls.teacher_id = payload.teacher_id
+    if payload.grade_level is not None:
+        cls.grade_level = payload.grade_level
+    if payload.school_year is not None:
+        cls.school_year = payload.school_year
+    await db.commit()
+    await db.refresh(cls)
+    return {"status": "updated", "class_id": str(cls.id), "name": cls.name}
+
+@router.delete("/{class_id}")
+async def delete_class(class_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Class).where(Class.id == class_id))
+    cls = res.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+    await db.delete(cls)
+    await db.commit()
+    return {"status": "deleted", "class_id": str(class_id)}
 
 @router.post("/")
 async def create_class(payload: ClassCreate, db: AsyncSession = Depends(get_db)):
