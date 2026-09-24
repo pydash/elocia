@@ -76,11 +76,7 @@ export async function fetchAdminMetrics(): Promise<AdminSummaryMetrics> {
       fetchAllUsers("student"),
       fetchAllUsers("teacher"),
       fetchAllUsers("parent"),
-<<<<<<< HEAD
-      fetch(`${API_BASE_URL}/classrooms`, {
-=======
       fetch(`${API_BASE_URL}/classes/`, {
->>>>>>> feature/module-2
         headers: getAuthHeaders(),
       }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]);
