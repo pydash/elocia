@@ -1,4 +1,4 @@
-import { Eye, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import Button from "../Button";
 import Separator from "../Separator";
 import { Link } from "react-router";

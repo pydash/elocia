@@ -1,4 +1,4 @@
-// components/Button.jsx
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 const variants = {
   default: "bg-(--primary) text-white hover:bg-(--primary-hover)",
@@ -8,9 +8,17 @@ const variants = {
     "bg-(--danger-light) border-1 border-(--danger)! text-(--danger) hover:bg-[#FFC7C7] disabled:pointer-events-none disabled:opacity-50",
   ghost:
     "bg-(--gray-100) text-(--black) border-(--ghost)! hover:bg-(--gray-150) disabled:pointer-events-none disabled:opacity-50",
-};
+} as const;
 
-function Button({ variant = "default", className = "", children, ...props }) {
+export type ButtonVariant = keyof typeof variants;
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  className?: string;
+  children?: ReactNode;
+}
+
+function Button({ variant = "default", className = "", children, ...props }: ButtonProps) {
   return (
     <button
       className={`
