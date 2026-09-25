@@ -3,6 +3,7 @@ import type {
   ParentProgressSummary,
   EvaluationAttemptItem,
 } from "@/interfaces/parent.interface";
+import { extractApiErrorMessage } from "@/helpers/error";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -18,7 +19,7 @@ export async function fetchParentStudents(parentId: string): Promise<ParentStude
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to fetch linked children");
+    throw new Error(extractApiErrorMessage(error, "Failed to fetch linked children"));
   }
 
   return response.json();
@@ -38,7 +39,7 @@ export async function fetchParentProgressSummary(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to fetch student progress summary");
+    throw new Error(extractApiErrorMessage(error, "Failed to fetch student progress summary"));
   }
 
   return response.json();
@@ -58,7 +59,7 @@ export async function fetchStudentScores(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to fetch student evaluation scores");
+    throw new Error(extractApiErrorMessage(error, "Failed to fetch student evaluation scores"));
   }
 
   return response.json();

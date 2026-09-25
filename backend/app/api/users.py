@@ -51,8 +51,18 @@ async def create_student(data: StudentCreate, db: AsyncSession = Depends(get_db)
         streak=0
     )
     db.add(profile)
+    await db.flush()
 
     if data.parent_id:
+        parent_check = await db.execute(
+            select(User).where(User.id == data.parent_id, User.role == UserRole.parent, User.is_active == True)
+        )
+        if not parent_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Selected parent account not found or is inactive"
+            )
+
         parent_rel = ParentStudent(
             parent_id=data.parent_id,
             student_id=stud_id,
