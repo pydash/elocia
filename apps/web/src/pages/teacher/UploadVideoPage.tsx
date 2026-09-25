@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clapperboard,
-  ImagePlus,
   Lightbulb,
   Timer,
   Upload,
@@ -15,7 +14,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { useState, type FormEvent } from "react";
-import { uploadBaselineVideo, type CreateEducationalVideoPayload } from "@/services/educational-videos";
+import { uploadBaselineVideo, createEducationalVideo, type CreateEducationalVideoPayload } from "@/services/educational-videos";
 import type { TeacherUploadVideoContext } from "@/layouts/TeacherUploadVideoLayout";
 
 const steps = [
@@ -81,17 +80,17 @@ export function TeacherUploadVideoStepOnePage() {
             <div className="flex flex-col">
               <label>Brief Description</label>
               <textarea
-              value={video.description}
-              onChange={(event) =>
-                setVideo((current) =>
-                  updateDraftField(
-                    current,
-                    "description",
-                    event.target.value,
-                  ),
-                )
-              }
-              required
+                value={video.description}
+                onChange={(event) =>
+                  setVideo((current) =>
+                    updateDraftField(
+                      current,
+                      "description",
+                      event.target.value,
+                    ),
+                  )
+                }
+                required
                 className="min-h-56 resize-none rounded-lg border-2 border-gray-300 bg-gray-50 px-4 py-3 text-gray-700 outline-none"
                 placeholder="What will the students learn in this lesson? (e.g. Students will learn how to add numbers up to 100.)"
               />
@@ -134,7 +133,11 @@ export function TeacherUploadVideoStepOnePage() {
                   value={video.video_url}
                   onChange={(event) =>
                     setVideo((current) =>
-                      updateDraftField(current, "video_url", event.target.value),
+                      updateDraftField(
+                        current,
+                        "video_url",
+                        event.target.value,
+                      ),
                     )
                   }
                   required
@@ -143,20 +146,6 @@ export function TeacherUploadVideoStepOnePage() {
             </div>
           </div>
           <div className="space-y-4 col-span-2">
-            <label className="flex flex-col min-h-56 cursor-pointer items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-6 text-center transition-colors hover:border-(--primary) hover:bg-(--primary-light)">
-              <ImagePlus className="size-10 text-(--primary)" />
-              <span className="paragraph-2 font-semibold text-(--black)">
-                Click to upload an image
-              </span>
-              <span className="caption text-(--ghost)">
-                PNG or JPG up to 10MB
-              </span>
-              <input
-                type="file"
-                accept="image/png,image/jpeg"
-                className="sr-only"
-              />
-            </label>
             <div>
               <label>Thumbnail URL</label>
               <Input
@@ -221,7 +210,6 @@ export function TeacherUploadVideoStepTwoPage() {
           <Clapperboard className="text-(--primary)" />
           <h3>Demonstration Video (.mp4, .webm, .mov)</h3>
         </div>
-
         {videoFile ? (
           <div className="flex flex-col items-center gap-4 p-6 border-2 border-(--primary) rounded-2xl bg-(--primary-light)">
             <video
@@ -293,19 +281,41 @@ export function TeacherUploadVideoStepThreePage() {
   const [publishing, setPublishing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [validationError, setValidationError] = useState("");
 
   const handlePublish = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!video.title?.trim() || !video.description?.trim()) {
+      setValidationError("Title and description are required before publishing.");
+      return;
+    }
+
+    if (!videoFile && !video.video_url?.trim()) {
+      setValidationError("Please provide a demonstration video file or video URL before publishing.");
+      return;
+    }
+
+    setValidationError("");
     setPublishing(true);
     setErrorMsg(null);
     try {
       if (videoFile) {
         // Upload to Module 4 dynamic baseline engine & unlock for students in this grade level
         await uploadBaselineVideo({
-          sign_name: video.title || "New Sign",
+          sign_name: video.title.trim(),
           grade_level: video.grade_level,
-          description: video.description,
+          description: video.description.trim(),
           video: videoFile,
+        });
+      } else if (video.video_url?.trim()) {
+        await createEducationalVideo({
+          ...video,
+          title: video.title.trim(),
+          description: video.description.trim(),
+          subject: video.subject.trim(),
+          video_url: video.video_url.trim(),
+          thumbnail_url: video.thumbnail_url.trim(),
         });
       }
       navigate("/teacher/lessons");
@@ -410,16 +420,16 @@ export function TeacherUploadVideoStepThreePage() {
           </div>
           <div className="flex gap-4 items-center">
             <form onSubmit={handlePublish}>
-              <Button className="gap-2" type="submit" disabled={publishing || !videoFile}>
+              <Button className="gap-2" type="submit" disabled={publishing || (!videoFile && !video.video_url)}>
                 {publishing ? "Extracting 3D Landmarks & Publishing..." : "Publish Lesson"}{" "}
                 <Upload className="size-4" />
               </Button>
             </form>
           </div>
         </div>
-        {errorMsg && (
+        {(validationError || errorMsg) && (
           <p className="paragraph-2 text-(--danger)" role="alert">
-            {errorMsg}
+            {validationError || errorMsg}
           </p>
         )}
       </section>

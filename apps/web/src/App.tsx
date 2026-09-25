@@ -11,7 +11,14 @@ import TeacherClassPage from "./pages/teacher/ClassPage.tsx";
 import TeacherStudentsPage from "./pages/teacher/StudentsPage.tsx";
 import TeacherStudentProfilePage from "./pages/teacher/StudentProfilePage.tsx";
 import TeacherLessonsPage from "./pages/teacher/LessonsPage.tsx";
-import TeacherViewLessonPage from "./pages/teacher/ViewActivityPage.tsx";
+import TeacherSectionListPage from "./pages/teacher/SectionListPage.tsx";
+import TeacherUnitListPage from "./pages/teacher/UnitListPage.tsx";
+import TeacherStageListPage from "./pages/teacher/StageListPage.tsx";
+import {
+  TeacherStageCreatePage,
+  TeacherStagePreviewPage,
+} from "./pages/teacher/StageCreationPage.tsx";
+import TeacherStageItemPage from "./pages/teacher/StageItemPage.tsx";
 import {
   TeacherAddLessonStepOnePage,
   TeacherAddLessonStepTwoPage,
@@ -70,13 +77,42 @@ function App() {
 
           {/* Lessons */}
           <Route path="lessons" element={<TeacherLessonsPage />} />
-          <Route path="lessons/:id" element={<TeacherViewLessonPage />} />
+
+          {/* /lessons/:curriculumId */}
+          <Route
+            path="lessons/:curriculumId"
+            element={<TeacherSectionListPage />}
+          />
+
+          {/* /lessons/:curriculumId/sections/:sectionId */}
+          <Route
+            path="lessons/:curriculumId/sections/:sectionId"
+            element={<TeacherUnitListPage />}
+          />
+
+          {/* /lessons/:curriculumId/sections/:sectionId/units/:unitId */}
+          <Route
+            path="lessons/:curriculumId/sections/:sectionId/units/:unitId"
+            element={<TeacherStageListPage />}
+          />
+          <Route
+            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/new"
+            element={<TeacherStageCreatePage />}
+          />
+          <Route
+            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/preview"
+            element={<TeacherStagePreviewPage />}
+          />
+
+          {/* /lessons/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId */}
+          <Route
+            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId"
+            element={<TeacherStageItemPage />}
+          />
+
+          {/* Add lesson */}
           <Route path="lessons/new" element={<TeacherAddLessonLayout />}>
-            <Route
-              index
-              path="step-1"
-              element={<TeacherAddLessonStepOnePage />}
-            />
+            <Route path="step-1" element={<TeacherAddLessonStepOnePage />} />
             <Route path="step-2" element={<TeacherAddLessonStepTwoPage />} />
             <Route path="step-3" element={<TeacherAddLessonStepThreePage />} />
           </Route>
