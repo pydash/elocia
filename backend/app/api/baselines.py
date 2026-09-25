@@ -12,7 +12,7 @@ from sqlalchemy import select, func
 from app.database.connection import get_db
 from app.models.baseline import FSLBaseline, CurriculumStage
 from app.models.session import StudentStageProgress
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, StudentProfile
 from app.models.classroom import EducationalVideo
 from app.schemas.baseline import BaselineResponse, BaselineUploadResult
 
@@ -184,9 +184,13 @@ async def upload_baseline_video(
         db.add(baseline_record)
 
     # 8. Unlock this stage for all students matching the grade level!
-    stud_query = select(User).where(User.role == UserRole.student, User.is_active == True)
+    stud_query = (
+        select(User)
+        .join(StudentProfile, StudentProfile.student_id == User.id)
+        .where(User.role == UserRole.student, User.is_active == True)
+    )
     if grade_level is not None:
-        stud_query = stud_query.where(User.grade_level == grade_level)
+        stud_query = stud_query.where(StudentProfile.grade_level == grade_level)
     students_res = await db.execute(stud_query)
     students = students_res.scalars().all()
 
@@ -268,4 +272,3 @@ async def get_baseline_landmarks(stage_id: int):
         data = json.load(f)
 
     return JSONResponse(content=data)
-

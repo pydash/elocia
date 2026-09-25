@@ -9,3 +9,6 @@ passlib
 bcrypt==4.0.1
 python-multipart
 greenlet
+opencv-python==4.9.0.80
+mediapipe==0.10.14
+numpy==1.26.4
