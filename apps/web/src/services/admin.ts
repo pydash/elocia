@@ -1,4 +1,5 @@
 import { tokenManager } from "@/helpers/jwt";
+import { extractApiErrorMessage } from "@/helpers/error";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -107,7 +108,7 @@ export async function createAdultAccount(payload: CreateAdultPayload): Promise<A
 
   if (!response.ok) {
     const err = await response.json().catch(() => null);
-    throw new Error(err?.detail || "Failed to create user account");
+    throw new Error(extractApiErrorMessage(err, "Failed to create user account"));
   }
 
   return response.json();
@@ -122,7 +123,7 @@ export async function createStudentAccount(payload: CreateStudentPayload): Promi
 
   if (!response.ok) {
     const err = await response.json().catch(() => null);
-    throw new Error(err?.detail || "Failed to create student account");
+    throw new Error(extractApiErrorMessage(err, "Failed to create student account"));
   }
 
   return response.json();
@@ -162,7 +163,7 @@ export async function updateUserAccount(
 
   if (!response.ok) {
     const err = await response.json().catch(() => null);
-    throw new Error(err?.detail || "Failed to update user account");
+    throw new Error(extractApiErrorMessage(err, "Failed to update user account"));
   }
 
   return response.json();
@@ -225,7 +226,7 @@ export async function createClassroom(payload: CreateClassPayload): Promise<any>
 
   if (!response.ok) {
     const err = await response.json().catch(() => null);
-    throw new Error(err?.detail || "Failed to create classroom");
+    throw new Error(extractApiErrorMessage(err, "Failed to create classroom"));
   }
 
   return response.json();
@@ -240,7 +241,7 @@ export async function updateClassroom(classId: string, payload: UpdateClassPaylo
 
   if (!response.ok) {
     const err = await response.json().catch(() => null);
-    throw new Error(err?.detail || "Failed to update classroom");
+    throw new Error(extractApiErrorMessage(err, "Failed to update classroom"));
   }
 
   return response.json();

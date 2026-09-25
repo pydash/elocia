@@ -1,4 +1,5 @@
 import type { Student } from "@/interfaces/student.interface";
+import { extractApiErrorMessage } from "@/helpers/error";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -51,7 +52,7 @@ export async function createStudent(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to create student");
+    throw new Error(extractApiErrorMessage(error, "Failed to create student"));
   }
 
   return response.json();
@@ -114,7 +115,7 @@ export async function fetchParents(search?: string): Promise<ParentUser[]> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to fetch parents");
+    throw new Error(extractApiErrorMessage(error, "Failed to fetch parents"));
   }
 
   return response.json();

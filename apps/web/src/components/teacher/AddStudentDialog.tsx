@@ -80,26 +80,37 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {})
   const [parentSearch, setParentSearch] = useState("");
   const [selectedParent, setSelectedParent] = useState<ParentUser | null>(null);
   const [isLoadingParents, setIsLoadingParents] = useState(false);
+  const [parentFetchError, setParentFetchError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let isMounted = true;
+  const loadParents = async () => {
     setIsLoadingParents(true);
-    fetchParents(parentSearch.trim() || undefined)
-      .then((data) => {
-        if (isMounted) setParents(data);
-      })
-      .catch((err) => console.error("Error fetching parents:", err))
-      .finally(() => {
-        if (isMounted) setIsLoadingParents(false);
-      });
+    setParentFetchError(null);
+    try {
+      const data = await fetchParents();
+      setParents(data || []);
+    } catch (err: any) {
+      console.error("Error fetching parents:", err);
+      setParentFetchError(err?.message || "Failed to load parents");
+    } finally {
+      setIsLoadingParents(false);
+    }
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, parentSearch]);
+  useEffect(() => {
+    if (isOpen) {
+      loadParents();
+    }
+  }, [isOpen]);
+
+  const filteredParents = parents.filter((p) => {
+    if (!parentSearch.trim()) return true;
+    const term = parentSearch.toLowerCase().trim();
+    return (
+      p.name.toLowerCase().includes(term) ||
+      (p.username && p.username.toLowerCase().includes(term))
+    );
+  });
 
   const closeDialog = () => {
     if (isSaving) return;
@@ -132,8 +143,9 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {})
 
     try {
       const { parent_id, ...studentDetails } = student;
-      const payload: CreateStudentPayload = parent_id
-        ? { ...studentDetails, parent_id }
+      const cleanParentId = parent_id && parent_id.trim() !== "" ? parent_id.trim() : undefined;
+      const payload: CreateStudentPayload = cleanParentId
+        ? { ...studentDetails, parent_id: cleanParentId }
         : studentDetails;
 
       if (onSave) {
@@ -328,12 +340,23 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {})
                           <div className="p-3 text-center text-xs text-(--ghost)">
                             Loading parents...
                           </div>
-                        ) : parents.length === 0 ? (
+                        ) : parentFetchError ? (
+                          <div className="p-3 text-center text-xs text-red-500">
+                            {parentFetchError}{" "}
+                            <button
+                              type="button"
+                              onClick={loadParents}
+                              className="underline font-semibold ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        ) : filteredParents.length === 0 ? (
                           <div className="p-3 text-center text-xs text-(--ghost)">
                             No parents found
                           </div>
                         ) : (
-                          parents.map((p) => (
+                          filteredParents.map((p) => (
                             <button
                               key={p.id}
                               type="button"

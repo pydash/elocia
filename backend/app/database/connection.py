@@ -1,13 +1,15 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 DATABASE_URL = "postgresql+asyncpg://postgres.ovffqxjrokyuvlkmccup:Elocia.51326@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
 
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
-    poolclass=NullPool
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=300,
+    pool_pre_ping=True
 )
 
 AsyncSessionLocal = async_sessionmaker(

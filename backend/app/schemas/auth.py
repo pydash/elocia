@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Any
 from app.models.user import UserRole
 import uuid
 
@@ -27,8 +27,16 @@ class StudentCreate(BaseModel):
     grade_level: Optional[int] = 1
     parent_id: Optional[uuid.UUID] = None
 
+    @field_validator("parent_id", mode="before")
+    @classmethod
+    def sanitize_parent_id(cls, v: Any):
+        if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
+
 class AdultCreate(BaseModel):
     name: str
     username: str
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=6)
     role: UserRole
+
