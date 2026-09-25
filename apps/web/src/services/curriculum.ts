@@ -29,7 +29,7 @@ export async function fetchCurriculums(): Promise<Curriculum[]> {
 }
 
 export async function createCurriculum(
-  curriculum: Omit<Curriculum, "id" | "created_at">,
+  curriculum: Omit<Curriculum, "id" | "created_at" | "updated_at">,
 ): Promise<Curriculum> {
   const response: Response = await fetch(`${API_BASE_URL}/curriculums`, {
     method: "POST",

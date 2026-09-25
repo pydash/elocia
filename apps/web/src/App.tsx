@@ -13,7 +13,6 @@ import TeacherStudentProfilePage from "./pages/teacher/StudentProfilePage.tsx";
 import TeacherLessonsPage from "./pages/teacher/LessonsPage.tsx";
 import TeacherSectionListPage from "./pages/teacher/SectionListPage.tsx";
 import TeacherUnitListPage from "./pages/teacher/UnitListPage.tsx";
-import TeacherViewLessonPage from "./pages/teacher/ViewActivityPage.tsx";
 import TeacherStageListPage from "./pages/teacher/StageListPage.tsx";
 import {
   TeacherStageCreatePage,

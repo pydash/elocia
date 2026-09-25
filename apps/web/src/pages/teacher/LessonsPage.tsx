@@ -1,7 +1,7 @@
 import TopNavbar from "../../components/teacher/TopHeaderBar";
 import LessonCard from "../../components/teacher/LessonCard";
 import Input from "../../components/Input ";
-import { Search, SquareLibrary, Plus } from "lucide-react";
+import { Search, SquareLibrary } from "lucide-react";
 import { useGetLessonLibrary } from "@/hooks/useLessonLibrary";
 import MiniGameCard from "@/components/teacher/MiniGameCard";
 import CurriculumCard from "@/components/teacher/CurriculumCard";
