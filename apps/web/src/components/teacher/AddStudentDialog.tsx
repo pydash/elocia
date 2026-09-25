@@ -122,14 +122,17 @@ export default function AddStudentDialog() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!student.parent_id) {
+      setError("Please assign a parent before saving.");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
 
     try {
       const { parent_id, ...studentDetails } = student;
-      await createStudent(
-        parent_id ? { ...studentDetails, parent_id } : studentDetails,
-      );
+      await createStudent({ ...studentDetails, parent_id });
       setIsOpen(false);
       resetForm();
     } catch (err) {
@@ -260,7 +263,7 @@ export default function AddStudentDialog() {
                   className="caption text-(--black)"
                   htmlFor="student-parent-search"
                 >
-                  Assign Parent (optional)
+                  Assign Parent <span aria-hidden="true">*</span>
                 </label>
 
                 {selectedParent ? (
@@ -304,6 +307,7 @@ export default function AddStudentDialog() {
                         }}
                         onFocus={() => setShowDropdown(true)}
                         placeholder="Search parent by name or username..."
+                        aria-required="true"
                       />
                       <Search className="pointer-events-none absolute right-3 size-4 text-(--ghost)" />
                     </div>
