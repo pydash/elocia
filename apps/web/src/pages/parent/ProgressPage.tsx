@@ -62,7 +62,7 @@ export default function ParentProgressPage() {
                 <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#FF8A00] rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${Math.min(100, Math.max(5, param.value))}%` }}
+                    style={{ width: `${Math.min(100, Math.max(0, param.value))}%` }}
                   />
                 </div>
               </div>
@@ -78,39 +78,53 @@ export default function ParentProgressPage() {
 
           <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
             {/* Chart Area */}
-            <div className="h-72 w-full flex items-end justify-center gap-1 sm:gap-2 px-4 pt-8 pb-4">
-              {performanceTrend.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex-1 flex flex-col items-center justify-end h-full max-w-xs"
-                >
-                  {/* Stepped Bar */}
+            {performanceTrend.length > 0 ? (
+              <div className="h-72 w-full flex items-end justify-center gap-1 sm:gap-2 px-4 pt-8 pb-4">
+                {performanceTrend.map((item) => (
                   <div
-                    className={`w-full rounded-t-2xl transition-all duration-700 ease-out flex items-center justify-center ${
-                      item.isCurrent
-                        ? "bg-[#FF8A00] shadow-md border-b-4 border-amber-800"
-                        : "bg-[#FBBF24]/70 hover:bg-[#FBBF24]"
-                    }`}
-                    style={{ height: `${Math.min(100, Math.max(20, item.score))}%` }}
+                    key={item.label}
+                    className="flex-1 flex flex-col items-center justify-end h-full max-w-xs"
                   >
-                    {item.isCurrent && (
-                      <span className="text-white font-extrabold text-sm sm:text-base drop-shadow-xs">
-                        {item.score}%
-                      </span>
-                    )}
-                  </div>
+                    {/* Stepped Bar */}
+                    <div
+                      className={`w-full rounded-t-2xl transition-all duration-700 ease-out flex items-center justify-center ${
+                        item.isCurrent
+                          ? "bg-[#FF8A00] shadow-md border-b-4 border-amber-800"
+                          : "bg-[#FBBF24]/70 hover:bg-[#FBBF24]"
+                      }`}
+                      style={{ height: `${Math.min(100, Math.max(10, item.score))}%` }}
+                    >
+                      {item.isCurrent && (
+                        <span className="text-white font-extrabold text-sm sm:text-base drop-shadow-xs">
+                          {item.score}%
+                        </span>
+                      )}
+                    </div>
 
-                  {/* X-axis Label below bar */}
-                  <span
-                    className={`mt-3 text-xs sm:text-sm font-semibold tracking-wide ${
-                      item.isCurrent ? "text-gray-900 font-bold" : "text-gray-400"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
+                    {/* X-axis Label below bar */}
+                    <span
+                      className={`mt-3 text-xs sm:text-sm font-semibold tracking-wide ${
+                        item.isCurrent ? "text-gray-900 font-bold" : "text-gray-400"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-64 w-full flex flex-col items-center justify-center p-8 text-center">
+                <div className="size-14 rounded-full bg-orange-50 text-[#FF8A00] flex items-center justify-center mb-3">
+                  <span className="text-2xl">📊</span>
                 </div>
-              ))}
-            </div>
+                <h3 className="text-base font-bold text-gray-800">
+                  No Practice Sessions Recorded Yet
+                </h3>
+                <p className="text-sm text-gray-400 max-w-md mt-1">
+                  Once {selectedChild.name} practices signs and completes evaluations on the student desktop app, their accuracy trends across sessions will be charted here.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </main>

@@ -189,7 +189,7 @@ export default function ParentHomePage() {
                       <div className="w-12 h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
                         <div
                           className="h-full bg-[#FF8A00] rounded-full"
-                          style={{ width: `${stage.progressPercentage || 60}%` }}
+                          style={{ width: `${stage.progressPercentage ?? 0}%` }}
                         />
                       </div>
                     ) : (
@@ -241,16 +241,20 @@ export default function ParentHomePage() {
                   >
                     <div
                       className={`size-14 rounded-full flex items-center justify-center shadow-xs mb-2 ${
-                        badge.color === "orange"
+                        badge.unlocked && badge.color === "orange"
                           ? "bg-orange-100 text-[#FF8A00]"
-                          : badge.color === "green"
+                          : badge.unlocked && badge.color === "green"
                           ? "bg-green-100 text-[#10B981]"
-                          : "bg-gray-100 text-gray-400"
+                          : "bg-gray-100 text-gray-400 opacity-60"
                       }`}
                     >
                       {getBadgeIcon()}
                     </div>
-                    <span className="text-xs font-semibold text-gray-700 leading-tight">
+                    <span
+                      className={`text-xs font-semibold leading-tight ${
+                        badge.unlocked ? "text-gray-700" : "text-gray-400"
+                      }`}
+                    >
                       {badge.name}
                     </span>
                   </div>

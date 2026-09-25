@@ -123,6 +123,22 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
     )
     total_sessions = tot_att_res.scalar() or 0
 
+    level = profile.level if profile else 1
+    streak = profile.streak if profile else 0
+
+    if total_sessions == 0:
+        return ParentProgressSummary(
+            student_id=student.id,
+            student_name=student.name,
+            level=level,
+            streak=streak,
+            avg_score=0.0,
+            total_practice_sessions=0,
+            strengths=["Newly enrolled and ready to begin!"],
+            areas_to_practice=["Complete Stage 1 lesson on Student Desktop"],
+            home_practice_recommendation=f"Welcome! {student.name} hasn't completed any sign language practice sessions yet. Start Stage 1 on the desktop app to begin learning and tracking progress!",
+        )
+
     # Calculate parameter averages for this student
     avg_h = float((await db.execute(select(func.avg(EvaluationAttempt.score_handshape)).where(EvaluationAttempt.student_id == student_id))).scalar() or 0.0)
     avg_p = float((await db.execute(select(func.avg(EvaluationAttempt.score_palm_orientation)).where(EvaluationAttempt.student_id == student_id))).scalar() or 0.0)
@@ -145,9 +161,6 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
     else:
         lowest = min(params, key=params.get)
         recommendation = f"Encourage {student.name} to focus on '{lowest}' during home practice. Try doing the signs together slowly!"
-
-    level = profile.level if profile else 1
-    streak = profile.streak if profile else 0
 
     avg_score_res = await db.execute(
         select(func.avg(EvaluationAttempt.score_overall))
