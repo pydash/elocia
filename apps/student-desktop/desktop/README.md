@@ -14,3 +14,8 @@ run
 python3 -m pip install -r requirements.txt
 python3 main.py
 ```
+
+The backend baseline upload endpoint runs the landmark extractor with the
+backend virtual environment, so install `backend/requirements.txt` as well
+when running the API. That file includes the OpenCV and MediaPipe dependencies
+used by the extractor.

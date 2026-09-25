@@ -460,9 +460,21 @@ async def create_unit_stage(unit_id: uuid.UUID, payload: StageCreate, db: AsyncS
     if not un_res.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Unit not found")
 
+    stage_number = payload.stage_number
+    existing_number = await db.execute(
+        select(CurriculumStage.id).where(
+            CurriculumStage.stage_number == stage_number
+        )
+    )
+    if existing_number.scalar_one_or_none() is not None:
+        max_number = await db.execute(
+            select(func.coalesce(func.max(CurriculumStage.stage_number), 0))
+        )
+        stage_number = (max_number.scalar() or 0) + 1
+
     new_stage = CurriculumStage(
         unit_id=unit_id,
-        stage_number=payload.stage_number,
+        stage_number=stage_number,
         title=payload.title,
         description=payload.description
     )
