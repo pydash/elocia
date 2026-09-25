@@ -9,6 +9,7 @@ from app.database.connection import get_db
 from app.models.user import User, UserRole, StudentProfile, ParentStudent
 from app.models.session import EvaluationAttempt
 from app.models.minigame import MiniGameSession
+from app.models.classroom import Class
 from app.schemas.auth import StudentCreate, AdultCreate
 from app.schemas.user import UserResponse, UserUpdate
 
@@ -256,25 +257,55 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
     result = await db.execute(query)
     rows = result.all()
 
+    # 1. Fetch parent-student links with student name & student grade level
+    parent_links_res = await db.execute(
+        select(ParentStudent.parent_id, User.name, StudentProfile.grade_level)
+        .join(User, ParentStudent.student_id == User.id)
+        .outerjoin(StudentProfile, User.id == StudentProfile.student_id)
+    )
+    children_by_parent = {}
+    for p_id, s_name, s_grade in parent_links_res.all():
+        grade_str = f"Grade {s_grade}" if s_grade else ""
+        item_str = f"{s_name} ({grade_str})" if grade_str else s_name
+        children_by_parent.setdefault(p_id, []).append(item_str)
+
+    # 2. Fetch assigned classes for teachers
+    classes_res = await db.execute(select(Class.teacher_id, Class.name, Class.grade_level))
+    classes_by_teacher = {}
+    for t_id, c_name, c_grade in classes_res.all():
+        classes_by_teacher.setdefault(t_id, []).append(f"{c_name} (Grade {c_grade})")
+
     responses = []
     for u, sp in rows:
+        children_list = children_by_parent.get(u.id, [])
+        children_summary = ", ".join(children_list) if children_list else None
+
+        teacher_classes = classes_by_teacher.get(u.id, [])
+        class_name = ", ".join(teacher_classes) if teacher_classes else None
+
+        # Only students have a student grade level
+        student_grade = sp.grade_level if (sp and u.role == UserRole.student) else None
+
         responses.append(
             UserResponse(
                 id=u.id,
                 name=u.name,
                 role=u.role,
+                username=u.username,
                 is_active=u.is_active,
                 color=sp.color if sp else None,
                 emoji=sp.emoji if sp else None,
-                grade_level=sp.grade_level if sp else 1,
+                grade_level=student_grade,
                 student_number=sp.student_number if sp else None,
                 student_code=sp.student_code if sp else None,
-                level=sp.level if sp else 1,
-                streak=sp.streak if sp else 0,
+                children_summary=children_summary,
+                class_name=class_name,
+                level=sp.level if sp else None,
+                streak=sp.streak if sp else None,
                 avg_score=0.0,
                 signs_mastered=0,
                 stages_complete=0,
-                total_xp=sp.total_xp if sp else 0,
+                total_xp=sp.total_xp if sp else None,
                 created_at=u.created_at
             )
         )
@@ -342,6 +373,8 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
 
     if data.name is not None:
         user.name = data.name
+    if data.password is not None and data.password.strip():
+        user.password_hash = pwd_context.hash(data.password.strip())
     if data.is_active is not None:
         user.is_active = data.is_active
 

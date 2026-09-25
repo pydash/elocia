@@ -86,9 +86,10 @@ class CurriculumUpdate(BaseModel):
 
 class CurriculumResponse(CurriculumBase):
     id: UUID
+    grade_level: int
     is_active: bool
     created_at: Optional[datetime] = None
-    sections: Optional[List[SectionResponse]] = []
+    # sections: Optional[List[SectionResponse]] = []
 
     class Config:
         from_attributes = True
