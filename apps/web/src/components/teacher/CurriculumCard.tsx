@@ -12,10 +12,10 @@ export default function CurriculumCard({ curriculum }: CurriculumCardProps) {
 
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-3xl border-2 ${
+      className={`flex min-h-52 flex-col overflow-hidden rounded-2xl border shadow-sm transition hover:border-(--primary) hover:shadow-lg ${
         isActive
-          ? "border-(--primary) bg-(--white) shadow-(--primary-light)"
-          : "border-(--danger) bg-(--danger-light) shadow-[#e7a5a5]"
+          ? "border-(--border) bg-(--white)"
+          : "border-(--danger) bg-(--danger-light)"
       }`}
     >
       <div className="flex flex-col gap-3 p-4">
@@ -33,7 +33,7 @@ export default function CurriculumCard({ curriculum }: CurriculumCardProps) {
             className="flex items-center gap-2"
           >
             <Button className="w-fit">
-              <span>View Curriculum</span>
+              <span>View Sections</span>
             </Button>
           </Link>
         </div>

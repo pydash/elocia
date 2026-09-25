@@ -1,14 +1,13 @@
-import { Link } from "react-router-dom";
 import TopNavbar from "../../components/teacher/TopHeaderBar";
 import LessonCard from "../../components/teacher/LessonCard";
 import Input from "../../components/Input ";
-import Button from "../../components/Button";
 import { Search, SquareLibrary, Plus } from "lucide-react";
 import { useGetLessonLibrary } from "@/hooks/useLessonLibrary";
 import MiniGameCard from "@/components/teacher/MiniGameCard";
 import CurriculumCard from "@/components/teacher/CurriculumCard";
 import { useMemo, useState } from "react";
 import { LessonsLoadingPage } from "../../components/teacher/loading-state/LoadingState";
+import AddCurriculumDialog from "@/components/teacher/AddCurriculumDialog";
 
 const matchesSearch = (query: string, values: unknown[]) =>
   !query ||
@@ -99,15 +98,7 @@ export default function TeacherLessonsPage() {
           </div>
 
           <div>
-            <Link
-              to="/teacher/lessons/new/step-1"
-              className="flex items-center gap-2"
-            >
-              <Button variant="default" className="gap-2">
-                <Plus />
-                <span>Add new stage</span>
-              </Button>
-            </Link>
+            <AddCurriculumDialog />
           </div>
         </div>
 

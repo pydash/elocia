@@ -5,20 +5,24 @@ export interface Curriculum {
   description: string;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Section {
-  id: number;
+  id: string;
   curriculum_id: string;
   title: string;
-  units: Unit[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Unit {
-  id: number;
+  id: string;
   section_id: string;
+  unit_number: number;
   title: string;
-  stages: Stage[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Stage {
@@ -34,10 +38,9 @@ export interface Stage {
   created_at: string;
   updated_at: string;
   unit_id?: string;
-  items: StageItem[];
 }
 
-interface StageItem {
+export interface StageItem {
   globalId: number;
   name: string;
 }
