@@ -23,8 +23,18 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
   const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
 
   const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<EducationalVideoItem | null>(null);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+    if (ytMatch && ytMatch[1]) {
+      return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+    }
+    return url;
+  };
 
   useEffect(() => {
     // 1. Load dynamic curriculum
@@ -138,7 +148,13 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             <div className="video-cards-row">
               {educationalVideos.length > 0 ? (
                 educationalVideos.map((video) => (
-                  <div key={video.id} className="video-card">
+                  <div 
+                    key={video.id} 
+                    className="video-card" 
+                    onClick={() => setSelectedVideo(video)}
+                    style={{ cursor: 'pointer' }}
+                    title={`Click to watch: ${video.title}`}
+                  >
                     <div className="video-thumbnail">
                       {video.thumbnail_url ? (
                         <img src={video.thumbnail_url} alt={video.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -307,6 +323,111 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
 
         </div>
       </main>
+
+      {/* Educational Video Player Modal */}
+      {selectedVideo && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => setSelectedVideo(null)}
+        >
+          <div 
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '28px',
+              maxWidth: '840px',
+              width: '100%',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              border: '3px solid #E2E8F0',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '2px solid #F1F5F9' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: '#e0f2fe', color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {selectedVideo.subject}
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: '#fef3c7', color: '#b45309' }}>
+                    Grade {selectedVideo.grade_level}
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>
+                    ⏱️ {selectedVideo.duration_minutes} min
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, margin: '2px 0 0 0', color: '#0f172a' }}>
+                  {selectedVideo.title}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setSelectedVideo(null)}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  color: '#64748b',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.background = '#e2e8f0')}
+                onMouseOut={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                title="Close Video"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Video Player */}
+            <div style={{ width: '100%', aspectRatio: '16/9', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {selectedVideo.video_url.includes('youtube.com') || selectedVideo.video_url.includes('youtu.be') ? (
+                <iframe
+                  src={getEmbedUrl(selectedVideo.video_url)}
+                  title={selectedVideo.title}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video 
+                  src={selectedVideo.video_url.startsWith('http') ? selectedVideo.video_url : `http://127.0.0.1:8000${selectedVideo.video_url}`}
+                  controls 
+                  autoPlay
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              )}
+            </div>
+
+            {/* Description Footer */}
+            {selectedVideo.description && (
+              <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.6 }}>
+                  {selectedVideo.description}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

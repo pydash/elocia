@@ -115,8 +115,11 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
               <div className="stages-path">
                 <div className="path-line"></div>
 
-                {section.units.flatMap(u => u.stages).map((stage) => {
-                  const isLocked = !unlockedStages.includes(stage.id);
+                {section.units
+                  .flatMap(u => u.stages)
+                  .sort((a, b) => a.id - b.id)
+                  .map((stage) => {
+                    const isLocked = !unlockedStages.includes(stage.id);
                   
                   return (
                     <div
