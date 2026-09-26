@@ -223,7 +223,7 @@ export interface EducationalVideoItem {
 
 export async function fetchEducationalVideos(gradeLevel?: number): Promise<EducationalVideoItem[]> {
   try {
-    const url = gradeLevel ? `${API_BASE}/educational-videos?grade_level=${gradeLevel}` : `${API_BASE}/educational-videos`;
+    const url = gradeLevel ? `${API_BASE}/educational-videos/?grade_level=${gradeLevel}` : `${API_BASE}/educational-videos/`;
     const res = await fetch(url);
     if (!res.ok) return [];
     return await res.json();

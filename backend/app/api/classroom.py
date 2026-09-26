@@ -148,6 +148,7 @@ async def get_class_roster(class_id: uuid.UUID, db: AsyncSession = Depends(get_d
     return {"class_id": str(class_id), "students": roster}
 
 # ── Endpoints: Educational Videos ─────────────────────────────────────────────
+@videos_router.get("", include_in_schema=False)
 @videos_router.get("/")
 async def list_educational_videos(
     grade_level: Optional[int] = None,
@@ -176,6 +177,7 @@ async def list_educational_videos(
         for v in videos
     ]
 
+@videos_router.post("", include_in_schema=False)
 @videos_router.post("/")
 async def upload_educational_video(payload: EducationalVideoCreate, db: AsyncSession = Depends(get_db)):
     video = EducationalVideo(
