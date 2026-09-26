@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Button from "../../../components/Button";
 import {
   ChevronLeft,
@@ -14,6 +14,11 @@ import StepIndicator from "../../../components/StepIndicator";
 import Separator from "../../../components/Separator";
 import Input from "../../../components/Input ";
 import Dropdown from "../../../components/Dropdown";
+import { useState, type FormEvent } from "react";
+import {
+  createMiniGame,
+  type CreateMiniGamePayload,
+} from "@/services/mini-games";
 
 const steps = [
   {
@@ -30,7 +35,27 @@ const steps = [
   },
 ];
 
+const DRAFT_KEY = "teacher-see-it-sign-it-draft";
+const initialGame: CreateMiniGamePayload = {
+  game_type: "see_it_sign_it",
+  title: "",
+  target_sign: "",
+  prompt_image: "",
+  hint_text: "",
+  options: "",
+  difficulty: 1,
+};
+
+function readDraft(): CreateMiniGamePayload {
+  const draft = sessionStorage.getItem(DRAFT_KEY);
+  return draft ? { ...initialGame, ...JSON.parse(draft) } : initialGame;
+}
+
 export function SeeItSignItCreateActivityStepOnePage() {
+  const [game, setGame] = useState(readDraft);
+  const saveDraft = () =>
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(game));
+
   return (
     <section className="space-y-6 mt-6">
       <StepIndicator steps={steps} step={1} />
@@ -54,19 +79,37 @@ export function SeeItSignItCreateActivityStepOnePage() {
                 type="text"
                 id="activity-title"
                 placeholder="Enter activity title"
+                value={game.title}
+                onChange={(event) =>
+                  setGame({ ...game, title: event.target.value })
+                }
+                required
               />
             </div>
             <div>
               <label htmlFor="grade-level">Grade Level</label>
               <Dropdown
-                value="grade-1"
-                onChange={() => {}}
+                value={String(game.difficulty)}
+                onChange={(value) =>
+                  setGame({ ...game, difficulty: Number(value) })
+                }
                 className=""
                 options={[
-                  { label: "Grade 1", value: "grade-1" },
-                  { label: "Grade 2", value: "grade-2" },
-                  { label: "Grade 3", value: "grade-3" },
+                  { label: "Easy", value: "1" },
+                  { label: "Medium", value: "2" },
+                  { label: "Hard", value: "3" },
                 ]}
+              />
+            </div>
+            <div>
+              <label htmlFor="target-sign">Target Sign</label>
+              <Input
+                id="target-sign"
+                value={game.target_sign}
+                onChange={(event) =>
+                  setGame({ ...game, target_sign: event.target.value })
+                }
+                required
               />
             </div>
           </div>
@@ -80,7 +123,7 @@ export function SeeItSignItCreateActivityStepOnePage() {
               Cancel <X />
             </Button>
           </Link>
-          <Link to="../step-2">
+          <Link to="../step-2" onClick={saveDraft}>
             <Button className="gap-2">
               Next Step
               <ChevronRight className="size-5" />
@@ -93,6 +136,10 @@ export function SeeItSignItCreateActivityStepOnePage() {
 }
 
 export function SeeItSignItCreateActivityStepTwoPage() {
+  const [game, setGame] = useState(readDraft);
+  const saveDraft = () =>
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(game));
+
   return (
     <section className="space-y-6 mt-6">
       <StepIndicator steps={steps} step={2} />
@@ -119,9 +166,36 @@ export function SeeItSignItCreateActivityStepTwoPage() {
             />
           </label>
           <textarea
+            value={game.hint_text}
+            onChange={(event) =>
+              setGame({ ...game, hint_text: event.target.value })
+            }
             className="resize-none rounded-2xl border-2 border-gray-300 bg-gray-50 px-4 py-3 text-gray-700 outline-none"
-            placeholder="What image is this"
+            placeholder="Add a hint for students"
           />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            Prompt image URL
+            <Input
+              type="url"
+              value={game.prompt_image}
+              onChange={(event) =>
+                setGame({ ...game, prompt_image: event.target.value })
+              }
+              placeholder="https://example.com/prompt.png"
+            />
+          </label>
+          <label>
+            Options
+            <Input
+              value={game.options}
+              onChange={(event) =>
+                setGame({ ...game, options: event.target.value })
+              }
+              placeholder="A, B, C"
+            />
+          </label>
         </div>
       </article>
 
@@ -143,7 +217,7 @@ export function SeeItSignItCreateActivityStepTwoPage() {
             Back
           </Button>
         </Link>
-        <Link to="../step-3">
+        <Link to="../step-3" onClick={saveDraft}>
           <Button className="gap-2">
             Next Step
             <ChevronRight className="size-5" />
@@ -155,6 +229,42 @@ export function SeeItSignItCreateActivityStepTwoPage() {
 }
 
 export function SeeItSignItCreateActivityStepThreePage() {
+  const [game] = useState(readDraft);
+  const [error, setError] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const navigate = useNavigate();
+
+  const handlePublish = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!game.title.trim() || !game.target_sign.trim()) {
+      setError("Title and target sign are required.");
+      return;
+    }
+
+    setIsPublishing(true);
+    setError("");
+    try {
+      await createMiniGame({
+        ...game,
+        title: game.title.trim(),
+        target_sign: game.target_sign.trim(),
+        prompt_image: game.prompt_image.trim(),
+        hint_text: game.hint_text.trim(),
+        options: game.options.trim(),
+      });
+      sessionStorage.removeItem(DRAFT_KEY);
+      navigate("/teacher/tasks");
+    } catch (publishError) {
+      setError(
+        publishError instanceof Error
+          ? publishError.message
+          : "Failed to publish mini-game",
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   return (
     <section className="space-y-6 mt-6">
       <StepIndicator steps={steps} step={3} />
@@ -174,20 +284,26 @@ export function SeeItSignItCreateActivityStepThreePage() {
             <h3 className="paragraph-1 font-medium! text-(--black)/50">
               Activity Title
             </h3>
-            <p className="heading-3 text-(--black)">Activity 1</p>
+            <p className="heading-3 text-(--black)">
+              {game.title || "Untitled activity"}
+            </p>
           </div>
           <Separator />
           <div className="space-y-2">
             <h3 className="paragraph-1 font-medium! text-(--black)/50">
               Grade Level
             </h3>
-            <p className="heading-3 text-(--black)">Grade 1</p>
+            <p className="heading-3 text-(--black)">
+              Difficulty {game.difficulty}
+            </p>
           </div>
           <div className="flex gap-4 heading-3 items-center bg-(--primary-light) p-4 rounded-2xl border-b-4 border-(--primary)">
             <div className="flex items-center justify-center size-8 bg-(--primary) p-2 rounded-full">
               <span className="text-(--white)">1</span>
             </div>
-            <h3 className="text-(--primary)">Activity 1</h3>
+            <h3 className="text-(--primary)">
+              {game.target_sign || "No target sign"}
+            </h3>
           </div>
         </div>
       </article>
@@ -210,10 +326,18 @@ export function SeeItSignItCreateActivityStepThreePage() {
           <Button variant="ghost" className="gap-2">
             Save as Draft <Save className="size-4" />
           </Button>
-          <Button className="gap-2">
-            Publish <Upload className="size-4" />
-          </Button>
+          <form onSubmit={handlePublish}>
+            <Button className="gap-2" type="submit" disabled={isPublishing}>
+              {isPublishing ? "Publishing..." : "Publish"}{" "}
+              <Upload className="size-4" />
+            </Button>
+          </form>
         </div>
+        {error && (
+          <p className="paragraph-2 text-(--danger)" role="alert">
+            {error}
+          </p>
+        )}
       </div>
     </section>
   );
