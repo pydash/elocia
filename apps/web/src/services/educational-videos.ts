@@ -48,6 +48,41 @@ export async function fetchEducationalVideos(): Promise<EducationalVideo[]> {
   return response.json() as Promise<EducationalVideo[]>;
 }
 
+export async function uploadEducationalVideoFile(payload: {
+  title: string;
+  subject: string;
+  grade_level: number;
+  duration_minutes: number;
+  description?: string;
+  thumbnail_url?: string;
+  video: File;
+}): Promise<any> {
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("subject", payload.subject);
+  formData.append("grade_level", String(payload.grade_level));
+  formData.append("duration_minutes", String(payload.duration_minutes));
+  if (payload.description) {
+    formData.append("description", payload.description);
+  }
+  if (payload.thumbnail_url) {
+    formData.append("thumbnail_url", payload.thumbnail_url);
+  }
+  formData.append("video", payload.video);
+
+  const response = await fetch(`${API_BASE_URL}/educational-videos/upload-file`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to upload educational video");
+  }
+
+  return response.json();
+}
+
 export async function uploadBaselineVideo(payload: {
   sign_name: string;
   grade_level: number;

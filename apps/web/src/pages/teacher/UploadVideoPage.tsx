@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { useState, type FormEvent } from "react";
-import { uploadBaselineVideo, createEducationalVideo, type CreateEducationalVideoPayload } from "@/services/educational-videos";
+import { uploadEducationalVideoFile, createEducationalVideo, type CreateEducationalVideoPayload } from "@/services/educational-videos";
 import type { TeacherUploadVideoContext } from "@/layouts/TeacherUploadVideoLayout";
 
 const steps = [
@@ -301,11 +301,14 @@ export function TeacherUploadVideoStepThreePage() {
     setErrorMsg(null);
     try {
       if (videoFile) {
-        // Upload to Module 4 dynamic baseline engine & unlock for students in this grade level
-        await uploadBaselineVideo({
-          sign_name: video.title.trim(),
+        // Upload as Educational Video without creating a Curriculum Stage
+        await uploadEducationalVideoFile({
+          title: video.title.trim(),
+          subject: video.subject.trim(),
           grade_level: video.grade_level,
+          duration_minutes: video.duration_minutes,
           description: video.description.trim(),
+          thumbnail_url: video.thumbnail_url?.trim() || undefined,
           video: videoFile,
         });
       } else if (video.video_url?.trim()) {
