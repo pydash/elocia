@@ -231,6 +231,33 @@ async def upload_educational_video_file(
         shutil.copyfileobj(video.file, f_pub)
     shutil.copyfile(pub_path, stor_path)
 
+    # Transcode to universal web-standard H.264 (AVC) so HEVC/MOV videos play in all browsers
+    try:
+        import imageio_ffmpeg, subprocess
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        h264_filename = f"edu_{uuid.uuid4().hex[:8]}_{clean_title}_web.mp4"
+        h264_pub_path = os.path.join(public_dir, h264_filename)
+        cmd = [
+            ffmpeg_exe, "-y", "-i", pub_path,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-preset", "veryfast", "-crf", "23",
+            "-c:a", "aac", "-movflags", "+faststart",
+            h264_pub_path
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if res.returncode == 0:
+            if os.path.exists(pub_path):
+                try:
+                    os.remove(pub_path)
+                except Exception:
+                    pass
+            pub_path = h264_pub_path
+            video_filename = h264_filename
+            stor_path = os.path.join(storage_dir, video_filename)
+            shutil.copyfile(pub_path, stor_path)
+    except Exception as transcode_err:
+        print(f"Web video transcode skipped: {transcode_err}")
+
     new_vid = EducationalVideo(
         title=title,
         description=description,

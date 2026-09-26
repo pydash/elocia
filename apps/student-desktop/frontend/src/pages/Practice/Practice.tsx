@@ -24,7 +24,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
 
   const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<EducationalVideoItem | null>(null);
-  const [videoError, setVideoError] = useState<boolean>(false);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
 
@@ -152,10 +151,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   <div 
                     key={video.id} 
                     className="video-card" 
-                    onClick={() => {
-                      setVideoError(false);
-                      setSelectedVideo(video);
-                    }}
+                    onClick={() => setSelectedVideo(video)}
                     style={{ cursor: 'pointer' }}
                     title={`Click to watch: ${video.title}`}
                   >
@@ -403,12 +399,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
 
             {/* Video Player */}
             <div style={{ width: '100%', aspectRatio: '16/9', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {videoError ? (
-                <div style={{ color: '#f87171', textAlign: 'center', padding: '24px' }}>
-                  <p style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>⚠️ Video Not Available</p>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>The video file could not be loaded or the URL is unreachable.</p>
-                </div>
-              ) : selectedVideo.video_url.includes('youtube.com') || selectedVideo.video_url.includes('youtu.be') ? (
+              {selectedVideo.video_url.includes('youtube.com') || selectedVideo.video_url.includes('youtu.be') ? (
                 <iframe
                   src={getEmbedUrl(selectedVideo.video_url)}
                   title={selectedVideo.title}
@@ -418,12 +409,15 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                 />
               ) : (
                 <video 
-                  src={selectedVideo.video_url.startsWith('http') ? selectedVideo.video_url : `http://127.0.0.1:8000${selectedVideo.video_url}`}
+                  key={selectedVideo.id}
                   controls 
-                  autoPlay
-                  onError={() => setVideoError(true)}
+                  playsInline
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
+                >
+                  <source src={selectedVideo.video_url} type="video/mp4" />
+                  <source src={`http://127.0.0.1:8000${selectedVideo.video_url}`} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
               )}
             </div>
 
