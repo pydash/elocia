@@ -47,28 +47,49 @@ echo [INFO] Frontend: %FRONTEND_DIR%
 echo [INFO] Desktop:  %DESKTOP_DIR%
 echo.
 
-:: 3. Start Backend Service (Port 8000)
+:: 3. Pre-cleanup: Free ports 8000, 8001, and 5173 from previous runs
+echo Clearing any previous background instances...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000 " ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8001 " ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":5173 " ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
+
+:: 4. Start Backend Service (Port 8000)
 echo [1/3] Starting FastAPI Backend on Port 8000...
-start "ELOCIA - Backend Service" /min cmd /c "cd /d ""%BACKEND_DIR%"" && %PYTHON_EXE% -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+start "ELOCIA - Backend Service" /min cmd /c "cd /d "%BACKEND_DIR%" && %PYTHON_EXE% -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 
-:: 4. Start Student Desktop Frontend Dev Server (Port 5173)
+:: 5. Start Student Desktop Frontend Dev Server (Port 5173)
 echo [2/3] Starting Student Frontend Dev Server on Port 5173...
-start "ELOCIA - Frontend Server" /min cmd /c "cd /d ""%FRONTEND_DIR%"" && npm run dev"
+start "ELOCIA - Frontend Server" /min cmd /c "cd /d "%FRONTEND_DIR%" && npm run dev"
 
-:: Wait 4 seconds for backend and frontend dev servers to initialize
-echo Waiting for servers to initialize...
-timeout /t 4 /nobreak >nul
+:: Wait for servers to initialize
+echo Waiting for backend and frontend to initialize...
+timeout /t 5 /nobreak >nul
 
-:: 5. Launch Native Desktop Window (PyWebView + CV Server on Port 8001)
+:: 6. Launch Native Desktop Window (PyWebView + CV Server on Port 8001)
 echo [3/3] Launching ELOCIA Desktop Application Window...
 cd /d "%DESKTOP_DIR%"
 %PYTHON_EXE% main.py
 
-:: 6. Clean up background services when the desktop window is closed
+:: 7. Clean up background services when the desktop window is closed
 echo.
 echo =========================================================
 echo             CLOSING ELOCIA BACKGROUND SERVICES
 echo =========================================================
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000 " ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8001 " ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":5173 " ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
 taskkill /F /FI "WINDOWTITLE eq ELOCIA - Backend Service*" /T >nul 2>&1
 taskkill /F /FI "WINDOWTITLE eq ELOCIA - Frontend Server*" /T >nul 2>&1
 
