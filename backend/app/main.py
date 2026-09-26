@@ -48,6 +48,16 @@ app.include_router(curriculum_router)
 app.include_router(classes_router)
 app.include_router(videos_router)
 app.include_router(baselines_router, prefix="/baselines", tags=["Baselines & Content Management"])
+import os
+from fastapi.staticfiles import StaticFiles
+
+# Mount static videos directory
+public_videos_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "apps", "student-desktop", "frontend", "public", "videos"))
+storage_videos_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "videos"))
+
+video_mount_dir = public_videos_dir if os.path.exists(public_videos_dir) else storage_videos_dir
+if os.path.exists(video_mount_dir):
+    app.mount("/videos", StaticFiles(directory=video_mount_dir), name="videos")
 
 @app.get("/")
 async def root():
