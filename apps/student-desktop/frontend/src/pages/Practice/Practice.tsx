@@ -20,12 +20,7 @@ interface PracticeProps {
 
 
 export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
-  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([
-    { sign: '23', stage_id: 3, section_label: 'Section 1, Stage 3', score: 45, color: 'red' },
-    { sign: '28', stage_id: 3, section_label: 'Section 1, Stage 3', score: 50, color: 'orange' },
-    { sign: '18', stage_id: 2, section_label: 'Section 1, Stage 2', score: 55, color: 'green' },
-    { sign: '7', stage_id: 1, section_label: 'Section 1, Stage 1', score: 62, color: 'blue' },
-  ]);
+  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
 
   const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
@@ -96,29 +91,35 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             </div>
             
             <div className="kp-cards-row">
-              {practiceItems.map((item, idx) => (
-                <div 
-                  key={idx} 
-                  className={`kp-card ${item.color}`}
-                  onClick={() => {
-                    try {
-                      const prev = parseInt(localStorage.getItem('elocia_cleared_needs_practice') || '0', 10);
-                      localStorage.setItem('elocia_cleared_needs_practice', Math.min(4, prev + 1).toString());
-                    } catch (err) {
-                      console.warn('Failed to update cleared needs practice count:', err);
-                    }
-                    if (onStartLesson) {
-                      onStartLesson(item.stage_id, true);
-                    } else {
-                      onNavigate('setup');
-                    }
-                  }}
-                  title={item.reason || `Practice sign: ${item.sign}`}
-                >
-                  <div className="kp-number">{item.sign}</div>
-                  <div className="kp-stage">{item.section_label}</div>
+              {practiceItems.length > 0 ? (
+                practiceItems.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`kp-card ${item.color}`}
+                    onClick={() => {
+                      try {
+                        const prev = parseInt(localStorage.getItem('elocia_cleared_needs_practice') || '0', 10);
+                        localStorage.setItem('elocia_cleared_needs_practice', Math.min(4, prev + 1).toString());
+                      } catch (err) {
+                        console.warn('Failed to update cleared needs practice count:', err);
+                      }
+                      if (onStartLesson) {
+                        onStartLesson(item.stage_id, true);
+                      } else {
+                        onNavigate('setup');
+                      }
+                    }}
+                    title={item.reason || `Practice sign: ${item.sign}`}
+                  >
+                    <div className="kp-number">{item.sign}</div>
+                    <div className="kp-stage">{item.section_label}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', width: '100%', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
+                  🎉 Great job! No signs currently flagged for extra practice. Keep up the good work!
                 </div>
-              ))}
+              )}
             </div>
           </section>
 
@@ -166,31 +167,9 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   </div>
                 ))
               ) : (
-                [1, 2, 3, 4].map((item) => (
-                  <div key={item} className="video-card">
-                    <div className="video-thumbnail">
-                      <div className="science-placeholder-art">
-                        <div className="science-doodle dna"></div>
-                        <div className="science-doodle stars"></div>
-                        <div className="science-doodle molecules"></div>
-                        <div className="science-text-container">
-                          <span className="science-text">SCIENCE</span>
-                          <span className="science-sub">PLANETS</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="video-info">
-                      <span className="grade-badge">Grade 1</span>
-                      <h3 className="video-title">Different Types of<br/>Planets</h3>
-                      <p className="video-desc">Explore the different types of planets in our universe.</p>
-                      <div className="video-divider"></div>
-                      <div className="video-footer">
-                        <svg className="time-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                        <span className="time-text">10 min</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', width: '100%', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
+                  📹 No educational videos uploaded yet. Videos uploaded by teachers will appear here!
+                </div>
               )}
             </div>
           </section>
