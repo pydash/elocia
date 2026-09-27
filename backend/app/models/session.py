@@ -42,8 +42,8 @@ class StudentStageProgress(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    stage_id = Column(Integer, ForeignKey("curriculum_stages.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    stage_id = Column(Integer, ForeignKey("curriculum_stages.id", ondelete="CASCADE"), nullable=False, index=True)
     unlocked = Column(Boolean, nullable=False, default=False)
     passed = Column(Boolean, nullable=False, default=False)
     best_score = Column(Float, nullable=False, default=0.0)

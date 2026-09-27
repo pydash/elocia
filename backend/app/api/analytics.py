@@ -14,6 +14,7 @@ from app.schemas.analytics import (
     Tier4FlagItem,
     ParentProgressSummary
 )
+from app.core.streak import get_effective_streak
 
 router = APIRouter(prefix="/analytics", tags=["Learning Analytics (Module 2)"])
 
@@ -124,7 +125,7 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
     total_sessions = tot_att_res.scalar() or 0
 
     level = profile.level if profile else 1
-    streak = profile.streak if profile else 0
+    streak = get_effective_streak(profile)
 
     if total_sessions == 0:
         return ParentProgressSummary(

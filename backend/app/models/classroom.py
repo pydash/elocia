@@ -9,7 +9,7 @@ class Class(Base):
     __tablename__ = "classes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(100), nullable=False)
     grade_level = Column(Integer, nullable=False, default=1)
     school_year = Column(String(20), nullable=False, default="2026-2027")
@@ -24,8 +24,8 @@ class ClassStudent(Base):
     __tablename__ = "class_students"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
-    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False, index=True)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     enrolled_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -44,7 +44,7 @@ class EducationalVideo(Base):
     duration_minutes = Column(Integer, default=10)
     video_url = Column(Text, nullable=False)
     thumbnail_url = Column(Text, nullable=True)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     uploader = relationship("User", foreign_keys=[created_by])

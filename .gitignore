@@ -49,3 +49,11 @@ build/
 # OS / editor temporary files
 *.swp
 *.swo
+
+# Logs & System Analytics
+apps/student-desktop/desktop/logs/
+*.csv
+
+# Baselines (calibration landmarks)
+apps/student-desktop/desktop/baselines/*.json
+backend/storage/baselines/*.json

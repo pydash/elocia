@@ -72,13 +72,18 @@
   z-index: 10;
 }
 
+.camera-setup-content-wrapper.setup-tips-wrapper {
+  left: clamp(80px, 15vw, 260px);
+  transform: none;
+}
+
 .tips-card-box-large {
   background: #FCF9F2;
   border: 4px dashed #FB9F34;
   border-radius: 36px;
   padding: 35px 30px;
-  width: 330px;
-  height: 380px;
+  width: 360px;
+  height: 410px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -89,7 +94,7 @@
 }
 
 .tips-card-box-large h3 {
-  font-size: 22px;
+  font-size: 26px;
   color: #FB9F34;
   margin: 0;
   text-align: center;
@@ -102,9 +107,10 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 21px;
+  line-height: 1.4;
   color: #3E4850;
 }
 
@@ -133,12 +139,12 @@
   position: absolute;
   top: 15px;
   left: 15px;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
   z-index: 2;
   letter-spacing: 1px;
 }
@@ -149,14 +155,14 @@
   left: 50%;
   transform: translateX(-50%);
   background: #fff;
-  border: 2px solid #FB9F34;
+  border: 3px solid #FB9F34;
   color: #D97706;
-  padding: 6px 18px;
-  border-radius: 14px;
-  font-size: 13px;
+  padding: 10px 24px;
+  border-radius: 18px;
+  font-size: 18px;
   font-weight: 800;
   z-index: 5;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
   white-space: nowrap;
 }
 
@@ -202,34 +208,34 @@
 }
 
 
-.mascot-step-not-detected { left: 60px; right: auto; }
-.monkey-step-not-detected { width: 300px; height: 300px; top: 20px; left: 120px; }
-.bubble-step-not-detected { width: 260px; height: auto; top: -70px; left: 25px; }
+.mascot-step-not-detected { left: 40px; right: auto; }
+.monkey-step-not-detected { width: 350px; height: 350px; top: 10px; left: 100px; }
+.bubble-step-not-detected { width: 310px; height: auto; top: -85px; left: 15px; }
 
 
-.mascot-step-setup { right: 80px; left: auto; }
-.monkey-step-setup { width: 320px; height: 320px; top: 10px; left: -100px; }
-.bubble-step-setup { width: 260px; height: auto; top: -50px; left: -180px; }
+.mascot-step-setup { right: clamp(30px, 6vw, 100px); left: auto; }
+.monkey-step-setup { width: clamp(280px, 24vw, 360px); height: clamp(280px, 24vw, 360px); top: 0px; left: 0px; }
+.bubble-step-setup { width: clamp(260px, 22vw, 320px); height: auto; top: -110px; left: -20px; }
 
 
-.mascot-step-smile { left: 60px; right: auto; }
-.monkey-step-smile { width: 300px; height: 300px; top: 0px; left: 120px; }
-.bubble-step-smile { width: 250px; height: auto; top: -120px; left: 30px; }
+.mascot-step-smile { left: 40px; right: auto; }
+.monkey-step-smile { width: 350px; height: 350px; top: -10px; left: 100px; }
+.bubble-step-smile { width: 300px; height: auto; top: -130px; left: 20px; }
 
 
-.mascot-step-too-close { left: 60px; right: auto; }
-.monkey-step-too-close { width: 300px; height: 300px; top: 20px; left: 120px; }
-.bubble-step-too-close { width: 260px; height: auto; top: -70px; left: 25px; }
+.mascot-step-too-close { left: 40px; right: auto; }
+.monkey-step-too-close { width: 350px; height: 350px; top: 10px; left: 100px; }
+.bubble-step-too-close { width: 310px; height: auto; top: -85px; left: 15px; }
 
 
-.mascot-step-too-far { left: 60px; right: auto; }
-.monkey-step-too-far { width: 300px; height: 300px; top: 20px; left: 120px; }
-.bubble-step-too-far { width: 260px; height: auto; top: -70px; left: 25px; }
+.mascot-step-too-far { left: 40px; right: auto; }
+.monkey-step-too-far { width: 350px; height: 350px; top: 10px; left: 100px; }
+.bubble-step-too-far { width: 310px; height: auto; top: -85px; left: 15px; }
 
 
-.mascot-step-perfect { left: 60px; right: auto; }
-.monkey-step-perfect { width: 310px; height: 310px; top: 20px; left: 120px; }
-.bubble-step-perfect { width: 260px; height: auto; top: -70px; left: 30px; }
+.mascot-step-perfect { left: 40px; right: auto; }
+.monkey-step-perfect { width: 360px; height: 360px; top: 10px; left: 100px; }
+.bubble-step-perfect { width: 310px; height: auto; top: -85px; left: 20px; }
 
 
 

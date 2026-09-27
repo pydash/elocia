@@ -197,7 +197,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
 
         <img src={grassImg} alt="" className="grass-strip" />
 
-        <div className="camera-setup-content-wrapper">
+        <div className={`camera-setup-content-wrapper ${step === 'setup' ? 'setup-tips-wrapper' : ''}`}>
           {step === 'setup' ? (
             <div className="tips-card-box-large">
               <h3>Tips to get higher chances to perfectly passed</h3>

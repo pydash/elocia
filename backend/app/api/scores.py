@@ -11,6 +11,7 @@ from app.models.session import EvaluationAttempt, StudentStageProgress
 from app.models.baseline import FSLBaseline, CurriculumStage
 from app.models.minigame import MiniGameSession
 from app.schemas.score import ScoreSaveRequest
+from app.core.streak import record_streak_activity
 
 router = APIRouter(prefix="/scores", tags=["Scoring & Evaluation"])
 
@@ -143,11 +144,9 @@ async def save_score(
 
     if profile:
         now = datetime.utcnow()
-        # Streak handling
-        last_date = profile.updated_at
-        today_date = now.date()
-        if passed and (last_date is None or last_date.date() != today_date):
-            profile.streak = (profile.streak or 0) + 1
+        # Streak handling: only increment/maintain streak when a signing attempt passes!
+        if passed:
+            record_streak_activity(profile)
 
         # Calculate live total XP
         eval_xp_res = await db.execute(

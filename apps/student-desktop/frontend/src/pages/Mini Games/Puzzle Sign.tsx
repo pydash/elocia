@@ -12,7 +12,7 @@ interface PuzzleSignProps {
 
 const puzzleSignLogo = '/images/Puzzle Sign.png';
 const wonderMascot = '/images/Wonder.png';
-const wellDoneMascot = '/images/Well done.png';
+const amazingMascot = '/images/Amazing.png';
 const cloud1Img = '/images/Cloud 1.png';
 const backButtonImg = '/images/Back Button.png';
 const confettiImg = '/images/Confetti.png';
@@ -462,15 +462,23 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                   <div className="ps-baseline-error">⚠ {baselineError}</div>
                 )}
               </div>
+
+              {answerShown && (
+                <div className="correct-mascot-container">
+                  <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
+                </div>
+              )}
             </div>
 
             <div className="ps-bottom-controls">
               <div className="ps-mascot-area">
-                <img 
-                  src={answerShown ? wellDoneMascot : wonderMascot} 
-                  alt="Mascot" 
-                  className="ps-mascot-img"
-                />
+                {!answerShown && (
+                  <img 
+                    src={wonderMascot} 
+                    alt="Mascot" 
+                    className="ps-mascot-img"
+                  />
+                )}
               </div>
               
               <div className="ps-button-area">

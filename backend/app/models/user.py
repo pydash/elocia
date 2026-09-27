@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Integer, Float
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Integer, Float, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -17,8 +17,8 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
-    role = Column(Enum(UserRole), nullable=False)
-    is_active = Column(Boolean, default=True)
+    role = Column(Enum(UserRole), nullable=False, index=True)
+    is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -42,6 +42,7 @@ class StudentProfile(Base):
     total_xp = Column(Integer, nullable=False, default=0)
     level = Column(Integer, nullable=False, default=1)
     streak = Column(Integer, nullable=False, default=0)
+    last_streak_date = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

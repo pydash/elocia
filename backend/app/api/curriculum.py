@@ -14,6 +14,7 @@ from app.schemas.curriculum import (
 )
 from typing import List, Optional, Dict, Any
 import uuid
+from app.core.streak import get_effective_streak
 
 router = APIRouter(tags=["Curriculum & Progression"])
 
@@ -237,7 +238,7 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
             "stars": 0
         })
 
-    streak = profile.streak if profile else 0
+    streak = get_effective_streak(profile)
 
     # Total signs mastered (Tier 1 passes)
     mastered_res = await db.execute(
