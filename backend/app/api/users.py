@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, cast, Numeric
+from sqlalchemy import select, func, cast, Numeric, case
 from typing import List, Optional
 import uuid
 from passlib.context import CryptContext
@@ -12,6 +12,7 @@ from app.models.minigame import MiniGameSession
 from app.models.classroom import Class
 from app.schemas.auth import StudentCreate, AdultCreate
 from app.schemas.user import UserResponse, UserUpdate
+from app.core.streak import get_effective_streak
 
 router = APIRouter(tags=["User Management"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -126,7 +127,7 @@ async def get_students(db: AsyncSession = Depends(get_db)):
             "student_number": sp.student_number,
             "student_code": sp.student_code or f"G{sp.grade_level or 1}-01",
             "level": sp.level,
-            "streak": sp.streak,
+            "streak": get_effective_streak(sp),
             "avg_score": float(avg)
         }
         for u, sp, avg in rows
@@ -190,7 +191,7 @@ async def get_parent_students(parent_id: uuid.UUID, db: AsyncSession = Depends(g
             "relationship": ps.relationship or "Parent",
             "total_xp": sp.total_xp if sp else 0,
             "level": sp.level if sp else 1,
-            "streak": sp.streak if sp else 0
+            "streak": get_effective_streak(sp)
         })
     return students
 
@@ -307,7 +308,7 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
                 children_summary=children_summary,
                 class_name=class_name,
                 level=sp.level if sp else None,
-                streak=sp.streak if sp else None,
+                streak=get_effective_streak(sp) if sp else None,
                 avg_score=0.0,
                 signs_mastered=0,
                 stages_complete=0,
@@ -330,12 +331,22 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
     user, profile = row
 
-    # Compute live total XP across learning attempts and mini-games
-    eval_xp_res = await db.execute(
-        select(func.coalesce(func.sum(EvaluationAttempt.xp_earned), 0))
+    # Consolidated query: compute live eval XP, avg score, and signs mastered in 1 query
+    eval_stats_res = await db.execute(
+        select(
+            func.coalesce(func.sum(EvaluationAttempt.xp_earned), 0).label("eval_xp"),
+            func.coalesce(
+                func.round(cast(func.avg(case((EvaluationAttempt.score_overall > 0, EvaluationAttempt.score_overall))), Numeric), 1),
+                0.0
+            ).label("avg_score"),
+            func.count(func.distinct(case((EvaluationAttempt.passed == True, EvaluationAttempt.stage_id)))).label("signs_mastered")
+        )
         .where(EvaluationAttempt.student_id == user_id)
     )
-    total_eval_xp = eval_xp_res.scalar() or 0
+    eval_row = eval_stats_res.first()
+    total_eval_xp = eval_row.eval_xp if eval_row else 0
+    avg_score = float(eval_row.avg_score or 0.0) if eval_row else 0.0
+    signs_mastered = int(eval_row.signs_mastered or 0) if eval_row else 0
 
     game_xp_res = await db.execute(
         select(func.coalesce(func.sum(MiniGameSession.score), 0))
@@ -344,20 +355,6 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     total_game_xp = game_xp_res.scalar() or 0
 
     computed_xp = int(total_eval_xp + total_game_xp)
-
-    # Compute live avg_score across valid attempts
-    avg_score_res = await db.execute(
-        select(func.coalesce(func.round(cast(func.avg(EvaluationAttempt.score_overall), Numeric), 1), 0.0))
-        .where(EvaluationAttempt.student_id == user_id, EvaluationAttempt.score_overall > 0)
-    )
-    avg_score = float(avg_score_res.scalar() or 0.0)
-
-    # Compute live signs_mastered (distinct signs/stages where student passed)
-    signs_res = await db.execute(
-        select(func.count(func.distinct(EvaluationAttempt.stage_id)))
-        .where(EvaluationAttempt.student_id == user_id, EvaluationAttempt.passed == True)
-    )
-    signs_mastered = int(signs_res.scalar() or 0)
 
     # Compute live stages_complete from StudentStageProgress
     stages_res = await db.execute(
@@ -379,7 +376,7 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         student_number=profile.student_number if profile else None,
         student_code=profile.student_code if profile else None,
         level=profile.level if profile else 1,
-        streak=profile.streak if profile else 0,
+        streak=get_effective_streak(profile),
         avg_score=avg_score,
         signs_mastered=signs_mastered,
         stages_complete=stages_complete,
@@ -435,7 +432,7 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
         student_number=profile.student_number if profile else None,
         student_code=profile.student_code if profile else None,
         level=profile.level if profile else 1,
-        streak=profile.streak if profile else 0,
+        streak=get_effective_streak(profile),
         avg_score=0.0,
         signs_mastered=0,
         stages_complete=0,

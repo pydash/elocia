@@ -106,17 +106,17 @@
 .section-banner {
   background-color: #FF9800; 
   color: #ffffff;
-  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
   font-weight: 800;
-  width: clamp(300px, 50vw, 700px);
-  height: clamp(50px, 7vh, 70px);
-  border-radius: 16px; 
+  width: clamp(320px, 55vw, 760px);
+  height: clamp(56px, 8vh, 76px);
+  border-radius: 18px; 
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 0 #E65100; 
+  box-shadow: 0 5px 0 #E65100; 
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
 .stages-path {
@@ -144,23 +144,23 @@
 
 
 .stage-card {
-  width: clamp(140px, 14vw, 180px);
-  height: clamp(180px, 22vh, 240px);
-  border-radius: clamp(14px, 1.5vw, 20px);
+  width: clamp(160px, 16vw, 200px);
+  height: clamp(200px, 24vh, 260px);
+  border-radius: clamp(16px, 1.8vw, 24px);
   box-sizing: border-box; 
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center; 
-  gap: clamp(10px, 1.5vh, 20px);
-  padding: clamp(12px, 1.5vw, 20px);
+  gap: clamp(12px, 1.8vh, 22px);
+  padding: clamp(14px, 1.8vw, 24px);
   transition: transform 0.1s, box-shadow 0.1s;
 }
 
 .active-card {
   background-color: #ffffff;
-  border: clamp(3px, 0.3vw, 4px) solid #FF9800;
-  box-shadow: 0 5px 0 #FF9800; 
+  border: clamp(3px, 0.35vw, 5px) solid #FF9800;
+  box-shadow: 0 6px 0 #FF9800; 
   cursor: pointer;
 }
 
@@ -171,8 +171,8 @@
 
 .locked-card {
   background-color: rgba(253, 253, 253, 0.6); 
-  border: clamp(3px, 0.3vw, 4px) solid rgba(189, 195, 199, 0.8); 
-  box-shadow: 0 5px 0 rgba(189, 195, 199, 0.8); 
+  border: clamp(3px, 0.35vw, 5px) solid rgba(189, 195, 199, 0.8); 
+  box-shadow: 0 6px 0 rgba(189, 195, 199, 0.8); 
   cursor: not-allowed; 
   backdrop-filter: blur(4px); 
 }
@@ -192,7 +192,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px; 
+  gap: 4px; 
 }
 
 .active-card .stage-text-group {
@@ -204,14 +204,14 @@
 }
 
 .stage-label {
-  font-size: clamp(0.85rem, 1.1vw, 1.1rem);
+  font-size: clamp(1.1rem, 1.3vw, 1.35rem);
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
 .stage-number {
-  font-size: clamp(2.2rem, 3.5vw, 3.5rem); 
+  font-size: clamp(2.8rem, 4.2vw, 4.4rem); 
   font-weight: 900;
   line-height: 1; 
 }
@@ -227,19 +227,19 @@
 }
 
 .details-rectangle {
-  width: clamp(340px, 65vw, 720px); 
-  min-height: clamp(180px, 20vh, 220px); 
+  width: clamp(380px, 70vw, 820px); 
+  min-height: clamp(200px, 22vh, 250px); 
   background-color: #ffffff;
-  border-radius: clamp(16px, 2vw, 24px); 
+  border-radius: clamp(18px, 2.2vw, 28px); 
   box-shadow: 0 10px 0 rgba(0,0,0,0.05); 
-  padding: clamp(16px, 2vh, 30px) clamp(20px, 2.5vw, 40px); 
+  padding: clamp(18px, 2.2vh, 32px) clamp(24px, 2.8vw, 44px); 
   box-sizing: border-box;
   position: relative;
   z-index: 1; 
 }
 
 .details-mascot {
-  width: clamp(110px, 14vw, 175px); 
+  width: clamp(150px, 18vw, 220px); 
   height: auto; 
   position: absolute;
   bottom: -15px; 
@@ -254,20 +254,20 @@
   flex-direction: column;
   justify-content: space-between; 
   height: 100%;
-  padding-right: clamp(80px, 12vw, 150px); 
+  padding-right: clamp(100px, 14vw, 170px); 
 }
 
 
 .details-header {
   display: flex;
   flex-direction: column;
-  gap: 4px; 
+  gap: 6px; 
 }
 
 .details-stage-name {
   color: #FF9800; 
   font-weight: 800;
-  font-size: 0.95rem; 
+  font-size: 1.25rem; 
   text-transform: uppercase;
   letter-spacing: 2px;
   margin: 0;
@@ -275,7 +275,7 @@
 
 .details-stage-title {
   color: #2c3e50; 
-  font-size: 1.4rem; 
+  font-size: 1.9rem; 
   font-weight: 800;
   margin: 0;
   line-height: 1.2;
@@ -283,8 +283,8 @@
 
 .details-stage-description {
   color: #7f8c8d; 
-  font-size: 0.95rem; 
-  font-weight: 600;
+  font-size: 1.25rem; 
+  font-weight: 700;
   line-height: 1.5; 
   margin: 0;
 }
@@ -295,21 +295,22 @@
   justify-content: space-between; 
   align-items: flex-end; 
   width: 100%;
+  margin-top: 14px;
 }
 
 .details-stats {
   display: flex;
   flex-direction: column;
-  gap: 6px; 
+  gap: 8px; 
 }
 
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #7f8c8d; 
-  font-weight: 700;
-  font-size: 0.95rem; 
+  font-weight: 800;
+  font-size: 1.2rem; 
 }
 
 .progress-highlight {
@@ -321,17 +322,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   background-color: #FF9800;
   color: #ffffff;
   border: none;
   font-family: 'Quicksand', sans-serif;
-  font-size: 1rem; 
+  font-size: 1.35rem; 
   font-weight: 800;
-  padding: 10px 24px; 
-  border-radius: 20px;
+  padding: 14px 34px; 
+  border-radius: 24px;
   cursor: pointer;
-  box-shadow: 0 4px 0 #E65100;
+  box-shadow: 0 5px 0 #E65100;
   transition: transform 0.1s, box-shadow 0.1s;
 }
 

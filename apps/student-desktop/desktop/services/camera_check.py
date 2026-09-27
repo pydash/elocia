@@ -33,12 +33,24 @@ def analyze_camera_frame(frame):
     faces = face_cascade.detectMultiScale(
         gray,
         scaleFactor=1.1,
-        minNeighbors=3,
-        minSize=(25, 25)
+        minNeighbors=4,
+        minSize=(28, 28)
     )
 
     if len(faces) == 0:
         return "not-detected", "Dim light detected: Please center your face in the guide!"
+
+    # Multi-person interference detection (Adviser feedback: background person interference)
+    if len(faces) > 1:
+        sorted_faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
+        primary = sorted_faces[0]
+        secondary = sorted_faces[1]
+        primary_area = primary[2] * primary[3]
+        secondary_area = secondary[2] * secondary[3]
+        
+        # If secondary face is at least 15% of the primary face area or wider than 7% of screen
+        if secondary_area > 0.15 * primary_area or (secondary[2] / float(w)) > 0.07:
+            return "too-far", "Multiple people detected! Please ensure only 1 student is in the camera view."
 
     # Find the primary face
     (fx, fy, fw, fh) = max(faces, key=lambda f: f[2] * f[3])
@@ -49,7 +61,7 @@ def analyze_camera_frame(frame):
     if face_ratio > 0.42 or fy < int(h * 0.02):
         return "too-close", "Step back a bit so your upper body fits!"
 
-    if face_ratio < 0.07:
+    if face_ratio < 0.08:
         return "too-far", "Step closer to the camera!"
 
     if face_center_x < 0.20 or face_center_x > 0.80:

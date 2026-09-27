@@ -15,6 +15,7 @@ from app.schemas.minigame import (
     MiniGameScoreResponse
 )
 from app.api.scores import compute_level_from_xp
+from app.core.streak import record_streak_activity
 
 router = APIRouter(prefix="/minigames", tags=["Mini-Games (Modules 7, 8, 9)"])
 
@@ -122,6 +123,9 @@ async def submit_minigame_score(data: MiniGameScoreSubmit, db: AsyncSession = De
         if profile:
             profile.total_xp = total_xp
             profile.level = new_level
+            # Mini-game completion counts towards streak!
+            if (data.score and data.score > 0) or (data.rounds_completed and data.rounds_completed > 0):
+                record_streak_activity(profile)
         if user:
             user.level = new_level
 

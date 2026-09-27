@@ -164,3 +164,82 @@
   border-radius: 999px;
   letter-spacing: 0.5px;
 }
+
+/* ── Carousel wrapper & arrows ─────────────────────────────── */
+.ps-carousel-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 1350px;
+}
+
+.ps-nav-arrow {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 3px solid #F59E0B;
+  color: #F59E0B;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.2);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+  outline: none;
+}
+
+.ps-nav-arrow:hover:not(:disabled) {
+  background: #F59E0B;
+  color: #FFFFFF;
+  transform: scale(1.12);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+}
+
+.ps-nav-arrow:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.ps-nav-arrow:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  border-color: #D1D5DB;
+  color: #9CA3AF;
+  box-shadow: none;
+}
+
+/* ── Page dots indicator ───────────────────────────────────── */
+.ps-pagination-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ps-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #D1D5DB;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+  outline: none;
+}
+
+.ps-dot:hover {
+  background: #FBBF24;
+}
+
+.ps-dot.active {
+  width: 36px;
+  background: #F59E0B;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+

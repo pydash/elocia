@@ -12,7 +12,7 @@ interface SeeItSignItProps {
 
 const seeItSignItLogo = '/images/See it, Sign it!.png';
 const wonderMascot = '/images/Wonder.png';
-const wellDoneMascot = '/images/Well done.png';
+const amazingMascot = '/images/Amazing.png';
 const backButtonImg = '/images/Back Button.png';
 const cloud1Img = '/images/Cloud 1.png';
 const confettiImg = '/images/Confetti.png';
@@ -382,15 +382,23 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
                   <div className="ps-baseline-error">⚠ {feedbackError}</div>
                 )}
               </div>
+
+              {roundPassed && (
+                <div className="correct-mascot-container">
+                  <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
+                </div>
+              )}
             </div>
 
             <div className="ps-bottom-controls">
               <div className="sisi-mascot-area">
-                <img 
-                  src={roundPassed ? wellDoneMascot : wonderMascot} 
-                  alt="Mascot" 
-                  className="sisi-mascot-img"
-                />
+                {!roundPassed && (
+                  <img 
+                    src={wonderMascot} 
+                    alt="Mascot" 
+                    className="sisi-mascot-img"
+                  />
+                )}
               </div>
 
               <div className="ps-button-area">

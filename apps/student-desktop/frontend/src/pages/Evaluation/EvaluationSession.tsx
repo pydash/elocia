@@ -92,6 +92,35 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const isEvaluatingRef = useRef<boolean>(false);
 
+  // Guided Tour State (Adviser Keypoint)
+  const [showTour, setShowTour] = useState<boolean>(() => {
+    return localStorage.getItem('elocia_has_seen_tour') !== 'true';
+  });
+  const [tourStep, setTourStep] = useState<number>(0);
+
+  const tourSteps = [
+    {
+      title: "Step 1: Welcome & Goal! \uD83C\uDFAF",
+      desc: "Look at the big number in the orange card on the right. Your goal is to form and perform that sign in front of your camera!",
+      tip: "Keep your hand relaxed until you're ready to sign."
+    },
+    {
+      title: "Step 2: Center Your Camera! \uD83D\uDCF9",
+      desc: "Make sure your face and shoulders are nicely centered in the live feed. Good room lighting helps the camera clearly see your finger shape.",
+      tip: "Only 1 student should be in view \u2014 friends in the background are automatically filtered out."
+    },
+    {
+      title: "Step 3: 4 Tiers of Friendly Help! \uD83D\uDCA1",
+      desc: "If you need help, don't worry! Tier 2 gives you finger hints, Tier 3 plays a video demonstration, and Tier 4 lets you flag and move forward.",
+      tip: "Mistakes are a normal part of practice!"
+    },
+    {
+      title: "Step 4: Check My Sign & Celebrate! \u2B50",
+      desc: "Press the blue 'Check My Sign' button when you're ready! The system records for 3 seconds and checks handshape, palm direction, and location.",
+      tip: "Get all green cards to pass and celebrate with our monkey friend!"
+    }
+  ];
+
   // Diagnostic Mode State & Refs
   const [diagOn, setDiagOn] = useState<boolean>(false);
   const [diagData, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
@@ -218,24 +247,22 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             console.warn('Could not update evaluation parameters localStorage:', e);
           }
 
-          // Save score to database with max 50 XP for proper learn signing (only in official Learn evaluation mode)
-          if (!isPracticeModeRef.current) {
-            saveScore({
-              student_id: student.id,
-              activity_type: 'evaluation',
-              stage_id: currentStageId,
-              sign_id: currentItemRef.current?.globalId ?? 1,
-              attempt_number: failCountRef.current + 1,
-              tier_level: currentTierRef.current,
-              score_handshape: data.scores.handshape,
-              score_palm_orientation: data.scores.palmOrientation,
-              score_location: data.scores.location,
-              score_movement: data.scores.movement,
-              score_overall: overall,
-              passed: isPassed,
-              xp_earned: xpEarned,
-            });
-          }
+          // Save score to database (awards XP in Learn mode; updates streak in both Learn and Practice mode when passed)
+          saveScore({
+            student_id: student.id,
+            activity_type: isPracticeModeRef.current ? 'practice' : 'evaluation',
+            stage_id: currentStageId,
+            sign_id: currentItemRef.current?.globalId ?? 1,
+            attempt_number: failCountRef.current + 1,
+            tier_level: currentTierRef.current,
+            score_handshape: data.scores.handshape,
+            score_palm_orientation: data.scores.palmOrientation,
+            score_location: data.scores.location,
+            score_movement: data.scores.movement,
+            score_overall: overall,
+            passed: isPassed,
+            xp_earned: isPracticeModeRef.current ? 0 : xpEarned,
+          });
         } else if (data.action === 'landmarks') {
           landmarksRef.current = data;
           setDiagData({ scores: data.scores, frames: data.frames });
@@ -542,6 +569,14 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
         <div className="eval-header-right">
           <span className="eval-counter-text">{questionIndex + 1} of {totalQuestions}</span>
           <button 
+            className="eval-tour-toggle" 
+            type="button" 
+            title="Start Guided Tour"
+            onClick={() => { setTourStep(0); setShowTour(true); }}
+          >
+            {"\u2753"} Tour
+          </button>
+          <button 
             className={`eval-diag-toggle ${diagOn ? 'active' : ''}`} 
             type="button" 
             title="Toggle Diagnostics"
@@ -552,6 +587,52 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { sessionStorage.setItem('scrollToBug', 'true'); onNavigate?.('settings'); }}>{"\u2699\uFE0F"}</button>
         </div>
       </header>
+
+      {showTour && (
+        <div className="eval-tour-overlay">
+          <div className="eval-tour-card">
+            <button 
+              className="eval-tour-close-btn" 
+              type="button"
+              aria-label="Close Tour"
+              onClick={() => { setShowTour(false); localStorage.setItem('elocia_has_seen_tour', 'true'); }}
+            >
+              ✕
+            </button>
+            <div className="eval-tour-badge">GUIDED TOUR • {tourStep + 1} OF {tourSteps.length}</div>
+            <h2 className="eval-tour-title">{tourSteps[tourStep].title}</h2>
+            <p className="eval-tour-desc">{tourSteps[tourStep].desc}</p>
+            <div className="eval-tour-tip">
+              <span className="eval-tour-tip-icon">💡</span>
+              <span>{tourSteps[tourStep].tip}</span>
+            </div>
+
+            <div className="eval-tour-footer">
+              <div className="eval-tour-dots">
+                {tourSteps.map((_, i) => (
+                  <div key={i} className={`eval-tour-dot ${i === tourStep ? 'active' : ''}`} />
+                ))}
+              </div>
+              <div className="eval-tour-btns">
+                {tourStep > 0 && (
+                  <button className="eval-tour-back-btn" type="button" onClick={() => setTourStep(s => s - 1)}>
+                    Back
+                  </button>
+                )}
+                {tourStep < tourSteps.length - 1 ? (
+                  <button className="eval-tour-next-btn" type="button" onClick={() => setTourStep(s => s + 1)}>
+                    Next
+                  </button>
+                ) : (
+                  <button className="eval-tour-finish-btn" type="button" onClick={() => { setShowTour(false); localStorage.setItem('elocia_has_seen_tour', 'true'); }}>
+                    Got It! Let's Sign! 🎉
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {currentTier === 4 && (
         <div className="eval-tier4-overlay">
@@ -570,7 +651,9 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
         <section className="eval-left-col">
           <div className="eval-instruction-card">
             <span className="eval-instruction-tag">Instruction</span>
-            <h2>Perform the number {currentItem.name} in sign language</h2>
+            <h2 className="eval-instruction-text">
+              Make the sign for <span className="eval-instruction-highlight">{currentItem.name}</span>
+            </h2>
           </div>
 
           <div className="eval-camera-wrapper">
@@ -583,7 +666,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
               {isRecording && (
                 <div className="eval-recording-badge">
                   <span className="eval-recording-dot" />
-                  Sign the number {currentItem.name}!
+                  Make the sign for {currentItem.name}!
                 </div>
               )}
 
@@ -615,7 +698,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                   <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
                 </div>
                 <button className="eval-next-btn" type="button" onClick={handleNext}>
-                  Next
+                  Next →
                 </button>
               </div>
 
