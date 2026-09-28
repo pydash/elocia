@@ -5,6 +5,7 @@ import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import './Puzzle Sign.css';
 import '../../pages/Evaluation/EvaluationSession.css';
+import { startPuzzleSignTour, stopCurrentTour } from '../../utils/activityTours';
 
 interface PuzzleSignProps {
   onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign') => void;
@@ -219,10 +220,18 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   useEffect(() => { roundIndexRef.current = roundIndex; }, [roundIndex]);
   useEffect(() => { attemptsRef.current = attempts; }, [attempts]);
 
-  // Keep ref in sync so the frame-stream interval sees the latest value
   useEffect(() => {
     isEvaluatingRef.current = isEvaluating;
   }, [isEvaluating]);
+
+  useEffect(() => {
+    if (view === 'game') {
+      startPuzzleSignTour();
+    }
+    return () => {
+      stopCurrentTour();
+    };
+  }, [view]);
 
   // ============================================================
   // WebSocket + Camera (mirrors EvaluationSession's /ws/evaluate flow)
@@ -427,6 +436,14 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
         </div>
         <div className="eval-header-right">
           <span className="eval-counter-text">{roundIndex + 1} of {rounds.length}</span>
+          <button 
+            className="eval-tour-toggle" 
+            type="button" 
+            title="Start Activity Guide"
+            onClick={() => startPuzzleSignTour()}
+          >
+            {"\u2753"} Guide
+          </button>
           <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { sessionStorage.setItem('scrollToBug', 'true'); onNavigate('settings'); }}>{"\u2699\uFE0F"}</button>
         </div>
       </header>

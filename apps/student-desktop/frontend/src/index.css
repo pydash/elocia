@@ -55,3 +55,100 @@ body {
   font-family: 'Quicksand', sans-serif;
   /* (Removed the margin: 0 from here since we added it to html, body, #root above) */
 }
+
+/* ============================================================
+   ELOCIA DRIVER.JS GUIDED TOUR THEME (Child & SPED Friendly)
+   ============================================================ */
+.elocia-driver-theme {
+  font-family: 'Quicksand', -apple-system, sans-serif !important;
+  background: #FFFFFF !important;
+  border-radius: 20px !important;
+  padding: 18px 20px !important;
+  border: 4px solid #FB9F34 !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28) !important;
+  max-width: 360px !important;
+  color: #1F2937 !important;
+}
+
+.elocia-driver-theme * {
+  font-family: 'Quicksand', -apple-system, sans-serif !important;
+}
+
+.elocia-driver-theme .driver-popover-title {
+  font-size: 1.35rem !important;
+  font-weight: 900 !important;
+  color: #D97706 !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.elocia-driver-theme .driver-popover-description {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #374151 !important;
+  line-height: 1.45 !important;
+  margin-bottom: 14px !important;
+}
+
+.elocia-driver-theme .driver-popover-progress-text {
+  font-size: 0.9rem !important;
+  font-weight: 800 !important;
+  color: #9CA3AF !important;
+}
+
+.elocia-driver-theme .driver-popover-footer {
+  margin-top: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.elocia-driver-theme .driver-popover-footer button {
+  background-color: #F59E0B !important;
+  color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  border-radius: 999px !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  cursor: pointer !important;
+  box-shadow: 0 3px 0 0 #B45309 !important;
+  transition: transform 0.1s, background-color 0.15s !important;
+}
+
+.elocia-driver-theme .driver-popover-footer button:hover {
+  background-color: #D97706 !important;
+  transform: scale(1.04) !important;
+}
+
+.elocia-driver-theme .driver-popover-footer button:active {
+  transform: translateY(2px) !important;
+  box-shadow: none !important;
+}
+
+.elocia-driver-theme .driver-popover-prev-btn {
+  background-color: #E5E7EB !important;
+  color: #4B5563 !important;
+  box-shadow: 0 3px 0 0 #9CA3AF !important;
+}
+
+.elocia-driver-theme .driver-popover-prev-btn:hover {
+  background-color: #D1D5DB !important;
+  color: #1F2937 !important;
+}
+
+.elocia-driver-theme .driver-popover-close-btn {
+  font-size: 1.2rem !important;
+  color: #9CA3AF !important;
+  cursor: pointer !important;
+  transition: color 0.15s, transform 0.1s !important;
+}
+
+.elocia-driver-theme .driver-popover-close-btn:hover {
+  color: #EF4444 !important;
+  transform: scale(1.15) !important;
+}

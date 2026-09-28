@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
 import { getStageData } from '../../data/curriculum';
 import { saveScore } from '../../utils/api';
+import { startEvaluationTour, stopCurrentTour } from '../../utils/activityTours';
 
 const moveAwayMascot = '/images/Move away.png';
 const thinkingHandshape = '/images/Tier handshape thinking.png';
@@ -92,34 +93,23 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const isEvaluatingRef = useRef<boolean>(false);
 
-  // Guided Tour State (Adviser Keypoint)
-  const [showTour, setShowTour] = useState<boolean>(() => {
-    return localStorage.getItem('elocia_has_seen_tour') !== 'true';
-  });
-  const [tourStep, setTourStep] = useState<number>(0);
+  // Auto-grading state (hands-free evaluation for SPED)
+  const [autoState, setAutoState] = useState<'idle' | 'holding' | 'grading' | 'cooldown' | 'passed'>('idle');
+  const [holdProgress, setHoldProgress] = useState<number>(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const autoStateRef = useRef(autoState);
+  const holdStartRef = useRef<number | null>(null);
+  const cooldownTimerRef = useRef<number | null>(null);
+  const consecutiveMissRef = useRef<number>(0);
+  const hasPassedRef = useRef<boolean>(false);
 
-  const tourSteps = [
-    {
-      title: "Step 1: Welcome & Goal! \uD83C\uDFAF",
-      desc: "Look at the big number in the orange card on the right. Your goal is to form and perform that sign in front of your camera!",
-      tip: "Keep your hand relaxed until you're ready to sign."
-    },
-    {
-      title: "Step 2: Center Your Camera! \uD83D\uDCF9",
-      desc: "Make sure your face and shoulders are nicely centered in the live feed. Good room lighting helps the camera clearly see your finger shape.",
-      tip: "Only 1 student should be in view \u2014 friends in the background are automatically filtered out."
-    },
-    {
-      title: "Step 3: 4 Tiers of Friendly Help! \uD83D\uDCA1",
-      desc: "If you need help, don't worry! Tier 2 gives you finger hints, Tier 3 plays a video demonstration, and Tier 4 lets you flag and move forward.",
-      tip: "Mistakes are a normal part of practice!"
-    },
-    {
-      title: "Step 4: Check My Sign & Celebrate! \u2B50",
-      desc: "Press the blue 'Check My Sign' button when you're ready! The system records for 3 seconds and checks handshape, palm direction, and location.",
-      tip: "Get all green cards to pass and celebrate with our monkey friend!"
-    }
-  ];
+  // Auto-launch Guided Feature Tour every time an activity/stage opens
+  useEffect(() => {
+    startEvaluationTour();
+    return () => {
+      stopCurrentTour();
+    };
+  }, [stageId]);
 
   // Diagnostic Mode State & Refs
   const [diagOn, setDiagOn] = useState<boolean>(false);
@@ -154,6 +144,10 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   useEffect(() => {
     isEvaluatingRef.current = isEvaluating;
   }, [isEvaluating]);
+
+  useEffect(() => {
+    autoStateRef.current = autoState;
+  }, [autoState]);
 
   useEffect(() => {
     diagRef.current = diagOn;
@@ -212,10 +206,36 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
               else setCurrentTier(1);
               return newCount;
             });
+            hasPassedRef.current = false;
+            setAutoState('cooldown');
+            autoStateRef.current = 'cooldown';
+            setHoldProgress(0);
+            holdStartRef.current = null;
+            setCooldownRemaining(3);
+
+            if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+            let rem = 3;
+            cooldownTimerRef.current = window.setInterval(() => {
+              rem -= 1;
+              setCooldownRemaining(rem);
+              if (rem <= 0) {
+                if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+                if (!hasPassedRef.current) {
+                  setAutoState('idle');
+                  autoStateRef.current = 'idle';
+                }
+              }
+            }, 1000);
           } else {
             // Pass!
             setFailCount(0);
             setCurrentTier(1);
+            hasPassedRef.current = true;
+            setAutoState('passed');
+            autoStateRef.current = 'passed';
+            setHoldProgress(0);
+            holdStartRef.current = null;
+            if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
           }
 
           // Save score to database with max 50 XP for proper learn signing
@@ -263,13 +283,77 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             passed: isPassed,
             xp_earned: isPracticeModeRef.current ? 0 : xpEarned,
           });
-        } else if (data.action === 'landmarks') {
-          landmarksRef.current = data;
-          setDiagData({ scores: data.scores, frames: data.frames });
+        } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          if (data.action === 'landmarks') {
+            landmarksRef.current = data;
+            setDiagData({ scores: data.scores, frames: data.frames });
+          }
           // Update wrist trail
           if (data.hand && data.hand[0] && data.hand[0].x !== 0) {
             trailRef.current.push({ x: data.hand[0].x, y: data.hand[0].y, a: 1.0 });
             if (trailRef.current.length > 40) trailRef.current.shift();
+          }
+
+          // Automatic grading when system sees a hand:
+          const isHandDetected = Boolean(
+            data.hand_detected ||
+            (data.hand && data.hand[0] && data.hand[0].x !== 0)
+          );
+
+          if (hasPassedRef.current || autoStateRef.current === 'grading' || autoStateRef.current === 'cooldown' || autoStateRef.current === 'passed') {
+            return;
+          }
+
+          if (isHandDetected) {
+            consecutiveMissRef.current = 0;
+            if (autoStateRef.current === 'idle') {
+              setAutoState('holding');
+              autoStateRef.current = 'holding';
+              holdStartRef.current = Date.now();
+              setHoldProgress(0);
+              setIsRecording(true);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: 'clear' }));
+              }
+            } else if (autoStateRef.current === 'holding') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const HOLD_DURATION = 2000;
+              const progress = Math.min(100, Math.round((elapsed / HOLD_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= HOLD_DURATION) {
+                setAutoState('grading');
+                autoStateRef.current = 'grading';
+                setIsRecording(false);
+                setIsEvaluating(true);
+                holdStartRef.current = null;
+
+                const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    action: 'evaluate',
+                    stageId: currentItemRef.current.globalId,
+                    stageName: currentItemRef.current.name,
+                    studentId: student.id || '',
+                    studentName: student.name || 'Student',
+                    attemptNumber: failCountRef.current + 1,
+                    tierLevel: currentTierRef.current,
+                    activityType: isPracticeModeRef.current ? 'practice' : 'evaluation'
+                  }));
+                }
+              }
+            }
+          } else {
+            if (autoStateRef.current === 'holding') {
+              consecutiveMissRef.current += 1;
+              if (consecutiveMissRef.current >= 3) {
+                setAutoState('idle');
+                autoStateRef.current = 'idle';
+                setHoldProgress(0);
+                holdStartRef.current = null;
+                setIsRecording(false);
+              }
+            }
           }
         }
       } catch (err) {
@@ -475,6 +559,12 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
       setFailCount(0);
       setScores(failScores); // Reset scores so it's not instantly passed
       setHasEvaluated(false);
+      hasPassedRef.current = false;
+      setAutoState('idle');
+      autoStateRef.current = 'idle';
+      setHoldProgress(0);
+      holdStartRef.current = null;
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
     } else {
       onComplete(currentStageId);
     }
@@ -571,10 +661,10 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           <button 
             className="eval-tour-toggle" 
             type="button" 
-            title="Start Guided Tour"
-            onClick={() => { setTourStep(0); setShowTour(true); }}
+            title="Start Activity Guide"
+            onClick={() => startEvaluationTour()}
           >
-            {"\u2753"} Tour
+            {"\u2753"} Guide
           </button>
           <button 
             className={`eval-diag-toggle ${diagOn ? 'active' : ''}`} 
@@ -587,52 +677,6 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { sessionStorage.setItem('scrollToBug', 'true'); onNavigate?.('settings'); }}>{"\u2699\uFE0F"}</button>
         </div>
       </header>
-
-      {showTour && (
-        <div className="eval-tour-overlay">
-          <div className="eval-tour-card">
-            <button 
-              className="eval-tour-close-btn" 
-              type="button"
-              aria-label="Close Tour"
-              onClick={() => { setShowTour(false); localStorage.setItem('elocia_has_seen_tour', 'true'); }}
-            >
-              ✕
-            </button>
-            <div className="eval-tour-badge">GUIDED TOUR • {tourStep + 1} OF {tourSteps.length}</div>
-            <h2 className="eval-tour-title">{tourSteps[tourStep].title}</h2>
-            <p className="eval-tour-desc">{tourSteps[tourStep].desc}</p>
-            <div className="eval-tour-tip">
-              <span className="eval-tour-tip-icon">💡</span>
-              <span>{tourSteps[tourStep].tip}</span>
-            </div>
-
-            <div className="eval-tour-footer">
-              <div className="eval-tour-dots">
-                {tourSteps.map((_, i) => (
-                  <div key={i} className={`eval-tour-dot ${i === tourStep ? 'active' : ''}`} />
-                ))}
-              </div>
-              <div className="eval-tour-btns">
-                {tourStep > 0 && (
-                  <button className="eval-tour-back-btn" type="button" onClick={() => setTourStep(s => s - 1)}>
-                    Back
-                  </button>
-                )}
-                {tourStep < tourSteps.length - 1 ? (
-                  <button className="eval-tour-next-btn" type="button" onClick={() => setTourStep(s => s + 1)}>
-                    Next
-                  </button>
-                ) : (
-                  <button className="eval-tour-finish-btn" type="button" onClick={() => { setShowTour(false); localStorage.setItem('elocia_has_seen_tour', 'true'); }}>
-                    Got It! Let's Sign! 🎉
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {currentTier === 4 && (
         <div className="eval-tier4-overlay">
@@ -652,7 +696,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           <div className="eval-instruction-card">
             <span className="eval-instruction-tag">Instruction</span>
             <h2 className="eval-instruction-text">
-              Make the sign for <span className="eval-instruction-highlight">{currentItem.name}</span>
+              Gawin ang sign para sa <span className="eval-instruction-highlight">{currentItem.name}</span>
             </h2>
           </div>
 
@@ -663,10 +707,41 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
               <canvas ref={overlayRef} className="eval-overlay-canvas" />
               <div className="eval-camera-tier-tag">Tier {currentTier}</div>
 
-              {isRecording && (
-                <div className="eval-recording-badge">
-                  <span className="eval-recording-dot" />
-                  Make the sign for {currentItem.name}!
+              {/* Real-time automatic grading status pill - ABSOLUTE OVERLAY inside camera card */}
+              {!hasPassed && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: autoState === 'holding' ? 'rgba(5, 150, 105, 0.92)' : autoState === 'grading' ? 'rgba(2, 132, 199, 0.92)' : 'rgba(30, 41, 59, 0.82)',
+                    color: '#ffffff',
+                    padding: '8px 20px',
+                    borderRadius: '999px',
+                    fontSize: '15px',
+                    fontWeight: 800,
+                    zIndex: 15,
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {autoState === 'idle' && <span>✋ Show your hand to begin!</span>}
+                  {autoState === 'holding' && (
+                    <>
+                      <span>🌟 Hold steady...</span>
+                      <div style={{ width: '120px', height: '5px', background: 'rgba(255,255,255,0.3)', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${holdProgress}%`, height: '100%', background: '#FBBF24', transition: 'width 0.1s linear' }} />
+                      </div>
+                    </>
+                  )}
+                  {autoState === 'grading' && <span>✨ Checking your sign... ✨</span>}
+                  {autoState === 'cooldown' && <span>Ready in {cooldownRemaining}s...</span>}
                 </div>
               )}
 
@@ -688,30 +763,26 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                     <span className="diag-stat-value" style={{ color: '#F59E0B' }}>{diagData.frames}</span>
                     <span className="diag-stat-label">Frames</span>
                   </div>
+                  <button
+                    className="eval-dev-btn"
+                    type="button"
+                    onClick={triggerEvaluation}
+                    disabled={isEvaluating}
+                    style={{ margin: 0, padding: '4px 10px', background: '#334155', color: '#fff', border: '1px solid #64748b', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    🔬 Dev Grade
+                  </button>
                 </div>
               )}
             </div>
 
-            {hasPassed ? (
+            {hasPassed && (
               <div className="eval-success-controls">
                 <div className="correct-mascot-container">
                   <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
                 </div>
                 <button className="eval-next-btn" type="button" onClick={handleNext}>
                   Next →
-                </button>
-              </div>
-
-            ) : (
-              <div className="eval-success-controls">
-                <button
-                  className="eval-next-btn"
-                  style={{ backgroundColor: '#2EABFF', marginTop: '15px' }}
-                  type="button"
-                  onClick={triggerEvaluation}
-                  disabled={isEvaluating}
-                >
-                  {isEvaluating ? 'Grading...' : 'Check My Sign'}
                 </button>
               </div>
             )}

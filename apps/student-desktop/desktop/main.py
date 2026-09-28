@@ -240,11 +240,13 @@ async def evaluate_endpoint(websocket: WebSocket):
                 
             student_sequence.append(frame_data)
             
-            # Diagnostic streaming
+            # Streaming presence / landmarks to frontend
+            hand_detected = (active_hand is not None)
             if diag_state["on"] and diag_state["mid"] is not None:
                 scores = diagnostic_frame_scores(frame_data, diag_state["mid"])
                 await websocket.send_json({
                     "action": "landmarks",
+                    "hand_detected": hand_detected,
                     "hand": frame_data["hand"],
                     "pose": {
                         "nose": frame_data["pose"][0],
@@ -253,6 +255,12 @@ async def evaluate_endpoint(websocket: WebSocket):
                     },
                     "scores": scores,
                     "frames": len(student_sequence)
+                })
+            else:
+                await websocket.send_json({
+                    "action": "hand_status",
+                    "hand_detected": hand_detected,
+                    "hand": frame_data["hand"]
                 })
 
     except WebSocketDisconnect:

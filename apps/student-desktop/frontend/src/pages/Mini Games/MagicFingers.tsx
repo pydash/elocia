@@ -5,6 +5,7 @@ import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import { fetchMiniGameConfigs, saveMiniGameScore, type MiniGameConfigItem } from '../../utils/api';
 import './MagicFingers.css';
 import '../../pages/Evaluation/EvaluationSession.css';
+import { startMagicFingersTour, stopCurrentTour } from '../../utils/activityTours';
 
 interface MagicFingersProps {
   onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers') => void;
@@ -160,6 +161,15 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
+
+  useEffect(() => {
+    if (view === 'game') {
+      startMagicFingersTour();
+    }
+    return () => {
+      stopCurrentTour();
+    };
+  }, [view]);
 
   // Real Computer Vision WebSocket & Webcam streaming
   useEffect(() => {
@@ -396,6 +406,14 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
 
           <div className="eval-header-right">
             <span className="eval-counter-text">{roundIndex + 1} of {totalRounds}</span>
+            <button 
+              className="eval-tour-toggle" 
+              type="button" 
+              title="Start Activity Guide"
+              onClick={() => startMagicFingersTour()}
+            >
+              {"\u2753"} Guide
+            </button>
             <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { 
               sessionStorage.setItem('scrollToBug', 'true'); 
               onNavigate('settings'); 
