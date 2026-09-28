@@ -5,6 +5,7 @@ import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import { fetchMiniGameConfigs, saveMiniGameScore, type MiniGameConfigItem } from '../../utils/api';
 import './SeeItSignIt.css';
 import '../../pages/Evaluation/EvaluationSession.css';
+import { startSeeItSignItTour, stopCurrentTour } from '../../utils/activityTours';
 
 interface SeeItSignItProps {
   onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it') => void;
@@ -107,6 +108,15 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
+
+  useEffect(() => {
+    if (view === 'game') {
+      startSeeItSignItTour();
+    }
+    return () => {
+      stopCurrentTour();
+    };
+  }, [view]);
 
   // Real Computer Vision WebSocket & Webcam streaming
   useEffect(() => {
@@ -343,6 +353,14 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
 
           <div className="eval-header-right">
             <span className="eval-counter-text">{roundIndex + 1} of {totalRounds}</span>
+            <button 
+              className="eval-tour-toggle" 
+              type="button" 
+              title="Start Activity Guide"
+              onClick={() => startSeeItSignItTour()}
+            >
+              {"\u2753"} Guide
+            </button>
             <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { 
               sessionStorage.setItem('scrollToBug', 'true'); 
               onNavigate('settings'); 
