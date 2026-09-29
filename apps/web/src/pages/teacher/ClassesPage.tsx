@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 
 import { useGetClasses } from "@/hooks/useClasses";
 
+import type { Class } from "@/interfaces/class.interface";
+
 import Input from "@/components/Input ";
 import Separator from "@/components/Separator";
 import CreateClassDialog from "@/components/teacher/CreateClassDialog";
@@ -69,7 +71,7 @@ export default function TeacherClassesPage() {
   );
 }
 
-function ClassCard({ classItem }: { classItem: any }) {
+function ClassCard({ classItem }: { classItem: Class }) {
   return (
     <li
       key={classItem.id}

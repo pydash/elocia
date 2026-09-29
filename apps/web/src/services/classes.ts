@@ -51,6 +51,27 @@ export async function fetchTeacherClasses(): Promise<Class[]> {
   return response.json();
 }
 
+export async function fetchClassById(classId: string): Promise<Class> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("No access token found");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/classes/${classId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Error fetching class with ID ${classId}: ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
 export async function createClass(payload: CreateClassPayload): Promise<Class> {
   const token = tokenManager.getAccessToken();
   if (!token) {

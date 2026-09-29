@@ -70,7 +70,7 @@ function App() {
         <Route path="/teacher" element={<TeacherLayout />}>
           {/* Classes */}
           <Route path="classes" index element={<TeacherClassesPage />} />
-          <Route path="classes/:id" element={<TeacherClassPage />} />
+          <Route path="classes/:classId" element={<TeacherClassPage />} />
           {/* Students */}
           <Route path="students" index element={<TeacherStudentsPage />} />
           <Route path="students/:id" element={<TeacherStudentProfilePage />} />

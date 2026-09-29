@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { useGetClassRoster } from "@/hooks/useClasses";
+import { useClass } from "@/hooks/useClasses";
 
 import { ArrowLeft } from "lucide-react";
 
@@ -14,9 +14,10 @@ import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
 
 export default function TeacherClassPage() {
-  const { id } = useParams<{ id: string }>();
-  const { roster, loading, error } = useGetClassRoster(id);
+  const { classId } = useParams<{ classId: string }>();
+  const { classData, roster, loading, error } = useClass(classId);
   const [searchQuery, setSearchQuery] = useState("");
+  const rosterStudents = roster?.students ?? [];
 
   const students = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -40,14 +41,6 @@ export default function TeacherClassPage() {
 
   if (error) return <ErrorState message={error} />;
 
-  if (roster === null)
-    return (
-      <EmptyState
-        title="No students found."
-        message="Enroll students to this class."
-      />
-    );
-
   return (
     <div>
       <TopHeaderBar />
@@ -64,7 +57,7 @@ export default function TeacherClassPage() {
         <div className="flex items-center justify-between my-4">
           <div>
             <h1 className="mt-3 text-3xl font-bold text-(--black)">
-              Class Roster
+              {classData?.name}
             </h1>
           </div>
           <div className="flex gap-4 items-center">
@@ -75,7 +68,7 @@ export default function TeacherClassPage() {
               aria-label="Search students"
             />
             <EnrollStudentDialog
-              studentIds={roster.students.map((student) => student.id)}
+              studentIds={rosterStudents.map((student) => student.id)}
             />
           </div>
         </div>
