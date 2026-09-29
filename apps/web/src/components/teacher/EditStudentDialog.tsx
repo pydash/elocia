@@ -1,24 +1,23 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+
+import type { UpdateStudentPayload } from "@/services/students";
 
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import Input from "@/components/Input";
+
 import type { Student } from "@/interfaces/student.interface";
-import type { UpdateStudentPayload } from "@/services/students";
 
 type EditStudentDialogProps = {
   student: Student;
   onSave: (payload: UpdateStudentPayload) => Promise<unknown>;
 };
 
-type StudentForm = {
-  name: string;
+type StudentForm = Pick<
+  Student,
+  "name" | "color" | "emoji" | "grade_level" | "student_code" | "is_active"
+> & {
   pin: string;
-  color: string;
-  emoji: string;
-  grade_level: number;
-  student_code: string;
-  is_active: boolean;
 };
 
 const avatarColors = [
@@ -72,14 +71,16 @@ export default function EditStudentDialog({
   student,
   onSave,
 }: EditStudentDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState(() => getInitialForm(student));
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [form, setForm] = useState<StudentForm>(() => getInitialForm(student));
+  const [error, setError] = useState<string>("");
 
-  useEffect(() => {
+  const openDialog = () => {
     setForm(getInitialForm(student));
-  }, [student]);
+    setError("");
+    setIsOpen(true);
+  };
 
   const closeDialog = () => {
     if (isSaving) return;
@@ -101,7 +102,8 @@ export default function EditStudentDialog({
 
     try {
       const { pin, ...studentDetails } = form;
-      await onSave(pin ? { ...studentDetails, pin } : studentDetails);
+      const payload = pin ? { ...studentDetails, pin } : studentDetails;
+      await onSave(payload);
       setIsOpen(false);
       setError("");
     } catch (err) {
@@ -113,11 +115,7 @@ export default function EditStudentDialog({
 
   return (
     <>
-      <Button
-        type="button"
-        className="shrink-0 gap-2"
-        onClick={() => setIsOpen(true)}
-      >
+      <Button type="button" className="shrink-0 gap-2" onClick={openDialog}>
         Edit Profile
       </Button>
 
@@ -162,6 +160,7 @@ export default function EditStudentDialog({
                   id="edit-pin"
                   className="mt-2"
                   type="password"
+                  pattern="[0-9]{4}"
                   inputMode="numeric"
                   value={form.pin}
                   onChange={(event) => updateField("pin", event.target.value)}
