@@ -12,6 +12,7 @@ import ErrorState from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
 
 import { Search, SquareLibrary } from "lucide-react";
+import Separator from "@/components/Separator";
 
 const matchesSearch = (query: string, values: unknown[]) =>
   !query ||
@@ -83,15 +84,14 @@ export default function TeacherLessonsPage() {
       <TopNavbar />
 
       <section className="p-6">
-        <div className="flex gap-2 items-center text-(--info)">
-          <SquareLibrary />
-          <p className="uppercase paragraph-2">Curriculum</p>
-        </div>
-        <div>
-          <h1 className="heading-2 text-(--black)">Lesson Library</h1>
-        </div>
-        <div className="flex items-center justify-between mt-6">
-          <div className="flex w-1/2 items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div className="flex flex-col justify-between my-4 gap-2">
+            <h1 className="heading-2 text-(--black)">Lesson Library</h1>
+            <p className="paragraph-2 mt-1 text-(--ghost)">
+              Manage your curriculum, educational videos, and mini games.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <Input
               placeholder="Search curriculum, videos, or games..."
               leadingIcon={Search}
@@ -99,17 +99,17 @@ export default function TeacherLessonsPage() {
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Search curriculum, videos, or mini games"
             />
-          </div>
-
-          <div>
             <AddCurriculumDialog />
           </div>
         </div>
 
+        <Separator />
+
         {/* Lesson Cards */}
         <div className="mt-8 space-y-10">
-          <div className="w-fit pe-8 pb-4 border-b-4 border-(--primary)">
+          <div className="flex flex-col gap-3">
             <h2 className="heading-3 text-(--black)">Curriculum</h2>
+            <div className="h-1 w-36 bg-(--primary) rounded-full" />
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredCurriculum.length ? (
@@ -126,10 +126,9 @@ export default function TeacherLessonsPage() {
 
         {/* Video Content */}
         <div className="mt-12">
-          <div className="flex items-center justify-center gap-4 bg-(--primary) p-4 rounded-2xl">
-            <h2 className="heading-3 text-center text-(--white)">
-              Educational Videos
-            </h2>
+          <div className="flex flex-col gap-3">
+            <h2 className="heading-3 text-(--black)">Educational Videos</h2>
+            <div className="h-1 w-36 bg-(--primary) rounded-full" />
           </div>
           <div className="grid gap-6 grid-cols-4 mt-8">
             {filteredVideos.length ? (
@@ -154,8 +153,9 @@ export default function TeacherLessonsPage() {
 
         {/* Mini Games Content */}
         <div className="mt-12">
-          <div className="flex items-center justify-center gap-4 bg-(--primary) p-4 rounded-2xl">
-            <h2 className="heading-3 text-center text-(--white)">Mini Games</h2>
+          <div className="flex flex-col gap-3">
+            <h2 className="heading-3 text-(--black)">Mini Games</h2>
+            <div className="h-1 w-36 bg-(--primary) rounded-full" />
           </div>
           <div className="grid gap-6 grid-cols-4 mt-8">
             {filteredMiniGames.length ? (
