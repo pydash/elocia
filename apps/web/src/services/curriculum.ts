@@ -28,6 +28,32 @@ export async function fetchCurriculums(): Promise<Curriculum[]> {
   return data;
 }
 
+export async function fetchCurriculumById(
+  curriculumId: string,
+): Promise<Curriculum> {
+  const response: Response = await fetch(
+    `${API_BASE_URL}/curriculums/${curriculumId}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const error: { detail?: string } | null = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(error?.detail ?? "Failed to fetch curriculum");
+  }
+
+  const data: Curriculum = await response.json();
+
+  return data;
+}
+
 export async function createCurriculum(
   curriculum: Omit<Curriculum, "id" | "created_at" | "updated_at">,
 ): Promise<Curriculum> {
@@ -46,6 +72,35 @@ export async function createCurriculum(
       .catch(() => null);
 
     throw new Error(error?.detail ?? "Failed to create curriculum");
+  }
+
+  const data: Curriculum = await response.json();
+
+  return data;
+}
+
+export async function updateCurriculum(
+  curriculumId: string,
+  updatedCurriculum: Partial<Curriculum>,
+): Promise<Curriculum> {
+  const response: Response = await fetch(
+    `${API_BASE_URL}/curriculums/${curriculumId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(updatedCurriculum),
+    },
+  );
+
+  if (!response.ok) {
+    const error: { detail?: string } | null = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(error?.detail ?? "Failed to update curriculum");
   }
 
   const data: Curriculum = await response.json();

@@ -10,9 +10,9 @@ import CurriculumCard from "@/components/teacher/CurriculumCard";
 import AddCurriculumDialog from "@/components/teacher/AddCurriculumDialog";
 import ErrorState from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
-
-import { Search, SquareLibrary } from "lucide-react";
 import Separator from "@/components/Separator";
+
+import { Search } from "lucide-react";
 
 const matchesSearch = (query: string, values: unknown[]) =>
   !query ||

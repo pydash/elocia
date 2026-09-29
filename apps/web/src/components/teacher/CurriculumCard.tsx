@@ -1,7 +1,10 @@
-import type { Curriculum } from "@/interfaces/curriculum.interface";
-import Separator from "../Separator";
-import Button from "../Button";
 import { Link } from "react-router-dom";
+
+import type { Curriculum } from "@/interfaces/curriculum.interface";
+
+import Separator from "@/components/Separator";
+import Button from "@/components/Button";
+import EditCurriculumDialog from "@/components/teacher/EditCurriculumDialog";
 
 type CurriculumCardProps = {
   curriculum: Curriculum;
@@ -31,14 +34,17 @@ export default function CurriculumCard({ curriculum }: CurriculumCardProps) {
 
         <Separator />
 
-        <Link
-          to={`/teacher/lessons/curriculum/${curriculum.id}`}
-          className="mt-auto flex items-center gap-2"
-        >
-          <Button className="w-full">
-            <span>Open</span>
-          </Button>
-        </Link>
+        <div className="flex justify-between">
+          <Link
+            to={`/teacher/lessons/curriculum/${curriculum.id}`}
+            className="mt-auto flex items-center gap-2"
+          >
+            <Button className="w-full">
+              <span>Open</span>
+            </Button>
+          </Link>
+          <EditCurriculumDialog curriculum={curriculum} />
+        </div>
       </div>
     </article>
   );
