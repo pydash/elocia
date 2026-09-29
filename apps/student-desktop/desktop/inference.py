@@ -135,8 +135,9 @@ def calculate_location_score(student_seq, baseline_seq):
     dist_mirrored = np.linalg.norm(s_vec - b_vec_mirrored)
 
     best_dist = min(dist, dist_mirrored)
-    # Looser location: ~0.5 shoulder-widths off still passes (60)
-    score = max(0, min(100, 100 - (best_dist * 80)))
+    # Balanced location scoring: allows natural child/shy variations near the target area (mouth/chin/forehead/chest)
+    # while failing signs placed in completely wrong anatomical zones
+    score = max(0, min(100, 100 - (best_dist * 45)))
     return score
 
 def _dtw_distance(seq_a, seq_b):

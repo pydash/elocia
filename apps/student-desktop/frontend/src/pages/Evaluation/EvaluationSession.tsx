@@ -97,6 +97,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   const [autoState, setAutoState] = useState<'idle' | 'holding' | 'grading' | 'cooldown' | 'passed'>('idle');
   const [holdProgress, setHoldProgress] = useState<number>(0);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const autoStateRef = useRef(autoState);
   const holdStartRef = useRef<number | null>(null);
   const cooldownTimerRef = useRef<number | null>(null);
@@ -183,7 +184,19 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.action === 'error' || data.error) {
+          setIsEvaluating(false);
+          setIsRecording(false);
+          setAutoState('idle');
+          autoStateRef.current = 'idle';
+          setHoldProgress(0);
+          holdStartRef.current = null;
+          setErrorMessage(data.error || "Could not evaluate sign. Please check camera or ask teacher.");
+          return;
+        }
+
         if (data.action === 'result') {
+          setErrorMessage(null);
           setScores(data.scores);
           setHasEvaluated(true);
           setIsEvaluating(false);
@@ -694,54 +707,80 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
       <main className="eval-main-row">
         <section className="eval-left-col">
           <div className="eval-instruction-card">
-            <span className="eval-instruction-tag">Instruction</span>
+            <span className="eval-instruction-tag">Target Sign</span>
             <h2 className="eval-instruction-text">
-              Gawin ang sign para sa <span className="eval-instruction-highlight">{currentItem.name}</span>
+              Make the sign for <span className="eval-instruction-highlight">{currentItem.name}</span>! ✨
             </h2>
           </div>
 
           <div className="eval-camera-wrapper">
-            <div className="eval-camera-card" style={{ position: 'relative' }}>
+            <div className={`eval-camera-card eval-camera-card--${autoState}`} style={{ position: 'relative' }}>
               <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
               <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
               <canvas ref={overlayRef} className="eval-overlay-canvas" />
               <div className="eval-camera-tier-tag">Tier {currentTier}</div>
 
-              {/* Real-time automatic grading status pill - ABSOLUTE OVERLAY inside camera card */}
+              {/* Real-time automatic grading HUD - Child-friendly, playful for Grade 1-3 */}
               {!hasPassed && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '16px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    backgroundColor: autoState === 'holding' ? 'rgba(5, 150, 105, 0.92)' : autoState === 'grading' ? 'rgba(2, 132, 199, 0.92)' : 'rgba(30, 41, 59, 0.82)',
-                    color: '#ffffff',
-                    padding: '8px 20px',
-                    borderRadius: '999px',
-                    fontSize: '15px',
-                    fontWeight: 800,
-                    zIndex: 15,
-                    pointerEvents: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {autoState === 'idle' && <span>✋ Show your hand to begin!</span>}
-                  {autoState === 'holding' && (
-                    <>
-                      <span>🌟 Hold steady...</span>
-                      <div style={{ width: '120px', height: '5px', background: 'rgba(255,255,255,0.3)', borderRadius: '999px', overflow: 'hidden' }}>
-                        <div style={{ width: `${holdProgress}%`, height: '100%', background: '#FBBF24', transition: 'width 0.1s linear' }} />
+                <div className={`eval-grading-hud hud-${autoState}`}>
+                  {autoState === 'idle' && (
+                    <div className="hud-badge hud-idle-badge">
+                      <span className="hud-icon pulse-hand">✋</span>
+                      <div className="hud-text-group">
+                        <span className="hud-main-text">Show your hand to begin!</span>
+                        <span className="hud-sub-text">Hold it up high so the camera can see!</span>
                       </div>
-                    </>
+                    </div>
                   )}
-                  {autoState === 'grading' && <span>✨ Checking your sign... ✨</span>}
-                  {autoState === 'cooldown' && <span>Ready in {cooldownRemaining}s...</span>}
+
+                  {autoState === 'holding' && (
+                    <div className="hud-badge hud-holding-badge">
+                      <div className="hud-countdown-ring">
+                        <svg viewBox="0 0 36 36" className="circular-chart">
+                          <path className="circle-bg"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path className="circle"
+                            strokeDasharray={`${holdProgress}, 100`}
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                        </svg>
+                        <span className="countdown-number">
+                          {Math.max(1, Math.ceil((100 - holdProgress) / 40))}
+                        </span>
+                      </div>
+                      <div className="hud-text-group">
+                        <span className="hud-main-text">🌟 Hold steady!</span>
+                        <span className="hud-sub-text">Keep your hand still... 3, 2, 1!</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {autoState === 'grading' && (
+                    <div className="hud-badge hud-grading-badge">
+                      <span className="hud-icon rotating-star">✨</span>
+                      <div className="hud-text-group">
+                        <span className="hud-main-text">Checking your sign!</span>
+                        <span className="hud-sub-text">Looking at your fingers and palm... 🔍</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {autoState === 'cooldown' && (
+                    <div className="hud-badge hud-cooldown-badge">
+                      <span className="hud-icon">⏱️</span>
+                      <div className="hud-text-group">
+                        <span className="hud-main-text">Try again in {cooldownRemaining}s!</span>
+                        <span className="hud-sub-text">Shake your hands and get ready!</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {errorMessage && (
+                    <div className="hud-error-banner">
+                      <span>⚠️ {errorMessage}</span>
+                    </div>
+                  )}
                 </div>
               )}
 

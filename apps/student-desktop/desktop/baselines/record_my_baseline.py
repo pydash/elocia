@@ -30,8 +30,9 @@ def record_baseline(stage_id, duration=3):
             "pose": [{"x": 0, "y": 0, "z": 0} for _ in range(33)]
         }
         
-        if results.right_hand_landmarks:
-            for i, lm in enumerate(results.right_hand_landmarks.landmark):
+        active_hand = results.right_hand_landmarks or results.left_hand_landmarks
+        if active_hand:
+            for i, lm in enumerate(active_hand.landmark):
                 frame_data["hand"][i] = {"x": lm.x, "y": lm.y, "z": lm.z}
                 
         if results.pose_landmarks:
@@ -42,7 +43,9 @@ def record_baseline(stage_id, duration=3):
         
     cap.release()
     
-    filename = f"baseline_{stage_id}.json"
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(script_dir, f"baseline_{stage_id}.json")
     with open(filename, 'w') as f:
         json.dump(baseline_data, f)
         
