@@ -32,7 +32,7 @@ export default function CurriculumCard({ curriculum }: CurriculumCardProps) {
         <Separator />
 
         <Link
-          to={`/teacher/lessons/${curriculum.id}`}
+          to={`/teacher/lessons/curriculum/${curriculum.id}`}
           className="mt-auto flex items-center gap-2"
         >
           <Button className="w-full">
