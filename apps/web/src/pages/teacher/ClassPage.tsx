@@ -12,6 +12,7 @@ import StudentCard from "@/components/teacher/StudentCard";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
 import EmptyState from "@/components/EmptyState";
+import Separator from "@/components/Separator";
 
 export default function TeacherClassPage() {
   const { classId } = useParams<{ classId: string }>();
@@ -72,6 +73,8 @@ export default function TeacherClassPage() {
             />
           </div>
         </div>
+
+        <Separator className="my-4" />
 
         {students.length > 0 ? (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

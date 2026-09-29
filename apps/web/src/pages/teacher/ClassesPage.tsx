@@ -39,8 +39,13 @@ export default function TeacherClassesPage() {
     <div>
       <TopHeaderBar />
       <section className="p-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <h1 className="text-2xl font-bold">Classes</h1>
+        <div className="flex flex-col justify-between my-4 gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col">
+            <h1 className="heading-2 text-(--black)">Classes</h1>
+            <p className="text-sm text-gray-500">
+              View and manage your classes.
+            </p>
+          </div>
           <div className="flex gap-4">
             <Input
               className="w-full"
@@ -53,6 +58,8 @@ export default function TeacherClassesPage() {
             <CreateClassDialog />
           </div>
         </div>
+
+        <Separator />
 
         {classes.length > 0 ? (
           <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

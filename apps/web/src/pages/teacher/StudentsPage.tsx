@@ -10,6 +10,7 @@ import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
 
 import { Search, CheckCircle2 } from "lucide-react";
+import Separator from "@/components/Separator";
 
 export default function TeacherStudentsPage() {
   const { students, loading, error, addStudent, reactivateStudentById } =
@@ -92,7 +93,7 @@ export default function TeacherStudentsPage() {
         </div>
 
         {/* Status Toggle Sub-bar */}
-        <div className="mt-4 flex items-center justify-between border-b border-gray-200 pb-3">
+        <div className="flex items-center justify-between my-4">
           <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1">
             <button
               onClick={() => setStatusFilter("active")}
@@ -126,6 +127,8 @@ export default function TeacherStudentsPage() {
             </button>
           </div>
         </div>
+
+        <Separator />
 
         {actionMessage && (
           <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 flex items-center gap-2">
