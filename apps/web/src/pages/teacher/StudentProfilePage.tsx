@@ -1,18 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import TopHeaderBar from "../../components/teacher/TopHeaderBar";
-import StudentBanner from "../../components/teacher/StudentBanner";
-import StatCard from "../../components/StatCard";
-import { ArrowLeft, Flame } from "lucide-react";
+
 import { useGetStudentById } from "@/hooks/useStudents";
-import { getStreakMessage } from "@/helpers/streak";
+
 import { fetchStudentScores } from "@/services/parent-progress";
+
+import { ArrowLeft, Flame } from "lucide-react";
+
+import { getStreakMessage } from "@/helpers/streak";
+
 import type { EvaluationAttemptItem } from "@/interfaces/parent.interface";
+
+import TopHeaderBar from "@/components/teacher/TopHeaderBar";
+import StudentBanner from "@/components/teacher/StudentBanner";
+import StatCard from "@/components/StatCard";
+import LoadingState from "@/components/LoadingState";
+import ErrorState from "@/components/ErrorState";
 
 export default function TeacherStudentProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { student, loading, error, editStudent } = useGetStudentById(id || "");
-  const [recentAttempts, setRecentAttempts] = useState<EvaluationAttemptItem[]>([]);
+  const [recentAttempts, setRecentAttempts] = useState<EvaluationAttemptItem[]>(
+    [],
+  );
   const streakMessage = getStreakMessage(student?.streak || 0);
 
   useEffect(() => {
@@ -23,23 +33,10 @@ export default function TeacherStudentProfilePage() {
     }
   }, [id]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-4">
-        <TopHeaderBar />
-        <div className="p-12 text-center text-(--ghost)">Loading student profile...</div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingState />;
 
-  if (error || !student) {
-    return (
-      <div className="flex flex-col gap-4">
-        <TopHeaderBar />
-        <div className="p-12 text-center text-(--danger)">Error: {error || "Student not found"}</div>
-      </div>
-    );
-  }
+  if (error || !student)
+    return <ErrorState message={error || "Student not found."} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,13 +53,9 @@ export default function TeacherStudentProfilePage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Signs Mastered Card */}
           <StatCard label="Signs Mastered">
-            <div className="flex w-full flex-col items-center gap-3">
-              <div className="flex w-full flex-col items-center gap-3 mt-4">
-                <h3 className="heading-3 text-(--primary)">
-                  {student.signs_mastered ?? 0}
-                </h3>
-              </div>
-            </div>
+            <h3 className="heading-2 text-(--primary)">
+              {student.signs_mastered ?? 0}
+            </h3>
           </StatCard>
 
           {/* Average Score Card */}
@@ -85,7 +78,7 @@ export default function TeacherStudentProfilePage() {
               <Flame className="size-6 fill-(--danger-light)" />
               <h3 className="heading-2">{student.streak ?? 0}</h3>
             </div>
-            <p className="paragraph-2 text-center">{streakMessage}</p>
+            <p className="paragraph-3 text-center">{streakMessage}</p>
           </StatCard>
         </div>
 
@@ -94,7 +87,9 @@ export default function TeacherStudentProfilePage() {
           {/* Learning Path Progress */}
           <div className="lg:col-span-2 min-h-60 flex flex-col justify-between rounded-3xl border-3 border-(--border) bg-(--white) p-6 shadow-[0_6px_0_0_#BDC8D2]">
             <div className="w-full flex items-center justify-between">
-              <h3 className="heading-3 text-(--primary)">Learning Path Progress</h3>
+              <h3 className="heading-3 text-(--primary)">
+                Learning Path Progress
+              </h3>
               <span className="text-sm font-semibold text-(--ghost)">
                 {student.stages_complete ?? 0} Stages Completed
               </span>
@@ -103,7 +98,8 @@ export default function TeacherStudentProfilePage() {
             <div className="flex items-center justify-around gap-3 py-6 overflow-x-auto">
               {[1, 2, 3, 4].map((stageNum) => {
                 const isPassed = (student.stages_complete ?? 0) >= stageNum;
-                const isCurrent = (student.stages_complete ?? 0) === stageNum - 1;
+                const isCurrent =
+                  (student.stages_complete ?? 0) === stageNum - 1;
 
                 return (
                   <div
@@ -112,14 +108,22 @@ export default function TeacherStudentProfilePage() {
                       isPassed
                         ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-sm"
                         : isCurrent
-                        ? "bg-orange-50 border-(--primary) text-(--primary) shadow-sm"
-                        : "bg-gray-50 border-gray-200 text-gray-400"
+                          ? "bg-orange-50 border-(--primary) text-(--primary) shadow-sm"
+                          : "bg-gray-50 border-gray-200 text-gray-400"
                     }`}
                   >
-                    <span className="text-xs font-bold uppercase tracking-wider">Stage</span>
-                    <span className="text-3xl font-extrabold my-1">{stageNum}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Stage
+                    </span>
+                    <span className="text-3xl font-extrabold my-1">
+                      {stageNum}
+                    </span>
                     <span className="text-xs font-semibold">
-                      {isPassed ? "Completed" : isCurrent ? "Current" : "Locked"}
+                      {isPassed
+                        ? "Completed"
+                        : isCurrent
+                          ? "Current"
+                          : "Locked"}
                     </span>
                   </div>
                 );
@@ -141,7 +145,9 @@ export default function TeacherStudentProfilePage() {
               >
                 <span className="text-2xl">⚡</span>
                 <span className="text-xs font-bold mt-1">Fast Learner</span>
-                <span className="text-[10px] font-medium">{recentAttempts.length > 0 ? "Unlocked" : "Locked"}</span>
+                <span className="text-[10px] font-medium">
+                  {recentAttempts.length > 0 ? "Unlocked" : "Locked"}
+                </span>
               </div>
 
               <div
@@ -153,7 +159,9 @@ export default function TeacherStudentProfilePage() {
               >
                 <span className="text-2xl">🏆</span>
                 <span className="text-xs font-bold mt-1">Sign Master</span>
-                <span className="text-[10px] font-medium">{(student.avg_score ?? 0) >= 80 ? "Unlocked" : "Locked"}</span>
+                <span className="text-[10px] font-medium">
+                  {(student.avg_score ?? 0) >= 80 ? "Unlocked" : "Locked"}
+                </span>
               </div>
 
               <div
@@ -165,7 +173,9 @@ export default function TeacherStudentProfilePage() {
               >
                 <span className="text-2xl">🔥</span>
                 <span className="text-xs font-bold mt-1">Dedicated</span>
-                <span className="text-[10px] font-medium">{(student.streak ?? 0) >= 3 ? "Unlocked" : "Locked"}</span>
+                <span className="text-[10px] font-medium">
+                  {(student.streak ?? 0) >= 3 ? "Unlocked" : "Locked"}
+                </span>
               </div>
 
               <div
@@ -177,7 +187,9 @@ export default function TeacherStudentProfilePage() {
               >
                 <span className="text-2xl">🎖️</span>
                 <span className="text-xs font-bold mt-1">Stage Champ</span>
-                <span className="text-[10px] font-medium">{(student.stages_complete ?? 0) >= 1 ? "Unlocked" : "Locked"}</span>
+                <span className="text-[10px] font-medium">
+                  {(student.stages_complete ?? 0) >= 1 ? "Unlocked" : "Locked"}
+                </span>
               </div>
             </div>
           </div>
@@ -185,7 +197,9 @@ export default function TeacherStudentProfilePage() {
 
         {/* Recent Assignments & Evaluation Sessions */}
         <div className="mb-12 w-full rounded-3xl border-3 border-(--border) bg-(--white) p-6 shadow-[0_6px_0_0_#BDC8D2]">
-          <h3 className="heading-3 text-(--primary)">Recent Assignments & Evaluation Sessions</h3>
+          <h3 className="heading-3 text-(--primary)">
+            Recent Assignments & Evaluation Sessions
+          </h3>
 
           <div className="mt-5 overflow-x-auto">
             {recentAttempts.length > 0 ? (
@@ -220,11 +234,14 @@ export default function TeacherStudentProfilePage() {
                       </td>
                       <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--ghost)">
                         {assignment.created_at
-                          ? new Date(assignment.created_at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })
+                          ? new Date(assignment.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )
                           : "Recent"}
                       </td>
                       <td className="paragraph-2 border-b border-(--border) px-4 py-4">
@@ -247,7 +264,8 @@ export default function TeacherStudentProfilePage() {
               </table>
             ) : (
               <p className="text-center py-8 paragraph-2 text-(--ghost)">
-                No evaluation sessions or assignments recorded yet for this student.
+                No evaluation sessions or assignments recorded yet for this
+                student.
               </p>
             )}
           </div>

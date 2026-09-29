@@ -72,14 +72,14 @@ export default function TeacherStudentsPage() {
       <TopHeaderBar />
       <section className="p-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-          <div>
+          <div className="space-y-2">
             <h2 className="heading-2 text-(--black)">Student Roster</h2>
             <p className="text-sm text-gray-500">
               View and manage active and archived student profiles.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <Input
               leadingIcon={Search}
               placeholder="Search students..."
@@ -96,7 +96,7 @@ export default function TeacherStudentsPage() {
           <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1">
             <button
               onClick={() => setStatusFilter("active")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 statusFilter === "active"
                   ? "bg-white text-(--primary) shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -106,9 +106,9 @@ export default function TeacherStudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter("inactive")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 statusFilter === "inactive"
-                  ? "bg-white text-rose-700 shadow-xs"
+                  ? "bg-white text-red-500 shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -116,7 +116,7 @@ export default function TeacherStudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter("all")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 statusFilter === "all"
                   ? "bg-white text-gray-900 shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
