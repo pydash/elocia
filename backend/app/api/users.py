@@ -113,8 +113,11 @@ async def create_adult(data: AdultCreate, db: AsyncSession = Depends(get_db)):
     return user
 
 @router.get("/students", response_model=List[dict])
-async def get_students(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+async def get_students(
+    status: Optional[str] = Query("active", description="'active', 'inactive', or 'all'"),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
         select(
             User,
             StudentProfile,
@@ -122,15 +125,23 @@ async def get_students(db: AsyncSession = Depends(get_db)):
         )
         .join(StudentProfile, User.id == StudentProfile.student_id)
         .outerjoin(EvaluationAttempt, User.id == EvaluationAttempt.student_id)
-        .where(User.role == UserRole.student, User.is_active == True)
-        .group_by(User.id, StudentProfile.student_id)
-        .order_by(StudentProfile.grade_level.asc(), StudentProfile.student_number.asc(), User.created_at.asc())
+        .where(User.role == UserRole.student)
     )
+    if status == "active":
+        query = query.where(User.is_active == True)
+    elif status == "inactive":
+        query = query.where(User.is_active == False)
+
+    query = query.group_by(User.id, StudentProfile.student_id).order_by(
+        StudentProfile.grade_level.asc(), StudentProfile.student_number.asc(), User.created_at.asc()
+    )
+    result = await db.execute(query)
     rows = result.all()
     return [
         {
             "id": str(u.id),
             "name": u.name,
+            "is_active": u.is_active,
             "color": sp.color,
             "emoji": sp.emoji,
             "grade_level": sp.grade_level or 1,
@@ -263,12 +274,20 @@ async def unlink_parent_student(
     return {"status": "unlinked", "parent_id": str(parent_id), "student_id": str(student_id)}
 
 @router.get("/users", response_model=List[UserResponse])
-async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = Depends(get_db)):
+async def list_users(
+    role: Optional[UserRole] = Query(None),
+    status: Optional[str] = Query("all", description="'active', 'inactive', or 'all'"),
+    db: AsyncSession = Depends(get_db)
+):
     query = (
         select(User, StudentProfile)
         .outerjoin(StudentProfile, User.id == StudentProfile.student_id)
-        .where(User.is_active == True)
     )
+    if status == "active":
+        query = query.where(User.is_active == True)
+    elif status == "inactive":
+        query = query.where(User.is_active == False)
+
     if role:
         query = query.where(User.role == role)
     result = await db.execute(query)
@@ -285,6 +304,20 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
         grade_str = f"Grade {s_grade}" if s_grade else ""
         item_str = f"{s_name} ({grade_str})" if grade_str else s_name
         children_by_parent.setdefault(p_id, []).append(item_str)
+
+    # Also fetch all linked parents for each student
+    student_parents_res = await db.execute(
+        select(ParentStudent.student_id, ParentStudent.parent_id, User.name, User.username, ParentStudent.relationship)
+        .join(User, ParentStudent.parent_id == User.id)
+    )
+    parents_by_student = {}
+    for s_id, p_id, p_name, p_uname, p_rel in student_parents_res.all():
+        parents_by_student.setdefault(s_id, []).append({
+            "id": p_id,
+            "name": p_name,
+            "username": p_uname,
+            "relationship": p_rel or "Parent"
+        })
 
     # 2. Fetch assigned classes for teachers
     classes_res = await db.execute(select(Class.teacher_id, Class.name, Class.grade_level))
@@ -303,6 +336,10 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
         # Only students have a student grade level
         student_grade = sp.grade_level if (sp and u.role == UserRole.student) else None
 
+        p_list = parents_by_student.get(u.id, []) if u.role == UserRole.student else []
+        parent_summary = ", ".join([p["name"] for p in p_list]) if p_list else None
+        first_parent_id = p_list[0]["id"] if p_list else None
+
         responses.append(
             UserResponse(
                 id=u.id,
@@ -315,6 +352,10 @@ async def list_users(role: Optional[UserRole] = Query(None), db: AsyncSession = 
                 grade_level=student_grade,
                 student_number=sp.student_number if sp else None,
                 student_code=sp.student_code if sp else None,
+                parent_id=first_parent_id,
+                parent_name=parent_summary,
+                parents=p_list,
+                parent_summary=parent_summary,
                 children_summary=children_summary,
                 class_name=class_name,
                 level=sp.level if sp else None,
@@ -375,6 +416,27 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if stages_complete == 0 and signs_mastered > 0:
         stages_complete = signs_mastered
 
+    # Fetch all parent info if student
+    parents_list = []
+    parent_summary = None
+    first_parent_id = None
+    if user.role == UserRole.student:
+        p_res = await db.execute(
+            select(ParentStudent.parent_id, User.name, User.username, ParentStudent.relationship)
+            .join(User, ParentStudent.parent_id == User.id)
+            .where(ParentStudent.student_id == user_id)
+        )
+        for p_id, p_name, p_uname, p_rel in p_res.all():
+            parents_list.append({
+                "id": p_id,
+                "name": p_name,
+                "username": p_uname,
+                "relationship": p_rel or "Parent"
+            })
+        if parents_list:
+            parent_summary = ", ".join([p["name"] for p in parents_list])
+            first_parent_id = parents_list[0]["id"]
+
     return UserResponse(
         id=user.id,
         name=user.name,
@@ -385,6 +447,10 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         grade_level=profile.grade_level if profile else 1,
         student_number=profile.student_number if profile else None,
         student_code=profile.student_code if profile else None,
+        parent_id=first_parent_id,
+        parent_name=parent_summary,
+        parents=parents_list,
+        parent_summary=parent_summary,
         level=profile.level if profile else 1,
         streak=get_effective_streak(profile),
         avg_score=avg_score,
@@ -412,6 +478,11 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
     if data.password is not None and data.password.strip():
         user.password_hash = pwd_context.hash(data.password.strip())
     if data.is_active is not None:
+        if user.role == UserRole.admin and not data.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin accounts are permanently protected and cannot be deactivated."
+            )
         user.is_active = data.is_active
 
     if profile:
@@ -426,10 +497,65 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
         if data.student_code is not None:
             profile.student_code = data.student_code
 
+    if user.role == UserRole.student:
+        if data.remove_parent or (data.parent_ids is not None and len(data.parent_ids) == 0):
+            existing_links = await db.execute(
+                select(ParentStudent).where(ParentStudent.student_id == user_id)
+            )
+            for link in existing_links.scalars().all():
+                await db.delete(link)
+        elif data.parent_ids is not None:
+            # Sync entire parent_ids list
+            existing_links = await db.execute(
+                select(ParentStudent).where(ParentStudent.student_id == user_id)
+            )
+            for link in existing_links.scalars().all():
+                await db.delete(link)
+
+            for pid in data.parent_ids:
+                p_check = await db.execute(
+                    select(User).where(User.id == pid, User.role == UserRole.parent, User.is_active == True)
+                )
+                if p_check.scalar_one_or_none():
+                    db.add(ParentStudent(parent_id=pid, student_id=user_id, relationship="Parent"))
+        elif data.parent_id is not None:
+            existing_links = await db.execute(
+                select(ParentStudent).where(ParentStudent.student_id == user_id)
+            )
+            for link in existing_links.scalars().all():
+                await db.delete(link)
+
+            p_check = await db.execute(
+                select(User).where(User.id == data.parent_id, User.role == UserRole.parent, User.is_active == True)
+            )
+            if p_check.scalar_one_or_none():
+                db.add(ParentStudent(parent_id=data.parent_id, student_id=user_id, relationship="Parent"))
+
     await db.commit()
     await db.refresh(user)
     if profile:
         await db.refresh(profile)
+
+    # Fetch updated parents for student
+    parents_list = []
+    parent_summary = None
+    first_parent_id = None
+    if user.role == UserRole.student:
+        p_res = await db.execute(
+            select(ParentStudent.parent_id, User.name, User.username, ParentStudent.relationship)
+            .join(User, ParentStudent.parent_id == User.id)
+            .where(ParentStudent.student_id == user_id)
+        )
+        for p_id, p_name, p_uname, p_rel in p_res.all():
+            parents_list.append({
+                "id": p_id,
+                "name": p_name,
+                "username": p_uname,
+                "relationship": p_rel or "Parent"
+            })
+        if parents_list:
+            parent_summary = ", ".join([p["name"] for p in parents_list])
+            first_parent_id = parents_list[0]["id"]
 
     return UserResponse(
         id=user.id,
@@ -441,6 +567,10 @@ async def update_user(user_id: uuid.UUID, data: UserUpdate, db: AsyncSession = D
         grade_level=profile.grade_level if profile else 1,
         student_number=profile.student_number if profile else None,
         student_code=profile.student_code if profile else None,
+        parent_id=first_parent_id,
+        parent_name=parent_summary,
+        parents=parents_list,
+        parent_summary=parent_summary,
         level=profile.level if profile else 1,
         streak=get_effective_streak(profile),
         avg_score=0.0,
@@ -457,6 +587,23 @@ async def deactivate_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
+    if user.role == UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin accounts are permanently protected and cannot be deactivated."
+        )
+    
     user.is_active = False
     await db.commit()
     return {"status": "deactivated", "user_id": str(user_id)}
+
+@router.patch("/users/{user_id}/reactivate", status_code=status.HTTP_200_OK)
+async def reactivate_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    user.is_active = True
+    await db.commit()
+    return {"status": "reactivated", "user_id": str(user_id)}
