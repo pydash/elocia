@@ -22,78 +22,8 @@ export interface Section {
   units: Unit[];
 }
 
-// Fallback canonical offline curriculum matching the backend and database
-export const CURRICULUM: Section[] = [
-  {
-    id: 1,
-    title: "SECTION 1",
-    units: [
-      {
-        id: 1,
-        title: "UNIT 1",
-        stages: [
-          {
-            id: 1,
-            title: "Numbers 1-10",
-            description: "Let's dive into sign language using numbers 1 to 10.",
-            items: [
-              { globalId: 1, name: "1" },
-              { globalId: 2, name: "2" },
-              { globalId: 3, name: "3" },
-              { globalId: 4, name: "4" },
-              { globalId: 5, name: "5" },
-              { globalId: 6, name: "6" },
-              { globalId: 7, name: "7" },
-              { globalId: 8, name: "8" },
-              { globalId: 9, name: "9" },
-              { globalId: 10, name: "10" },
-            ]
-          },
-          {
-            id: 2,
-            title: "Numbers 11-20",
-            description: "Keep counting with numbers 11 to 20.",
-            items: [
-              { globalId: 11, name: "11" },
-              { globalId: 12, name: "12" },
-              { globalId: 13, name: "13" },
-              { globalId: 14, name: "14" },
-              { globalId: 15, name: "15" },
-              { globalId: 16, name: "16" },
-              { globalId: 17, name: "17" },
-              { globalId: 18, name: "18" },
-              { globalId: 19, name: "19" },
-              { globalId: 20, name: "20" },
-            ]
-          }
-        ]
-      },
-      {
-        id: 2,
-        title: "UNIT 2",
-        stages: [
-          {
-            id: 3,
-            title: "Alphabet A-J",
-            description: "Learn the first letters of the alphabet.",
-            items: [
-              { globalId: 21, name: "A" },
-              { globalId: 22, name: "B" },
-              { globalId: 23, name: "C" },
-              { globalId: 24, name: "D" },
-              { globalId: 25, name: "E" },
-              { globalId: 26, name: "F" },
-              { globalId: 27, name: "G" },
-              { globalId: 28, name: "H" },
-              { globalId: 29, name: "I" },
-              { globalId: 30, name: "J" },
-            ]
-          }
-        ]
-      }
-    ]
-  }
-];
+// Dynamic curriculum cache (starts empty for fresh start until teacher publishes lessons)
+export const CURRICULUM: Section[] = [];
 
 export function getStageData(stageId: number, dynamicCurriculum?: Section[] | null): Stage | null {
   const source = (dynamicCurriculum && dynamicCurriculum.length > 0) ? dynamicCurriculum : CURRICULUM;

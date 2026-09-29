@@ -165,9 +165,10 @@ export interface StudentProgress {
 
 import type { Section } from '../data/curriculum';
 
-export async function fetchCurriculum(): Promise<Section[] | null> {
+export async function fetchCurriculum(gradeLevel?: number): Promise<Section[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/curriculum`);
+    const url = gradeLevel ? `${API_BASE}/curriculum?grade_level=${gradeLevel}` : `${API_BASE}/curriculum`;
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     return data.sections || null;

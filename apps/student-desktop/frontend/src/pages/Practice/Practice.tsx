@@ -418,12 +418,17 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                 />
               ) : (
                 <video 
-                  src={selectedVideo.video_url.startsWith('http') ? selectedVideo.video_url : `http://127.0.0.1:8000${selectedVideo.video_url}`}
+                  key={selectedVideo.id}
                   controls 
                   autoPlay
+                  playsInline
                   onError={() => setVideoError(true)}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
+                >
+                  <source src={selectedVideo.video_url} type="video/mp4" />
+                  <source src={`http://127.0.0.1:8000${selectedVideo.video_url}`} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
               )}
             </div>
 

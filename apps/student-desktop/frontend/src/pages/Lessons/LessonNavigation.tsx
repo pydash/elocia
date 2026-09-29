@@ -54,18 +54,16 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
 
   useEffect(() => {
-    // 1. Fetch live dynamic curriculum from backend (or fallback to static)
-    fetchCurriculum().then(sections => {
-      if (sections && sections.length > 0) {
-        setCurriculumData(sections);
-      }
-    });
-
-    // 2. Fetch student progress if student is logged in
+    // 1. Fetch student progress & grade level if student is logged in
     const storedStudent = localStorage.getItem('elocia_current_student');
+    let studentGrade: number | undefined;
+
     if (storedStudent) {
       try {
         const student = JSON.parse(storedStudent);
+        if (student.grade_level) {
+          studentGrade = Number(student.grade_level);
+        }
         if (student.id) {
           fetchStudentProgress(student.id).then(prog => {
             if (prog) setStudentProgress(prog);
@@ -75,6 +73,13 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
         console.error('Error parsing stored student:', e);
       }
     }
+
+    // 2. Fetch live dynamic curriculum matching the student's grade level
+    fetchCurriculum(studentGrade).then(sections => {
+      if (sections && sections.length > 0) {
+        setCurriculumData(sections);
+      }
+    });
   }, []);
 
   const handleStageClick = (stageId: number, isLocked: boolean) => {
@@ -105,43 +110,90 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
         </div>
 
         <div className="map-container">
-
-          {curriculumData.map(section => (
-            <div key={section.id} className="section-group">
-              <div className="section-banner">
-                {section.title}
-              </div>
-
-              <div className="stages-path">
-                <div className="path-line"></div>
-
-                {section.units
-                  .flatMap(u => u.stages)
-                  .sort((a, b) => a.id - b.id)
-                  .map((stage) => {
-                    const isLocked = !unlockedStages.includes(stage.id);
-                  
-                  return (
-                    <div
-                      key={stage.id}
-                      className={`stage-card ${isLocked ? 'locked-card' : 'active-card'} ${selectedStage === stage.id ? 'selected' : ''}`}
-                      onClick={() => handleStageClick(stage.id, isLocked)}
-                      role="button"
-                      tabIndex={isLocked ? -1 : 0}
-                    >
-                      <div className="stage-text-group">
-                        <span className="stage-label">Stage</span>
-                        <span className="stage-number">{stage.id}</span>
-                      </div>
-                      <div className="icon-container">
-                        {isLocked ? <LockIcon /> : <PlayIcon />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {curriculumData.length === 0 || curriculumData.every(sec => sec.units.every(u => u.stages.length === 0)) ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '36px 32px',
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '28px',
+              boxShadow: '0 12px 24px rgba(0, 0, 0, 0.08)',
+              border: '4px solid #F59E0B',
+              maxWidth: '460px',
+              margin: '40px auto',
+              textAlign: 'center',
+              zIndex: 10
+            }}>
+              <img
+                src={mascotImg}
+                alt="Mascot"
+                style={{
+                  width: '120px',
+                  height: '120px',
+                  objectFit: 'contain',
+                  marginBottom: '16px'
+                }}
+              />
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 900,
+                color: '#78350F',
+                marginBottom: '8px',
+                fontFamily: 'Quicksand, sans-serif'
+              }}>
+                Welcome to Your Lesson Map!
+              </h2>
+              <p style={{
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                color: '#92400E',
+                maxWidth: '340px',
+                margin: 0,
+                lineHeight: 1.4
+              }}>
+                Your teacher is preparing your lessons. Check back soon for fun sign language activities!
+              </p>
             </div>
-          ))}
+          ) : (
+            curriculumData.map(section => (
+              <div key={section.id} className="section-group">
+                <div className="section-banner">
+                  {section.title}
+                </div>
+
+                <div className="stages-path">
+                  <div className="path-line"></div>
+
+                  {section.units
+                    .flatMap(u => u.stages)
+                    .sort((a, b) => a.id - b.id)
+                    .map((stage) => {
+                      const isLocked = !unlockedStages.includes(stage.id);
+                    
+                    return (
+                      <div
+                        key={stage.id}
+                        className={`stage-card ${isLocked ? 'locked-card' : 'active-card'} ${selectedStage === stage.id ? 'selected' : ''}`}
+                        onClick={() => handleStageClick(stage.id, isLocked)}
+                        role="button"
+                        tabIndex={isLocked ? -1 : 0}
+                      >
+                        <div className="stage-text-group">
+                          <span className="stage-label">Stage</span>
+                          <span className="stage-number">{stage.id}</span>
+                        </div>
+                        <div className="icon-container">
+                          {isLocked ? <LockIcon /> : <PlayIcon />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
 
           {selectedStageData && (
             <div className="stage-details-wrapper">
