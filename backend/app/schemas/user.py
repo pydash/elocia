@@ -1,8 +1,17 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import uuid
 from datetime import datetime
 from app.models.user import UserRole
+
+class ParentRef(BaseModel):
+    id: uuid.UUID
+    name: str
+    username: Optional[str] = None
+    relationship: Optional[str] = "Parent"
+
+    class Config:
+        from_attributes = True
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -12,6 +21,9 @@ class UserUpdate(BaseModel):
     emoji: Optional[str] = None
     grade_level: Optional[int] = None
     student_code: Optional[str] = None
+    parent_ids: Optional[List[uuid.UUID]] = None
+    parent_id: Optional[uuid.UUID] = None
+    remove_parent: Optional[bool] = False
     is_active: Optional[bool] = None
 
 class UserResponse(BaseModel):
@@ -25,6 +37,10 @@ class UserResponse(BaseModel):
     grade_level: Optional[int] = None
     student_number: Optional[int] = None
     student_code: Optional[str] = None
+    parent_id: Optional[uuid.UUID] = None
+    parent_name: Optional[str] = None
+    parents: Optional[List[ParentRef]] = None
+    parent_summary: Optional[str] = None
     children_summary: Optional[str] = None
     class_name: Optional[str] = None
     level: Optional[int] = None

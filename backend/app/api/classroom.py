@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
+import os
+import shutil
 
 from app.database.connection import get_db
 from app.models.classroom import Class, ClassStudent, EducationalVideo
@@ -194,4 +196,84 @@ async def upload_educational_video(payload: EducationalVideoCreate, db: AsyncSes
     await db.commit()
     await db.refresh(video)
     return {"status": "created", "video_id": str(video.id), "title": video.title}
+
+@videos_router.post("/upload-file")
+async def upload_educational_video_file(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    subject: str = Form(...),
+    grade_level: int = Form(1),
+    duration_minutes: int = Form(5),
+    thumbnail_url: Optional[str] = Form(None),
+    video: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    ext = os.path.splitext(video.filename)[1].lower()
+    if ext not in [".mp4", ".webm", ".mov", ".mkv"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported video format. Please upload an .mp4, .webm, or .mov file."
+        )
+
+    clean_title = "".join(c for c in title if c.isalnum() or c in (" ", "_", "-")).strip().replace(" ", "_")
+    video_filename = f"edu_{uuid.uuid4().hex[:8]}_{clean_title}{ext}"
+
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    public_dir = os.path.join(project_root, "apps", "student-desktop", "frontend", "public", "videos")
+    storage_dir = os.path.join(project_root, "backend", "storage", "videos")
+    os.makedirs(public_dir, exist_ok=True)
+    os.makedirs(storage_dir, exist_ok=True)
+
+    pub_path = os.path.join(public_dir, video_filename)
+    stor_path = os.path.join(storage_dir, video_filename)
+
+    with open(pub_path, "wb") as f_pub:
+        shutil.copyfileobj(video.file, f_pub)
+    shutil.copyfile(pub_path, stor_path)
+
+    # Transcode to universal web-standard H.264 (AVC) so HEVC/MOV videos play in all browsers
+    try:
+        import imageio_ffmpeg, subprocess
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        h264_filename = f"edu_{uuid.uuid4().hex[:8]}_{clean_title}_web.mp4"
+        h264_pub_path = os.path.join(public_dir, h264_filename)
+        cmd = [
+            ffmpeg_exe, "-y", "-i", pub_path,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-preset", "veryfast", "-crf", "23",
+            "-c:a", "aac", "-movflags", "+faststart",
+            h264_pub_path
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if res.returncode == 0:
+            if os.path.exists(pub_path):
+                try:
+                    os.remove(pub_path)
+                except Exception:
+                    pass
+            pub_path = h264_pub_path
+            video_filename = h264_filename
+            stor_path = os.path.join(storage_dir, video_filename)
+            shutil.copyfile(pub_path, stor_path)
+    except Exception as transcode_err:
+        print(f"Web video transcode skipped: {transcode_err}")
+
+    new_vid = EducationalVideo(
+        title=title,
+        description=description,
+        subject=subject,
+        grade_level=grade_level,
+        duration_minutes=duration_minutes,
+        video_url=f"/videos/{video_filename}",
+        thumbnail_url=thumbnail_url
+    )
+    db.add(new_vid)
+    await db.commit()
+    await db.refresh(new_vid)
+    return {
+        "status": "created",
+        "video_id": str(new_vid.id),
+        "title": new_vid.title,
+        "video_url": new_vid.video_url
+    }
 
