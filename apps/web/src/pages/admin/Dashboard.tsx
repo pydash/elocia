@@ -73,14 +73,15 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="default"
+          <button
+            type="button"
             onClick={loadData}
-            className="flex items-center gap-2 bg-white text-(--primary) hover:bg-white/90 border-0"
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-100 transition-all shadow-sm cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`size-4 text-(--primary) ${loading ? "animate-spin" : ""}`} />
             <span>Refresh</span>
-          </Button>
+          </button>
           <Link to="/admin/users">
             <Button className="flex items-center gap-2 bg-amber-400 text-gray-900 hover:bg-amber-300 border-0 font-bold">
               <span>Manage Users</span>

@@ -17,11 +17,11 @@ export function useGetLessonLibrary() {
   useEffect(() => {
     const getLessonLibrary = async () => {
       try {
-        const curriculumsData = await fetchCurriculums();
+        const curriculumData = await fetchCurriculums();
         const videosData = await fetchEducationalVideos();
         const miniGamesData = await fetchMiniGames();
 
-        setCurriculums(curriculumsData);
+        setCurriculums(curriculumData);
         setVideos(videosData);
         setMiniGames(miniGamesData);
       } catch (err) {

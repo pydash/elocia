@@ -1,13 +1,18 @@
 import { useState, useEffect, type FormEvent } from "react";
 import Button from "../Button";
 import Input from "../Input ";
+import Dropdown from "../Dropdown";
 import {
   createStudent,
   fetchParents,
+  type CreateStudentPayload,
   type ParentUser,
 } from "@/services/students";
 import { Search, UserCheck, X } from "lucide-react";
-import Dropdown from "../Dropdown";
+
+type AddStudentDialogProps = {
+  onSave?: (student: CreateStudentPayload) => Promise<unknown>;
+};
 
 type StudentForm = {
   name: string;
@@ -64,7 +69,7 @@ const initialStudent: StudentForm = {
   parent_id: "",
 };
 
-export default function AddStudentDialog() {
+export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {}) {
   const [student, setStudent] = useState(initialStudent);
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,26 +80,37 @@ export default function AddStudentDialog() {
   const [parentSearch, setParentSearch] = useState("");
   const [selectedParent, setSelectedParent] = useState<ParentUser | null>(null);
   const [isLoadingParents, setIsLoadingParents] = useState(false);
+  const [parentFetchError, setParentFetchError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let isMounted = true;
+  const loadParents = async () => {
     setIsLoadingParents(true);
-    fetchParents(parentSearch.trim() || undefined)
-      .then((data: any) => {
-        if (isMounted) setParents(data);
-      })
-      .catch((err: any) => console.error("Error fetching parents:", err))
-      .finally(() => {
-        if (isMounted) setIsLoadingParents(false);
-      });
+    setParentFetchError(null);
+    try {
+      const data = await fetchParents();
+      setParents(data || []);
+    } catch (err: any) {
+      console.error("Error fetching parents:", err);
+      setParentFetchError(err?.message || "Failed to load parents");
+    } finally {
+      setIsLoadingParents(false);
+    }
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, parentSearch]);
+  useEffect(() => {
+    if (isOpen) {
+      loadParents();
+    }
+  }, [isOpen]);
+
+  const filteredParents = parents.filter((p) => {
+    if (!parentSearch.trim()) return true;
+    const term = parentSearch.toLowerCase().trim();
+    return (
+      p.name.toLowerCase().includes(term) ||
+      (p.username && p.username.toLowerCase().includes(term))
+    );
+  });
 
   const closeDialog = () => {
     if (isSaving) return;
@@ -132,7 +148,16 @@ export default function AddStudentDialog() {
 
     try {
       const { parent_id, ...studentDetails } = student;
-      await createStudent({ ...studentDetails, parent_id });
+      const cleanParentId = parent_id && parent_id.trim() !== "" ? parent_id.trim() : undefined;
+      const payload: CreateStudentPayload = cleanParentId
+        ? { ...studentDetails, parent_id: cleanParentId }
+        : studentDetails;
+
+      if (onSave) {
+        await onSave(payload);
+      } else {
+        await createStudent(payload);
+      }
       setIsOpen(false);
       resetForm();
     } catch (err) {
@@ -186,7 +211,7 @@ export default function AddStudentDialog() {
               </label>
 
               <label className="caption text-(--black)" htmlFor="student-pin">
-                PIN <span>(Max 4 characters)</span>
+                PIN <span className="text-(--ghost) text-xs font-normal">(Max 4 characters)</span>
                 <Input
                   id="student-pin"
                   className="mt-2"
@@ -247,8 +272,11 @@ export default function AddStudentDialog() {
               <label className="caption text-(--black)" htmlFor="student-grade">
                 Grade level
                 <Dropdown
-                  value="grade-1"
-                  onChange={() => undefined}
+                  value={`grade-${student.grade_level}`}
+                  onChange={(val) => {
+                    const parsed = parseInt(String(val).replace("grade-", ""), 10);
+                    if (!isNaN(parsed)) updateStudent("grade_level", parsed);
+                  }}
                   className="mt-2"
                   options={[
                     { label: "Grade 1", value: "grade-1" },
@@ -318,12 +346,23 @@ export default function AddStudentDialog() {
                           <div className="p-3 text-center text-xs text-(--ghost)">
                             Loading parents...
                           </div>
-                        ) : parents.length === 0 ? (
-                          <div className="p-3 text-center text-xs text  -(--ghost)">
+                        ) : parentFetchError ? (
+                          <div className="p-3 text-center text-xs text-red-500">
+                            {parentFetchError}{" "}
+                            <button
+                              type="button"
+                              onClick={loadParents}
+                              className="underline font-semibold ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        ) : filteredParents.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-(--ghost)">
                             No parents found
                           </div>
                         ) : (
-                          parents.map((p) => (
+                          filteredParents.map((p) => (
                             <button
                               key={p.id}
                               type="button"
