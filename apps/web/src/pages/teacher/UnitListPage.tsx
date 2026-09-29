@@ -1,12 +1,16 @@
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+
+import { useGetUnits } from "@/hooks/useCurriculums";
+
+import type { Unit } from "@/interfaces/curriculum.interface";
+
 import Button from "@/components/Button";
 import Input from "@/components/Input ";
 import CreateUnitDialog from "@/components/teacher/CreateUnitDialog";
-import { UnitsLoadingPage } from "@/components/teacher/loading-state/LoadingState";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
-import { useGetUnits } from "@/hooks/useCurriculums";
-import type { Unit } from "@/interfaces/curriculum.interface";
-import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import LoadingState from "@/components/LoadingState";
+import ErrorState from "@/components/ErrorState";
 
 export default function TeacherUnitListPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
@@ -41,13 +45,9 @@ export default function TeacherUnitListPage() {
     );
   }, [units, searchQuery]);
 
-  if (loading) {
-    return <UnitsLoadingPage />;
-  }
+  if (loading) return <LoadingState />;
 
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div>

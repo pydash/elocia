@@ -1,11 +1,15 @@
+import { Link, useParams } from "react-router-dom";
+
+import { useGetSections } from "@/hooks/useCurriculums";
+
+import type { Section } from "@/interfaces/curriculum.interface";
+
 import Button from "@/components/Button";
 import Separator from "@/components/Separator";
 import CreateSectionDialog from "@/components/teacher/CreateSectionDialog";
-import { SectionsLoadingPage } from "@/components/teacher/loading-state/LoadingState";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
-import { useGetSections } from "@/hooks/useCurriculums";
-import type { Section } from "@/interfaces/curriculum.interface";
-import { Link, useParams } from "react-router-dom";
+import LoadingState from "@/components/LoadingState";
+import ErrorState from "@/components/ErrorState";
 
 export default function TeacherSectionListPage() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
@@ -23,13 +27,9 @@ export default function TeacherSectionListPage() {
     0,
   ) + 1;
 
-  if (loading) {
-    return <SectionsLoadingPage />;
-  }
+  if (loading) return <LoadingState />;
 
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div>

@@ -1,13 +1,17 @@
-import TopNavbar from "../../components/teacher/TopHeaderBar";
-import LessonCard from "../../components/teacher/LessonCard";
-import Input from "../../components/Input ";
-import { Search, SquareLibrary } from "lucide-react";
+import { useMemo, useState } from "react";
+
 import { useGetLessonLibrary } from "@/hooks/useLessonLibrary";
+
+import TopNavbar from "@/components/teacher/TopHeaderBar";
+import LessonCard from "@/components/teacher/LessonCard";
+import Input from "@/components/Input ";
 import MiniGameCard from "@/components/teacher/MiniGameCard";
 import CurriculumCard from "@/components/teacher/CurriculumCard";
-import { useMemo, useState } from "react";
-import { LessonsLoadingPage } from "../../components/teacher/loading-state/LoadingState";
 import AddCurriculumDialog from "@/components/teacher/AddCurriculumDialog";
+import ErrorState from "@/components/ErrorState";
+import LoadingState from "@/components/LoadingState";
+
+import { Search, SquareLibrary } from "lucide-react";
 
 const matchesSearch = (query: string, values: unknown[]) =>
   !query ||
@@ -67,11 +71,11 @@ export default function TeacherLessonsPage() {
     filteredMiniGames.length > 0;
 
   if (loading) {
-    return <LessonsLoadingPage />;
+    return <LoadingState />;
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <ErrorState message={error} />;
   }
 
   return (

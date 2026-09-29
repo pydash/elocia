@@ -1,21 +1,28 @@
-import TopHeaderBar from "../../components/teacher/TopHeaderBar";
-import Input from "../../components/Input ";
-import StudentCard from "../../components/teacher/StudentCard";
-import AddStudentDialog from "../../components/teacher/AddStudentDialog";
-import { StudentsLoadingPage } from "../../components/teacher/loading-state/LoadingState";
-import { Search, CheckCircle2 } from "lucide-react";
-import { useGetStudents } from "@/hooks/useStudents";
 import { useMemo, useState } from "react";
 
+import { useGetStudents } from "@/hooks/useStudents";
+
+import TopHeaderBar from "@/components/teacher/TopHeaderBar";
+import Input from "@/components/Input ";
+import StudentCard from "@/components/teacher/StudentCard";
+import AddStudentDialog from "@/components/teacher/AddStudentDialog";
+import LoadingState from "@/components/LoadingState";
+import ErrorState from "@/components/ErrorState";
+
+import { Search, CheckCircle2 } from "lucide-react";
+
 export default function TeacherStudentsPage() {
-  const { students, loading, error, addStudent, reactivateStudentById } = useGetStudents("all");
+  const { students, loading, error, addStudent, reactivateStudentById } =
+    useGetStudents("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "inactive" | "all"
+  >("active");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const handleReactivate = async (id: string, name: string) => {
     const confirm = window.confirm(
-      `Are you sure you want to reactivate ${name}? Their profile color and login access will be restored.`
+      `Are you sure you want to reactivate ${name}? Their profile color and login access will be restored.`,
     );
     if (!confirm) return;
 
@@ -53,17 +60,12 @@ export default function TeacherStudentsPage() {
       ].some((value) => String(value).toLowerCase().includes(normalizedQuery));
     });
   }, [searchQuery, students, statusFilter]);
-
-  if (loading) {
-    return <StudentsLoadingPage />;
-  }
-
-  if (error) {
-    return <div className="p-8 text-center text-red-600">Error: {error}</div>;
-  }
-
   const activeCount = students.filter((s) => s.is_active !== false).length;
   const inactiveCount = students.filter((s) => s.is_active === false).length;
+
+  if (loading) return <LoadingState />;
+
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div>
