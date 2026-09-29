@@ -187,6 +187,22 @@ export async function fetchStagesByUnitId(unitId: string): Promise<Stage[]> {
   return data;
 }
 
+export async function fetchStageById(stageId: string | number): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-stages/${stageId}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to fetch stage details");
+  }
+
+  return response.json();
+}
+
 export async function createStage(
   unitId: string,
   stage: {

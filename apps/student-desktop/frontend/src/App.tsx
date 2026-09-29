@@ -36,19 +36,34 @@ function App() {
 
   // Sync curriculum dynamically from database
   useEffect(() => {
-    fetchCurriculum().then(sections => {
+    const rawStudent = localStorage.getItem('elocia_current_student');
+    let grade: number | undefined;
+    if (rawStudent) {
+      try {
+        const student = JSON.parse(rawStudent);
+        if (student.grade_level) grade = Number(student.grade_level);
+      } catch {}
+    }
+    fetchCurriculum(grade).then(sections => {
       if (sections && sections.length > 0) {
         setCurriculumData(sections);
       }
     });
   }, []);
 
-  // Sync unlocked stages from database when entering navigation or login
+  // Sync unlocked stages and curriculum from database when entering navigation or login
   const refreshProgress = () => {
     const rawStudent = localStorage.getItem('elocia_current_student');
     if (rawStudent) {
       try {
         const student = JSON.parse(rawStudent);
+        if (student.grade_level) {
+          fetchCurriculum(Number(student.grade_level)).then(sections => {
+            if (sections && sections.length > 0) {
+              setCurriculumData(sections);
+            }
+          });
+        }
         if (student.id) {
           fetchStudentProgress(student.id).then(prog => {
             if (prog && prog.unlocked_stages && prog.unlocked_stages.length > 0) {

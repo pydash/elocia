@@ -3,30 +3,52 @@ import { useParams } from "react-router-dom";
 import Button from "../Button";
 import { createUnit } from "@/services/curriculum";
 
-export default function CreateUnitDialog() {
+export default function CreateUnitDialog({
+  suggestedUnitNumber = 1,
+  onCreated,
+}: {
+  suggestedUnitNumber?: number;
+  onCreated?: (newUnit: any) => void;
+} = {}) {
   const { sectionId } = useParams<{ sectionId: string }>();
 
   const [isOpen, setIsOpen] = useState(false);
   const [unitTitle, setUnitTitle] = useState("");
-  const [unitNumber, setUnitNumber] = useState(1);
+  const [unitNumber, setUnitNumber] = useState(suggestedUnitNumber);
   const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleOpen = () => {
+    setUnitNumber(suggestedUnitNumber);
+    setUnitTitle("");
+    setError("");
+    setIsOpen(true);
+  };
 
   const handleCreateUnit = async () => {
-    if (!sectionId || !unitTitle.trim() || unitNumber < 1) return;
+    if (!sectionId || !unitTitle.trim()) {
+      setError("Unit title is required.");
+      return;
+    }
 
     try {
       setIsCreating(true);
+      setError("");
 
-      await createUnit(sectionId, {
+      const created = await createUnit(sectionId, {
         title: unitTitle.trim(),
-        unit_number: unitNumber,
+        unit_number: unitNumber >= 1 ? unitNumber : suggestedUnitNumber,
       });
+
+      if (onCreated) {
+        onCreated(created);
+      }
 
       setIsOpen(false);
       setUnitTitle("");
-      setUnitNumber(1);
-    } catch (error) {
-      console.error("Error creating unit:", error);
+    } catch (err: any) {
+      console.error("Error creating unit:", err);
+      setError(err?.message || "Failed to create unit");
     } finally {
       setIsCreating(false);
     }
@@ -34,7 +56,7 @@ export default function CreateUnitDialog() {
 
   return (
     <div>
-      <Button onClick={() => setIsOpen(true)}>Create Unit</Button>
+      <Button onClick={handleOpen}>Create Unit</Button>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -78,6 +100,10 @@ export default function CreateUnitDialog() {
               />
             </div>
 
+            {error && (
+              <p className="mb-4 text-sm text-(--danger)">{error}</p>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button onClick={() => setIsOpen(false)} disabled={isCreating}>
                 Cancel
@@ -85,7 +111,7 @@ export default function CreateUnitDialog() {
 
               <Button
                 onClick={handleCreateUnit}
-                disabled={!unitTitle.trim() || unitNumber < 1 || isCreating}
+                disabled={!unitTitle.trim() || isCreating}
               >
                 {isCreating ? "Creating..." : "Create"}
               </Button>

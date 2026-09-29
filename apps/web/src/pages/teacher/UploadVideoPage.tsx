@@ -127,9 +127,10 @@ export function TeacherUploadVideoStepOnePage() {
                 />
               </div>
               <div>
-                <label>Video URL</label>
+                <label>Video URL <span className="text-xs text-gray-500">(Optional if uploading video file in Step 2)</span></label>
                 <Input
                   type="url"
+                  placeholder="https://... (or leave blank to upload video in Step 2)"
                   value={video.video_url}
                   onChange={(event) =>
                     setVideo((current) =>
@@ -140,7 +141,6 @@ export function TeacherUploadVideoStepOnePage() {
                       ),
                     )
                   }
-                  required
                 />
               </div>
             </div>
