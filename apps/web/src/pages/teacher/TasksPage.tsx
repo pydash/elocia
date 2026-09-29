@@ -20,9 +20,9 @@ export default function TeacherTasksPage() {
               className="w-full overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
               <img
-                src="/games/see-it-sign-it.png"
+                src="/see_it_sign_it.png"
                 alt="See It Sign It game"
-                className="h-44 w-full object-cover"
+                className="h-52 w-full object-cover"
               />
             </Link>
             <Link
@@ -30,9 +30,9 @@ export default function TeacherTasksPage() {
               className="w-full overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
               <img
-                src="/games/puzzle-sign.png"
+                src="/puzzle_sign.png"
                 alt="Puzzle game"
-                className="h-44 w-full object-cover"
+                className="h-52 w-full object-cover"
               />
             </Link>
             <Link
@@ -40,9 +40,9 @@ export default function TeacherTasksPage() {
               className="w-full overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
               <img
-                src="/games/magic-fingers.png"
+                src="/magic_fingers.png"
                 alt="Magic Fingers game"
-                className="h-44 w-full object-cover"
+                className="h-52 w-full object-cover"
               />
             </Link>
           </div>
