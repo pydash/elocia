@@ -40,22 +40,24 @@ export function useGetSections(curriculumId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const getSections = async () => {
-      try {
-        const data = await fetchSectionsByCurriculumId(curriculumId);
-        setSections(data);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getSections();
+  const getSections = useCallback(async () => {
+    if (!curriculumId) return;
+    try {
+      setLoading(true);
+      const data = await fetchSectionsByCurriculumId(curriculumId);
+      setSections(data);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
   }, [curriculumId]);
 
-  return { sections, loading, error };
+  useEffect(() => {
+    getSections();
+  }, [getSections]);
+
+  return { sections, loading, error, refresh: getSections, setSections };
 }
 
 export function useGetUnits(sectionId: string) {
@@ -63,22 +65,24 @@ export function useGetUnits(sectionId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const getUnits = async () => {
-      try {
-        const data = await fetchUnitsBySectionId(sectionId);
-        setUnits(data);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getUnits();
+  const getUnits = useCallback(async () => {
+    if (!sectionId) return;
+    try {
+      setLoading(true);
+      const data = await fetchUnitsBySectionId(sectionId);
+      setUnits(data);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
   }, [sectionId]);
 
-  return { units, loading, error };
+  useEffect(() => {
+    getUnits();
+  }, [getUnits]);
+
+  return { units, loading, error, refresh: getUnits, setUnits };
 }
 
 export function useGetStages(unitId: string) {

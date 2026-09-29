@@ -10,8 +10,24 @@ import { Link, useParams } from "react-router-dom";
 
 export default function TeacherUnitListPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
-  const { units, loading, error } = useGetUnits(sectionId ?? "");
+  const { units, loading, error, refresh, setUnits } = useGetUnits(sectionId ?? "");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const nextUnitNumber = useMemo(() => {
+    return (
+      units.reduce(
+        (max, u) => Math.max(max, u.unit_number || 0),
+        0,
+      ) + 1
+    );
+  }, [units]);
+
+  const handleUnitCreated = (newUnit: Unit) => {
+    if (newUnit) {
+      setUnits((prev) => [...prev, newUnit]);
+    }
+    refresh();
+  };
 
   const filteredUnits = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -51,7 +67,10 @@ export default function TeacherUnitListPage() {
               aria-label="Search units"
             />
 
-            <CreateUnitDialog />
+            <CreateUnitDialog
+              suggestedUnitNumber={nextUnitNumber}
+              onCreated={handleUnitCreated}
+            />
           </div>
         </div>
 

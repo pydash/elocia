@@ -5,8 +5,12 @@ import Input from "../Input ";
 
 export default function CreateSectionDialog({
   lessonId,
+  suggestedSectionNumber,
+  onCreated,
 }: {
   lessonId: string | undefined;
+  suggestedSectionNumber?: number;
+  onCreated?: (newSection: any) => void;
 }) {
   const [section, setSection] = useState({
     title: "",
@@ -37,11 +41,22 @@ export default function CreateSectionDialog({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!section.title.trim()) {
+      setError("Section title is required.");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
 
     try {
-      await createSection(lessonId ?? "", section);
+      const created = await createSection(lessonId ?? "", {
+        title: section.title.trim(),
+        section_number: suggestedSectionNumber,
+      });
+      if (onCreated) {
+        onCreated(created);
+      }
       resetForm();
       closeDialog();
     } catch (error) {

@@ -11,7 +11,9 @@ export interface Curriculum {
 export interface Section {
   id: string;
   curriculum_id: string;
+  section_number?: number;
   title: string;
+  description?: string;
   created_at: string;
   updated_at: string;
 }

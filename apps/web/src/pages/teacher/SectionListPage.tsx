@@ -9,7 +9,19 @@ import { Link, useParams } from "react-router-dom";
 
 export default function TeacherSectionListPage() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
-  const { sections, loading, error } = useGetSections(curriculumId ?? "");
+  const { sections, loading, error, refresh, setSections } = useGetSections(curriculumId ?? "");
+
+  const handleSectionCreated = (newSection: Section) => {
+    if (newSection) {
+      setSections((prev) => [...prev, newSection]);
+    }
+    refresh();
+  };
+
+  const nextSectionNumber = sections.reduce(
+    (max, s) => Math.max(max, s.section_number || 0),
+    0,
+  ) + 1;
 
   if (loading) {
     return <SectionsLoadingPage />;
@@ -26,7 +38,11 @@ export default function TeacherSectionListPage() {
       <section className="p-6">
         <div className="flex items-center justify-between">
           <h1 className="heading-2 text-(--black)">Sections</h1>
-          <CreateSectionDialog lessonId={curriculumId} />
+          <CreateSectionDialog
+            lessonId={curriculumId}
+            suggestedSectionNumber={nextSectionNumber}
+            onCreated={handleSectionCreated}
+          />
         </div>
         <SectionContent sections={sections} />
       </section>
