@@ -29,7 +29,7 @@ class StageResponse(StageBase):
 
 # ── Unit Schemas ──────────────────────────────────────────────────────────────
 class UnitBase(BaseModel):
-    unit_number: int
+    unit_number: Optional[int] = None
     title: str
 
 class UnitCreate(UnitBase):
@@ -39,9 +39,11 @@ class UnitUpdate(BaseModel):
     title: Optional[str] = None
     unit_number: Optional[int] = None
 
-class UnitResponse(UnitBase):
+class UnitResponse(BaseModel):
     id: UUID
     section_id: UUID
+    unit_number: int
+    title: str
     created_at: Optional[datetime] = None
     stages: Optional[List[StageResponse]] = []
 
@@ -50,7 +52,7 @@ class UnitResponse(UnitBase):
 
 # ── Section Schemas ───────────────────────────────────────────────────────────
 class SectionBase(BaseModel):
-    section_number: int
+    section_number: Optional[int] = None
     title: str
 
 class SectionCreate(SectionBase):
@@ -60,9 +62,11 @@ class SectionUpdate(BaseModel):
     title: Optional[str] = None
     section_number: Optional[int] = None
 
-class SectionResponse(SectionBase):
+class SectionResponse(BaseModel):
     id: UUID
     curriculum_id: UUID
+    section_number: int
+    title: str
     created_at: Optional[datetime] = None
     units: Optional[List[UnitResponse]] = []
 

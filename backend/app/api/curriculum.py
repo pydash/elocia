@@ -358,9 +358,17 @@ async def create_curriculum_section(curriculum_id: uuid.UUID, payload: SectionCr
     if not curr_res.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Curriculum not found")
 
+    sec_num = payload.section_number
+    if sec_num is None:
+        max_sec_res = await db.execute(
+            select(func.coalesce(func.max(CurriculumSection.section_number), 0))
+            .where(CurriculumSection.curriculum_id == curriculum_id)
+        )
+        sec_num = max_sec_res.scalar() + 1
+
     new_sec = CurriculumSection(
         curriculum_id=curriculum_id,
-        section_number=payload.section_number,
+        section_number=sec_num,
         title=payload.title
     )
     db.add(new_sec)
@@ -410,9 +418,17 @@ async def create_section_unit(section_id: uuid.UUID, payload: UnitCreate, db: As
     if not sec_res.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Section not found")
 
+    un_num = payload.unit_number
+    if un_num is None:
+        max_un_res = await db.execute(
+            select(func.coalesce(func.max(CurriculumUnit.unit_number), 0))
+            .where(CurriculumUnit.section_id == section_id)
+        )
+        un_num = max_un_res.scalar() + 1
+
     new_unit = CurriculumUnit(
         section_id=section_id,
-        unit_number=payload.unit_number,
+        unit_number=un_num,
         title=payload.title
     )
     db.add(new_unit)
@@ -483,6 +499,52 @@ async def create_unit_stage(unit_id: uuid.UUID, payload: StageCreate, db: AsyncS
     await db.commit()
     await db.refresh(new_stage)
     return new_stage
+
+@router.get("/curriculum-stages/{stage_id}")
+async def get_curriculum_stage(stage_id: int, db: AsyncSession = Depends(get_db)):
+    """Fetch single stage details with linked baselines/videos for teacher view."""
+    res = await db.execute(
+        select(CurriculumStage)
+        .options(selectinload(CurriculumStage.baselines))
+        .where(CurriculumStage.id == stage_id)
+    )
+    st = res.scalar_one_or_none()
+    if not st:
+        # Fallback to stage_number lookup
+        res_num = await db.execute(
+            select(CurriculumStage)
+            .options(selectinload(CurriculumStage.baselines))
+            .where(CurriculumStage.stage_number == stage_id)
+        )
+        st = res_num.scalar_one_or_none()
+        if not st:
+            raise HTTPException(status_code=404, detail="Stage not found")
+
+    # Format baseline demonstration videos/signs
+    signs = []
+    for b in (st.baselines or []):
+        if b.is_active:
+            signs.append({
+                "id": str(b.id),
+                "sign_id": b.sign_id or b.stage_id,
+                "sign_name": b.sign_name,
+                "video_filename": b.video_filename,
+                "video_url": f"/videos/{b.video_filename}",
+                "fps": b.fps,
+                "total_frames": b.total_frames
+            })
+
+    return {
+        "id": st.id,
+        "stage_number": st.stage_number,
+        "title": st.title,
+        "description": st.description or "",
+        "section_title": st.section_title or "Section",
+        "unit_title": st.unit_title or "Unit",
+        "is_active": st.is_active,
+        "unit_id": str(st.unit_id) if st.unit_id else None,
+        "signs": signs
+    }
 
 @router.put("/curriculum-stages/{stage_id}", response_model=StageResponse)
 async def update_curriculum_stage(stage_id: int, payload: StageUpdate, db: AsyncSession = Depends(get_db)):
