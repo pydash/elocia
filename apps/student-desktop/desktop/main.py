@@ -120,15 +120,23 @@ async def evaluate_endpoint(websocket: WebSocket):
                 tier_level = payload.get('tierLevel', 1)
                 activity_type = payload.get('activityType', "evaluation")
 
+                # Look for baseline file in desktop/baselines first, then fallback to backend/storage/baselines
                 baseline_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'baselines', f'baseline_{stage_id}.json'))
+                if not os.path.exists(baseline_file):
+                    backend_baseline = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'backend', 'storage', 'baselines', f'baseline_{stage_id}.json'))
+                    if os.path.exists(backend_baseline):
+                        baseline_file = backend_baseline
                 
                 if not os.path.exists(baseline_file):
-                    await websocket.send_json({"error": f"Baseline not found for stage {stage_id}"})
+                    await websocket.send_json({
+                        "action": "error",
+                        "error": f"Baseline reference not found for stage {stage_id}."
+                    })
                     student_sequence = []
                     frame_timestamps = []
                     continue
                     
-                with open(baseline_file, 'r') as f:
+                with open(baseline_file, 'r', encoding='utf-8') as f:
                     baseline_sequence = json.load(f)
                 
                 eval_t0 = time.time()
@@ -205,16 +213,17 @@ async def evaluate_endpoint(websocket: WebSocket):
             rs = results.pose_landmarks.landmark[12]
             shoulder_width = abs(ls.x - rs.x)
 
-            # Minimum shoulder width threshold: Foreground students typically have width >= 0.17
-            # Background persons standing behind have width < 0.15
-            if shoulder_width < 0.16:
+            # Minimum shoulder width threshold: tuned for Grade 1-3 elementary learners (width >= 0.12)
+            # Background adults standing far behind typically have width < 0.10
+            if shoulder_width < 0.12:
                 # Discard frame: person is too far in background
                 continue
 
             # Check if active hand belongs to the foreground student's signing space
-            min_x = min(ls.x, rs.x) - 0.26
-            max_x = max(ls.x, rs.x) + 0.26
-            min_y = min(ls.y, rs.y) - 0.35
+            # Generously covers head/forehead (top), shoulders/ears (sides), and torso (bottom)
+            min_x = min(ls.x, rs.x) - 0.35
+            max_x = max(ls.x, rs.x) + 0.35
+            min_y = min(ls.y, rs.y) - 0.55
 
             # Extract the dominant active hand belonging to the foreground student
             active_hand = None

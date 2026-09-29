@@ -29,7 +29,7 @@ export function stopCurrentTour() {
 
 /**
  * Common configuration factory for Elocia Activity Tours
- * Simple Taglish, visual-first for Grade 1 - 3 SPED learners.
+ * Simple, playful English for Grade 1 - 3 learners.
  */
 function createElociaDriver(steps: DriveStep[], onDone?: () => void) {
   stopCurrentTour();
@@ -43,10 +43,10 @@ function createElociaDriver(steps: DriveStep[], onDone?: () => void) {
     stagePadding: 8,
     stageRadius: 16,
     popoverClass: 'elocia-driver-theme',
-    nextBtnText: 'Susunod ➔',
-    prevBtnText: 'Bumalik',
-    doneBtnText: 'Handa na Ako! 🎉',
-    progressText: '{{current}} ng {{total}}',
+    nextBtnText: 'Next ➔',
+    prevBtnText: 'Back',
+    doneBtnText: "I'm Ready! 🎉",
+    progressText: '{{current}} of {{total}}',
     steps,
     onDestroyed: () => {
       stopCurrentTour();
@@ -59,15 +59,15 @@ function createElociaDriver(steps: DriveStep[], onDone?: () => void) {
 
 /**
  * 1. Learn & Evaluation Session Tour (Stage 1-5, Practice & Evaluation)
- * Simple Taglish, short 3-5 word descriptions.
+ * Playful small English for Grade 1 - 3.
  */
 export function startEvaluationTour() {
   const steps: DriveStep[] = [
     {
       element: '.eval-instruction-card',
       popover: {
-        title: '🎯 Gawin ang Sign!',
-        description: 'I-sign mo ang nakasulat dito!',
+        title: '🎯 Make the Sign!',
+        description: 'Read the word and make the sign! ✨',
         side: 'bottom',
         align: 'start'
       }
@@ -76,7 +76,7 @@ export function startEvaluationTour() {
       element: '.eval-number-card',
       popover: {
         title: '🔢 Target Sign',
-        description: 'Ito ang gagayahin mo! Tingnan mabuti. 👀',
+        description: 'Copy this sign! Look closely! 👀',
         side: 'left',
         align: 'start'
       }
@@ -84,8 +84,8 @@ export function startEvaluationTour() {
     {
       element: '.eval-camera-wrapper',
       popover: {
-        title: '📷 Ikaw Ito!',
-        description: 'Ipakita ang iyong kamay dito sa gitna! ✋',
+        title: '📷 Camera Magic!',
+        description: 'Show your hand to the camera! ✋',
         side: 'right',
         align: 'center'
       }
@@ -93,8 +93,8 @@ export function startEvaluationTour() {
     {
       element: '.eval-mascot-feedback-card',
       popover: {
-        title: '🐵 Kailangan ng Tulong?',
-        description: 'Panoorin ang video demo ni Teacher dito! 🎬',
+        title: '🐵 Need Help?',
+        description: 'Watch Teacher demo video here! 🎬',
         side: 'left',
         align: 'center'
       }
@@ -102,8 +102,8 @@ export function startEvaluationTour() {
     {
       element: '.eval-parameters-grid',
       popover: {
-        title: '⭐ Iyong Grades!',
-        description: 'Dito lalabas ang iyong grades at stars! 🌟',
+        title: '⭐ Your Star Scores!',
+        description: 'Collect your shiny stars here! 🌟',
         side: 'top',
         align: 'center'
       }
@@ -120,15 +120,15 @@ export function startEvaluationTour() {
 
 /**
  * 2. See It, Sign It! Mini-Game Tour
- * Simple Taglish, short 3-5 word descriptions.
+ * Playful small English for Grade 1 - 3.
  */
 export function startSeeItSignItTour() {
   const steps: DriveStep[] = [
     {
       element: '.sisi-instruction-card',
       popover: {
-        title: '🏷️ Pangalan ng Sign',
-        description: 'I-sign mo ang salitang ito!',
+        title: '🏷️ Sign the Word!',
+        description: 'Make the sign for this word! 🚀',
         side: 'bottom',
         align: 'start'
       }
@@ -136,8 +136,8 @@ export function startSeeItSignItTour() {
     {
       element: '.sisi-image-card-container',
       popover: {
-        title: '🖼️ Tingnan ang Larawan',
-        description: 'Ito ang iyong clue! Tingnan nang mabuti.',
+        title: '🖼️ Picture Clue',
+        description: 'Look at the picture clue! 🔍',
         side: 'left',
         align: 'start'
       }
@@ -145,8 +145,8 @@ export function startSeeItSignItTour() {
     {
       element: '.sisi-camera-wrapper',
       popover: {
-        title: '📷 Ikaw Ito!',
-        description: 'Itapat ang kamay sa gitna ng camera! ✋',
+        title: '📷 Camera Magic!',
+        description: 'Put your hand in the center circle! ✋',
         side: 'right',
         align: 'center'
       }
@@ -155,7 +155,7 @@ export function startSeeItSignItTour() {
       element: '.ps-bottom-controls',
       popover: {
         title: '✋ Check My Sign',
-        description: 'Pindutin ito kapag ready ka na mag-sign!',
+        description: 'Click here when you are ready to sign! 🎯',
         side: 'top',
         align: 'center'
       }
@@ -163,8 +163,8 @@ export function startSeeItSignItTour() {
     {
       element: '.sisi-score-card',
       popover: {
-        title: '🔥 Iyong Points!',
-        description: 'Dito dadami ang iyong score at stars! 🏆',
+        title: '🔥 Your High Score!',
+        description: 'Win stars and boost your streak! 🏆',
         side: 'left',
         align: 'center'
       }
@@ -181,7 +181,7 @@ export function startSeeItSignItTour() {
 
 /**
  * 3. Puzzle Sign Mini-Game Tour
- * Simple Taglish, short 3-5 word descriptions.
+ * Playful small English for Grade 1 - 3.
  */
 export function startPuzzleSignTour() {
   const steps: DriveStep[] = [
@@ -189,7 +189,7 @@ export function startPuzzleSignTour() {
       element: '.eval-instruction-card',
       popover: {
         title: '🧩 Puzzle Clue',
-        description: 'Basahin ang clue para masagot ang puzzle!',
+        description: 'Read the clue to solve the puzzle! 💡',
         side: 'bottom',
         align: 'start'
       }
@@ -197,8 +197,8 @@ export function startPuzzleSignTour() {
     {
       element: '.ps-puzzle-card',
       popover: {
-        title: '➕ Ano ang Nawawala?',
-        description: 'Hulaan kung ano ang sign sa "?" mark!',
+        title: '➕ What is Missing?',
+        description: 'Guess the mystery sign at the "?" mark! ❓',
         side: 'left',
         align: 'center'
       }
@@ -206,8 +206,8 @@ export function startPuzzleSignTour() {
     {
       element: '.eval-camera-wrapper',
       popover: {
-        title: '📷 I-Sign ang Sagot!',
-        description: 'Ipakita sa camera ang iyong sagot! ✋',
+        title: '📷 Sign Your Answer!',
+        description: 'Show your answer hand to the camera! ✋',
         side: 'right',
         align: 'center'
       }
@@ -215,8 +215,8 @@ export function startPuzzleSignTour() {
     {
       element: '.ps-bottom-controls',
       popover: {
-        title: '✨ I-Check ang Sagot',
-        description: 'Pindutin ito para malaman kung tama ka!',
+        title: '✨ Check My Answer',
+        description: 'Click to see if you got it right! 🎉',
         side: 'top',
         align: 'center'
       }
@@ -233,15 +233,15 @@ export function startPuzzleSignTour() {
 
 /**
  * 4. Magic Fingers Mini-Game Tour
- * Simple Taglish, short 3-5 word descriptions.
+ * Playful small English for Grade 1 - 3.
  */
 export function startMagicFingersTour() {
   const steps: DriveStep[] = [
     {
       element: '.sisi-instruction-card',
       popover: {
-        title: '🔤 Sikretong Salita',
-        description: 'May nawawalang letra! Hulaan ito.',
+        title: '🔤 Secret Word',
+        description: 'A letter is missing! Can you find it? 🔍',
         side: 'bottom',
         align: 'start'
       }
@@ -249,8 +249,8 @@ export function startMagicFingersTour() {
     {
       element: '.sisi-camera-wrapper',
       popover: {
-        title: '🤟 I-Spell ang Letra!',
-        description: 'I-sign ang nawawalang letra sa camera!',
+        title: '📷 Sign the Letter!',
+        description: 'Make the missing letter sign with your hand! ✋',
         side: 'right',
         align: 'center'
       }
@@ -258,8 +258,8 @@ export function startMagicFingersTour() {
     {
       element: '.ps-bottom-controls',
       popover: {
-        title: '🪄 I-Check ang Letra',
-        description: 'Pindutin ito para lumabas ang secret letter!',
+        title: '✨ Check Letter',
+        description: 'Click here when you are ready to sign! 🎯',
         side: 'top',
         align: 'center'
       }
@@ -267,8 +267,8 @@ export function startMagicFingersTour() {
     {
       element: '.sisi-score-card',
       popover: {
-        title: '🏆 Iyong Score',
-        description: 'Mag-ipon ng points sa bawat tamang letra! ⭐',
+        title: '🏆 Star Points',
+        description: 'Earn points and become a sign master! 🌟',
         side: 'left',
         align: 'center'
       }

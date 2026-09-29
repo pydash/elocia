@@ -324,8 +324,17 @@ async def update_curriculum(curriculum_id: uuid.UUID, payload: CurriculumUpdate,
     if payload.is_active is not None:
         curr.is_active = payload.is_active
     await db.commit()
-    await db.refresh(curr)
-    return curr
+
+    updated_res = await db.execute(
+        select(Curriculum)
+        .options(
+            selectinload(Curriculum.sections)
+            .selectinload(CurriculumSection.units)
+            .selectinload(CurriculumUnit.stages)
+        )
+        .where(Curriculum.id == curriculum_id)
+    )
+    return updated_res.scalar_one()
 
 @router.delete("/curriculums/{curriculum_id}", status_code=status.HTTP_200_OK)
 async def delete_curriculum(curriculum_id: uuid.UUID, db: AsyncSession = Depends(get_db)):

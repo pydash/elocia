@@ -68,6 +68,21 @@ async def list_classes(teacher_id: Optional[uuid.UUID] = None, db: AsyncSession 
         for c, teacher_name, student_count in classes
     ]
 
+@router.get("/{class_id}")
+async def get_class(class_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Class).where(Class.id == class_id))
+    cls = res.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+    return {
+        "id": str(cls.id),
+        "teacher_id": str(cls.teacher_id) if cls.teacher_id else None,
+        "name": cls.name,
+        "grade_level": cls.grade_level,
+        "school_year": cls.school_year,
+        "created_at": cls.created_at
+    }
+
 @router.put("/{class_id}")
 async def update_class(class_id: uuid.UUID, payload: ClassUpdate, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(Class).where(Class.id == class_id))
