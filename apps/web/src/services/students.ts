@@ -22,8 +22,10 @@ export type UpdateStudentPayload = {
   is_active?: boolean;
 };
 
-export async function fetchStudents(): Promise<Student[]> {
-  const response = await fetch(`${API_BASE_URL}/students`, {
+export async function fetchStudents(
+  status: "all" | "active" | "inactive" = "all"
+): Promise<Student[]> {
+  const response = await fetch(`${API_BASE_URL}/students?status=${status}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -37,6 +39,34 @@ export async function fetchStudents(): Promise<Student[]> {
 
   const data = await response.json();
   return data;
+}
+
+export async function deactivateStudent(studentId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/users/${studentId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(extractApiErrorMessage(error, "Failed to deactivate student"));
+  }
+}
+
+export async function reactivateStudent(studentId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/users/${studentId}/reactivate`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(extractApiErrorMessage(error, "Failed to reactivate student"));
+  }
 }
 
 export async function createStudent(

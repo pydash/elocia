@@ -11,6 +11,13 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
+export interface ParentItem {
+  id: string;
+  name: string;
+  username?: string;
+  relationship?: string;
+}
+
 export interface AdminUser {
   id: string;
   name: string;
@@ -22,6 +29,10 @@ export interface AdminUser {
   grade_level?: number;
   student_number?: number;
   student_code?: string;
+  parent_id?: string;
+  parent_name?: string;
+  parents?: ParentItem[];
+  parent_summary?: string;
   children_summary?: string;
   class_name?: string;
   level?: number;
@@ -54,10 +65,15 @@ export interface CreateStudentPayload {
   parent_id?: string;
 }
 
-export async function fetchAllUsers(role?: string): Promise<AdminUser[]> {
-  const url = role
-    ? `${API_BASE_URL}/users?role=${role}`
-    : `${API_BASE_URL}/users`;
+export async function fetchAllUsers(
+  role?: string,
+  status: "all" | "active" | "inactive" = "all"
+): Promise<AdminUser[]> {
+  const params = new URLSearchParams();
+  if (role) params.set("role", role);
+  if (status) params.set("status", status);
+
+  const url = `${API_BASE_URL}/users?${params.toString()}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -74,9 +90,9 @@ export async function fetchAllUsers(role?: string): Promise<AdminUser[]> {
 export async function fetchAdminMetrics(): Promise<AdminSummaryMetrics> {
   try {
     const [students, teachers, parents, classroomsRes] = await Promise.all([
-      fetchAllUsers("student"),
-      fetchAllUsers("teacher"),
-      fetchAllUsers("parent"),
+      fetchAllUsers("student", "active"),
+      fetchAllUsers("teacher", "active"),
+      fetchAllUsers("parent", "active"),
       fetch(`${API_BASE_URL}/classes/`, {
         headers: getAuthHeaders(),
       }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
@@ -140,6 +156,17 @@ export async function deactivateUserAccount(userId: string): Promise<void> {
   }
 }
 
+export async function reactivateUserAccount(userId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/reactivate`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to reactivate user");
+  }
+}
+
 export interface UpdateUserPayload {
   name?: string;
   password?: string;
@@ -148,6 +175,9 @@ export interface UpdateUserPayload {
   emoji?: string;
   grade_level?: number;
   student_code?: string;
+  parent_id?: string;
+  parent_ids?: string[];
+  remove_parent?: boolean;
   is_active?: boolean;
 }
 
