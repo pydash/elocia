@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useGetStudents } from "@/hooks/useStudents";
 
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import StudentCard from "@/components/teacher/StudentCard";
 import AddStudentDialog from "@/components/teacher/AddStudentDialog";
 import LoadingState from "@/components/LoadingState";

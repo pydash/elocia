@@ -1,6 +1,6 @@
 import Button from "../../components/Button";
 import Dropdown from "../../components/Dropdown";
-import Input from "../../components/Input ";
+import Input from "../../components/Input";
 import CreateLessonRoundCard from "../../components/teacher/CreateLessonRoundCard";
 import {
   ImagePlus,

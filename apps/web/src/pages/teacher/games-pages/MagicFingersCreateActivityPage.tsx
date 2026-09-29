@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import Dropdown from "../../../components/Dropdown";
-import Input from "../../../components/Input ";
+import Input from "../../../components/Input";
 import Separator from "../../../components/Separator";
 import StepIndicator from "../../../components/StepIndicator";
 import Button from "../../../components/Button";

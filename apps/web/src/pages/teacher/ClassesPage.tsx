@@ -5,7 +5,7 @@ import { useGetClasses } from "@/hooks/useClasses";
 
 import type { Class } from "@/interfaces/class.interface";
 
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import Separator from "@/components/Separator";
 import CreateClassDialog from "@/components/teacher/CreateClassDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";

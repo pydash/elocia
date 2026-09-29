@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import Button from "../Button";
-import Input from "../Input ";
+import Input from "../Input";
 import Dropdown from "../Dropdown";
 import {
   createStudent,
@@ -69,7 +69,9 @@ const initialStudent: StudentForm = {
   parent_id: "",
 };
 
-export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {}) {
+export default function AddStudentDialog({
+  onSave,
+}: AddStudentDialogProps = {}) {
   const [student, setStudent] = useState(initialStudent);
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -148,7 +150,8 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {})
 
     try {
       const { parent_id, ...studentDetails } = student;
-      const cleanParentId = parent_id && parent_id.trim() !== "" ? parent_id.trim() : undefined;
+      const cleanParentId =
+        parent_id && parent_id.trim() !== "" ? parent_id.trim() : undefined;
       const payload: CreateStudentPayload = cleanParentId
         ? { ...studentDetails, parent_id: cleanParentId }
         : studentDetails;
@@ -211,7 +214,10 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {})
               </label>
 
               <label className="caption text-(--black)" htmlFor="student-pin">
-                PIN <span className="text-(--ghost) text-xs font-normal">(Max 4 characters)</span>
+                PIN{" "}
+                <span className="text-(--ghost) text-xs font-normal">
+                  (Max 4 characters)
+                </span>
                 <Input
                   id="student-pin"
                   className="mt-2"
@@ -274,7 +280,10 @@ export default function AddStudentDialog({ onSave }: AddStudentDialogProps = {})
                 <Dropdown
                   value={`grade-${student.grade_level}`}
                   onChange={(val) => {
-                    const parsed = parseInt(String(val).replace("grade-", ""), 10);
+                    const parsed = parseInt(
+                      String(val).replace("grade-", ""),
+                      10,
+                    );
                     if (!isNaN(parsed)) updateStudent("grade_level", parsed);
                   }}
                   className="mt-2"

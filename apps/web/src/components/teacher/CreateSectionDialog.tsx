@@ -1,7 +1,7 @@
 import { createSection } from "@/services/curriculum";
 import { useState, type FormEvent } from "react";
 import Button from "../Button";
-import Input from "../Input ";
+import Input from "../Input";
 
 export default function CreateSectionDialog({
   lessonId,

@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import Button from "../Button";
 import Dropdown from "../Dropdown";
-import Input from "../Input ";
+import Input from "../Input";
 
 export default function GameBasicInfoForm() {
   return (

@@ -1,6 +1,6 @@
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import { createStage, uploadStageBaseline } from "@/services/curriculum";
 import { useState } from "react";

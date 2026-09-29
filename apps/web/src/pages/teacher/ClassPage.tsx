@@ -6,7 +6,7 @@ import { useClass } from "@/hooks/useClasses";
 import { ArrowLeft } from "lucide-react";
 
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import EnrollStudentDialog from "@/components/teacher/EnrollStudentDialog";
 import StudentCard from "@/components/teacher/StudentCard";
 import LoadingState from "@/components/LoadingState";

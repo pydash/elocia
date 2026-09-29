@@ -6,7 +6,7 @@ import { useGetUnits } from "@/hooks/useCurriculums";
 import type { Unit } from "@/interfaces/curriculum.interface";
 
 import Button from "@/components/Button";
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import CreateUnitDialog from "@/components/teacher/CreateUnitDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import LoadingState from "@/components/LoadingState";
@@ -14,16 +14,13 @@ import ErrorState from "@/components/ErrorState";
 
 export default function TeacherUnitListPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
-  const { units, loading, error, refresh, setUnits } = useGetUnits(sectionId ?? "");
+  const { units, loading, error, refresh, setUnits } = useGetUnits(
+    sectionId ?? "",
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   const nextUnitNumber = useMemo(() => {
-    return (
-      units.reduce(
-        (max, u) => Math.max(max, u.unit_number || 0),
-        0,
-      ) + 1
-    );
+    return units.reduce((max, u) => Math.max(max, u.unit_number || 0), 0) + 1;
   }, [units]);
 
   const handleUnitCreated = (newUnit: Unit) => {

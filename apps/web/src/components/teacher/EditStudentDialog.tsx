@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 
-import Button from "../Button";
-import Dropdown from "../Dropdown";
-import Input from "../Input ";
+import Button from "@/components/Button";
+import Dropdown from "@/components/Dropdown";
+import Input from "@/components/Input";
 import type { Student } from "@/interfaces/student.interface";
 import type { UpdateStudentPayload } from "@/services/students";
 
@@ -215,15 +215,16 @@ export default function EditStudentDialog({
               <label className="caption text-(--black)" htmlFor="edit-grade">
                 Grade level
                 <Dropdown
+                  id="edit-grade"
                   className="mt-2"
                   value={String(form.grade_level)}
                   onChange={(value) =>
                     updateField("grade_level", Number(value))
                   }
                   options={[
-                    { label: "Grade 1", value: "grade-1" },
-                    { label: "Grade 2", value: "grade-2" },
-                    { label: "Grade 3", value: "grade-3" },
+                    { label: "Grade 1", value: "1" },
+                    { label: "Grade 2", value: "2" },
+                    { label: "Grade 3", value: "3" },
                   ]}
                 />
               </label>
