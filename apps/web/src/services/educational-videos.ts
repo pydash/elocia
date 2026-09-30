@@ -45,28 +45,48 @@ export async function fetchEducationalVideos(): Promise<EducationalVideo[]> {
     throw new Error(error?.detail ?? "Failed to fetch educational videos");
   }
 
-  return response.json() as Promise<EducationalVideo[]>;
+  const rawList = await response.json();
+  return rawList.map((v: any) => ({
+    id: String(v.id),
+    title: v.title,
+    description: v.description,
+    subject: v.subject,
+    gradeLevel: v.grade_level,
+    durationMinutes: v.duration_minutes,
+    videoUrl: v.video_url?.startsWith("http") ? v.video_url : `${API_BASE_URL}${v.video_url}`,
+    thumbnailUrl: v.thumbnail_url
+      ? (v.thumbnail_url.startsWith("http") ? v.thumbnail_url : `${API_BASE_URL}${v.thumbnail_url}`)
+      : undefined,
+    createdBy: v.created_by,
+    createdAt: new Date(v.created_at || Date.now()),
+  }));
 }
 
 export async function uploadEducationalVideoFile(payload: {
   title: string;
   subject: string;
   grade_level: number;
-  duration_minutes: number;
+  duration_minutes?: number;
   description?: string;
   thumbnail_url?: string;
+  thumbnail?: File | null;
   video: File;
 }): Promise<any> {
   const formData = new FormData();
   formData.append("title", payload.title);
   formData.append("subject", payload.subject);
   formData.append("grade_level", String(payload.grade_level));
-  formData.append("duration_minutes", String(payload.duration_minutes));
+  if (payload.duration_minutes !== undefined) {
+    formData.append("duration_minutes", String(payload.duration_minutes));
+  }
   if (payload.description) {
     formData.append("description", payload.description);
   }
   if (payload.thumbnail_url) {
     formData.append("thumbnail_url", payload.thumbnail_url);
+  }
+  if (payload.thumbnail) {
+    formData.append("thumbnail", payload.thumbnail);
   }
   formData.append("video", payload.video);
 

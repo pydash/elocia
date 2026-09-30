@@ -9,10 +9,12 @@ import {
   CheckCircle2,
   Pencil,
   RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import {
   fetchAllUsers,
   deactivateUserAccount,
+  deleteUserPermanently,
   reactivateUserAccount,
   type AdminUser,
 } from "@/services/admin";
@@ -30,6 +32,8 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<AdminUser | null>(null);
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState<AdminUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const loadUsers = async () => {
@@ -78,6 +82,27 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDeletePermanent = async (user: AdminUser) => {
+    if (user.role === "admin") {
+      alert("Admin accounts are permanently protected and cannot be deleted.");
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await deleteUserPermanently(user.id);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      setSelectedUserForDelete(null);
+      setActionMessage(`Account for ${user.name} was permanently deleted.`);
+      setTimeout(() => setActionMessage(null), 4000);
+    } catch (err: any) {
+      console.error("Error permanently deleting user:", err);
+      alert(err.message || "Failed to permanently delete user.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleReactivate = async (user: AdminUser) => {
     const confirm = window.confirm(
       `Are you sure you want to reactivate account for ${user.name}? Their profile color and login access will be restored immediately.`
@@ -100,6 +125,23 @@ export default function AdminUsersPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, is_active: false } : u))
       );
+    }
+  };
+
+  const handleStatusFilterChange = (status: StatusFilter) => {
+    setStatusFilter(status);
+    // If user clicks "inactive" or "active" and the current activeTab has 0 users in that status,
+    // automatically switch activeTab to "all" so users are immediately visible!
+    if (status !== "all" && activeTab !== "all") {
+      const matchCount = users.filter((u) => {
+        if (u.role !== activeTab) return false;
+        if (status === "active") return u.is_active;
+        if (status === "inactive") return !u.is_active;
+        return true;
+      }).length;
+      if (matchCount === 0) {
+        setActiveTab("all");
+      }
     }
   };
 
@@ -171,10 +213,19 @@ export default function AdminUsersPage() {
           <div className="flex items-center gap-2 overflow-x-auto">
             {(["all", "teacher", "parent", "student", "admin"] as RoleFilter[]).map(
               (tab) => {
+                // Dynamically show count based on current status filter
                 const count =
                   tab === "all"
-                    ? users.length
-                    : users.filter((u) => u.role === tab).length;
+                    ? (statusFilter === "all"
+                        ? users.length
+                        : statusFilter === "active"
+                        ? users.filter((u) => u.is_active).length
+                        : users.filter((u) => !u.is_active).length)
+                    : (statusFilter === "all"
+                        ? users.filter((u) => u.role === tab).length
+                        : statusFilter === "active"
+                        ? users.filter((u) => u.role === tab && u.is_active).length
+                        : users.filter((u) => u.role === tab && !u.is_active).length);
 
                 return (
                   <button
@@ -218,7 +269,7 @@ export default function AdminUsersPage() {
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Status:</span>
           <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1">
             <button
-              onClick={() => setStatusFilter("all")}
+              onClick={() => handleStatusFilterChange("all")}
               className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
                 statusFilter === "all"
                   ? "bg-white text-gray-900 shadow-xs"
@@ -228,7 +279,7 @@ export default function AdminUsersPage() {
               All ({users.length})
             </button>
             <button
-              onClick={() => setStatusFilter("active")}
+              onClick={() => handleStatusFilterChange("active")}
               className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
                 statusFilter === "active"
                   ? "bg-white text-emerald-700 shadow-xs"
@@ -238,7 +289,7 @@ export default function AdminUsersPage() {
               Active ({users.filter((u) => u.is_active).length})
             </button>
             <button
-              onClick={() => setStatusFilter("inactive")}
+              onClick={() => handleStatusFilterChange("inactive")}
               className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
                 statusFilter === "inactive"
                   ? "bg-white text-rose-700 shadow-xs"
@@ -255,7 +306,21 @@ export default function AdminUsersPage() {
       <div className="rounded-2xl border border-gray-200 bg-white shadow-xs overflow-hidden">
         {filteredUsers.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
-            {loading ? "Loading users..." : "No users match your criteria."}
+            {loading ? (
+              "Loading users..."
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-base font-medium text-gray-700">No users match your criteria.</p>
+                {activeTab !== "all" && users.some((u) => (statusFilter === "inactive" ? !u.is_active : u.is_active)) && (
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className="text-xs text-(--primary) hover:underline font-semibold"
+                  >
+                    Switch to "All Users" tab to view matching {statusFilter} accounts
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -398,19 +463,28 @@ export default function AdminUsersPage() {
                           <button
                             onClick={() => handleDeactivate(user)}
                             title="Deactivate account"
-                            className="text-gray-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                            className="text-gray-400 hover:text-amber-600 p-1.5 rounded-md hover:bg-amber-50 transition-colors cursor-pointer"
                           >
                             <Trash2 className="size-4" />
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleReactivate(user)}
-                            title="Reactivate account"
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors shadow-xs"
-                          >
-                            <RotateCcw className="size-3.5" />
-                            <span>Reactivate</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleReactivate(user)}
+                              title="Reactivate account"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-md transition-colors shadow-xs cursor-pointer"
+                            >
+                              <RotateCcw className="size-3.5" />
+                              <span>Reactivate</span>
+                            </button>
+                            <button
+                              onClick={() => setSelectedUserForDelete(user)}
+                              title="Delete permanently"
+                              className="text-gray-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
                         )
                       )}
                     </td>
@@ -421,6 +495,49 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {selectedUserForDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-100 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+                <AlertTriangle className="size-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-gray-900">Delete Account Permanently</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to permanently delete{" "}
+                  <strong className="text-gray-900">{selectedUserForDelete.name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-100 leading-relaxed">
+              ⚠️ This will completely erase this user account, their profiles, enrollment links, and practice progress from the system. This action <strong>cannot be undone</strong>.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedUserForDelete(null)}
+                disabled={isDeleting}
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeletePermanent(selectedUserForDelete)}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isDeleting ? "Deleting..." : "Yes, Delete Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Creation Modal */}
       <CreateUserModal

@@ -66,7 +66,20 @@ export function useClass(classId: string | undefined) {
     getClass();
   }, [classId]);
 
-  return { classData, roster, loading, error };
+  const refreshClass = async () => {
+    try {
+      const [foundRoster, foundClass] = await Promise.all([
+        fetchClassRoster(classId),
+        fetchClassById(classId ? classId : ""),
+      ]);
+      setClassData(foundClass);
+      setRoster(foundRoster);
+    } catch (err) {
+      console.error("Failed to refresh class:", err);
+    }
+  };
+
+  return { classData, roster, loading, error, refreshClass };
 }
 export function useGetClassRoster(classId: string | undefined) {
   const [roster, setRoster] = useState<Roster | null>(null);
