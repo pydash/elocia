@@ -156,6 +156,18 @@ export async function deactivateUserAccount(userId: string): Promise<void> {
   }
 }
 
+export async function deleteUserPermanently(userId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/permanent`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(extractApiErrorMessage(err, "Failed to permanently delete user"));
+  }
+}
+
 export async function reactivateUserAccount(userId: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/users/${userId}/reactivate`, {
     method: "PATCH",

@@ -7,8 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clapperboard,
+  Image,
   Lightbulb,
-  Timer,
   Upload,
   X,
 } from "lucide-react";
@@ -36,7 +36,8 @@ function updateDraftField<K extends keyof CreateEducationalVideoPayload>(
 }
 
 export function TeacherUploadVideoStepOnePage() {
-  const { video, setVideo } = useOutletContext<TeacherUploadVideoContext>();
+  const { video, setVideo, thumbnailFile, setThumbnailFile } =
+    useOutletContext<TeacherUploadVideoContext>();
 
   return (
     <section className="space-y-6 mt-6">
@@ -111,71 +112,54 @@ export function TeacherUploadVideoStepOnePage() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label>Duration (minutes)</label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={video.duration_minutes}
-                  onChange={(event) =>
-                    setVideo((current) =>
-                      updateDraftField(
-                        current,
-                        "duration_minutes",
-                        Number(event.target.value),
-                      ),
-                    )
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label>
-                  Video URL{" "}
-                  <span className="text-xs text-gray-500">
-                    (Optional if uploading video file in Step 2)
-                  </span>
-                </label>
-                <Input
-                  type="url"
-                  placeholder="https://... (or leave blank to upload video in Step 2)"
-                  value={video.video_url}
-                  onChange={(event) =>
-                    setVideo((current) =>
-                      updateDraftField(
-                        current,
-                        "video_url",
-                        event.target.value,
-                      ),
-                    )
-                  }
-                />
-              </div>
-            </div>
           </div>
           <div className="space-y-4 col-span-2">
             <div>
-              <label>Thumbnail URL</label>
-              <Input
-                type="url"
-                value={video.thumbnail_url}
-                onChange={(event) =>
-                  setVideo((current) =>
-                    updateDraftField(
-                      current,
-                      "thumbnail_url",
-                      event.target.value,
-                    ),
-                  )
-                }
-                placeholder="https://example.com/thumbnail.jpg"
-              />
+              <label className="font-semibold text-(--black)">Lesson Thumbnail</label>
+              {thumbnailFile ? (
+                <div className="relative mt-2 overflow-hidden rounded-2xl border-2 border-(--primary) bg-(--surface)">
+                  <img
+                    src={URL.createObjectURL(thumbnailFile)}
+                    alt="Thumbnail preview"
+                    className="aspect-video w-full object-cover"
+                  />
+                  <div className="flex items-center justify-between p-2 bg-(--white)">
+                    <span className="truncate text-xs font-medium text-(--black)">{thumbnailFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailFile(null)}
+                      className="cursor-pointer text-xs font-bold text-(--danger) hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="mt-2 flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-4 text-center transition-colors hover:border-(--primary) hover:bg-(--primary-light)">
+                  <Image className="size-8 text-(--primary)" />
+                  <span className="text-sm font-semibold text-(--black)">
+                    Upload Thumbnail Picture
+                  </span>
+                  <span className="text-xs text-(--ghost)">
+                    PNG, JPG, or WEBP image
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setThumbnailFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </label>
+              )}
             </div>
             <div className="flex gap-2 p-4 items-center rounded-full bg-(--info-light) text-(--info)">
               <Lightbulb />
               <span>
-                A bright, colorful image help students find their lessons
+                A bright, colorful image helps students find their lessons
                 faster!
               </span>
             </div>
@@ -293,7 +277,8 @@ export function TeacherUploadVideoStepTwoPage() {
 }
 
 export function TeacherUploadVideoStepThreePage() {
-  const { video, videoFile } = useOutletContext<TeacherUploadVideoContext>();
+  const { video, videoFile, thumbnailFile } =
+    useOutletContext<TeacherUploadVideoContext>();
   const [publishing, setPublishing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -321,14 +306,14 @@ export function TeacherUploadVideoStepThreePage() {
     setErrorMsg(null);
     try {
       if (videoFile) {
-        // Upload as Educational Video without creating a Curriculum Stage
+        // Upload as Educational Video with local thumbnail file if provided
         await uploadEducationalVideoFile({
           title: video.title.trim(),
           subject: video.subject.trim(),
           grade_level: video.grade_level,
           duration_minutes: video.duration_minutes,
           description: video.description.trim(),
-          thumbnail_url: video.thumbnail_url?.trim() || undefined,
+          thumbnail: thumbnailFile,
           video: videoFile,
         });
       } else if (video.video_url?.trim()) {
@@ -358,14 +343,20 @@ export function TeacherUploadVideoStepThreePage() {
           <div className="col-span-2">
             <div className="flex flex-col overflow-hidden border-2 rounded-2xl border-(--border) bg-(--white) shadow-[0_6px_0_0_#BDC8D2]">
               <div className="aspect-video bg-gray-200 flex items-center justify-center overflow-hidden">
-                {videoFile ? (
+                {thumbnailFile ? (
+                  <img
+                    src={URL.createObjectURL(thumbnailFile)}
+                    alt={video.title || "Video thumbnail"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : videoFile ? (
                   <video
                     src={URL.createObjectURL(videoFile)}
                     className="h-full w-full object-cover"
                   />
                 ) : (
                   <img
-                    src={video.thumbnail_url || "/path/to/image.jpg"}
+                    src="/path/to/image.jpg"
                     alt={video.title || "Video thumbnail"}
                     className="h-full w-full object-cover"
                   />
@@ -382,13 +373,6 @@ export function TeacherUploadVideoStepThreePage() {
                   <p className="paragraph-2 text-(--ghost) line-clamp-2 leading-tight!">
                     {video.description || "No description provided."}
                   </p>
-                </div>
-                <Separator />
-                <div className="flex items-center gap-2">
-                  <Timer className="text-(--primary)" />
-                  <span className="text-(--black)">
-                    {video.duration_minutes} min
-                  </span>
                 </div>
               </div>
             </div>

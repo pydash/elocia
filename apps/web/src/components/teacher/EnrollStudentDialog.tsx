@@ -7,10 +7,14 @@ import Button from "../Button";
 
 type EnrollStudentDialogProps = {
   studentIds: string[];
+  classGradeLevel?: number;
+  onEnrolled?: () => void;
 };
 
 export default function EnrollStudentDialog({
   studentIds,
+  classGradeLevel,
+  onEnrolled,
 }: EnrollStudentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,9 +27,13 @@ export default function EnrollStudentDialog({
 
   const filteredStudents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    const availableStudents = students.filter(
-      (student) => !studentIds.includes(student.id),
-    );
+    const availableStudents = students.filter((student) => {
+      // Must not already be enrolled in this class
+      if (studentIds.includes(student.id)) return false;
+      // Must match the grade level of the class if specified
+      if (classGradeLevel && student.grade_level !== classGradeLevel) return false;
+      return true;
+    });
 
     if (!query) {
       return availableStudents;
@@ -34,7 +42,7 @@ export default function EnrollStudentDialog({
     return availableStudents.filter((student) =>
       student.name.toLowerCase().includes(query),
     );
-  }, [searchQuery, studentIds, students]);
+  }, [searchQuery, studentIds, students, classGradeLevel]);
 
   const resetDialog = () => {
     setSearchQuery("");
@@ -73,6 +81,7 @@ export default function EnrollStudentDialog({
 
       setIsOpen(false);
       resetDialog();
+      onEnrolled?.();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to enroll students",

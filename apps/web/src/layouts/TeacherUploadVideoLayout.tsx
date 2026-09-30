@@ -18,17 +18,20 @@ export type TeacherUploadVideoContext = {
   setVideo: React.Dispatch<React.SetStateAction<CreateEducationalVideoPayload>>;
   videoFile: File | null;
   setVideoFile: React.Dispatch<React.SetStateAction<File | null>>;
+  thumbnailFile: File | null;
+  setThumbnailFile: React.Dispatch<React.SetStateAction<File | null>>;
 };
 
 export default function TeacherUploadVideoLayout() {
   const [video, setVideo] = useState<CreateEducationalVideoPayload>(initialVideo);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
 
   return (
     <>
       <TopHeaderBar variant="light" />
       <div className="h-full bg-(--primary-light) p-6">
-        <Outlet context={{ video, setVideo, videoFile, setVideoFile }} />
+        <Outlet context={{ video, setVideo, videoFile, setVideoFile, thumbnailFile, setThumbnailFile }} />
       </div>
     </>
   );
