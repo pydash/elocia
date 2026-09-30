@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import type { CreateClassPayload } from "@/services/classes";
 import { createClass } from "@/services/classes";
 

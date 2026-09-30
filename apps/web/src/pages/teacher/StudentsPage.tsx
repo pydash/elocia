@@ -1,21 +1,29 @@
-import TopHeaderBar from "../../components/teacher/TopHeaderBar";
-import Input from "../../components/Input ";
-import StudentCard from "../../components/teacher/StudentCard";
-import AddStudentDialog from "../../components/teacher/AddStudentDialog";
-import { StudentsLoadingPage } from "../../components/teacher/loading-state/LoadingState";
-import { Search, CheckCircle2 } from "lucide-react";
-import { useGetStudents } from "@/hooks/useStudents";
 import { useMemo, useState } from "react";
 
+import { useGetStudents } from "@/hooks/useStudents";
+
+import TopHeaderBar from "@/components/teacher/TopHeaderBar";
+import Input from "@/components/Input";
+import StudentCard from "@/components/teacher/StudentCard";
+import AddStudentDialog from "@/components/teacher/AddStudentDialog";
+import LoadingState from "@/components/LoadingState";
+import ErrorState from "@/components/ErrorState";
+
+import { Search, CheckCircle2 } from "lucide-react";
+import Separator from "@/components/Separator";
+
 export default function TeacherStudentsPage() {
-  const { students, loading, error, addStudent, reactivateStudentById } = useGetStudents("all");
+  const { students, loading, error, addStudent, reactivateStudentById } =
+    useGetStudents("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "inactive" | "all"
+  >("active");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const handleReactivate = async (id: string, name: string) => {
     const confirm = window.confirm(
-      `Are you sure you want to reactivate ${name}? Their profile color and login access will be restored.`
+      `Are you sure you want to reactivate ${name}? Their profile color and login access will be restored.`,
     );
     if (!confirm) return;
 
@@ -53,31 +61,26 @@ export default function TeacherStudentsPage() {
       ].some((value) => String(value).toLowerCase().includes(normalizedQuery));
     });
   }, [searchQuery, students, statusFilter]);
-
-  if (loading) {
-    return <StudentsLoadingPage />;
-  }
-
-  if (error) {
-    return <div className="p-8 text-center text-red-600">Error: {error}</div>;
-  }
-
   const activeCount = students.filter((s) => s.is_active !== false).length;
   const inactiveCount = students.filter((s) => s.is_active === false).length;
+
+  if (loading) return <LoadingState />;
+
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div>
       <TopHeaderBar />
       <section className="p-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-          <div>
+          <div className="space-y-2">
             <h2 className="heading-2 text-(--black)">Student Roster</h2>
             <p className="text-sm text-gray-500">
               View and manage active and archived student profiles.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <Input
               leadingIcon={Search}
               placeholder="Search students..."
@@ -90,11 +93,11 @@ export default function TeacherStudentsPage() {
         </div>
 
         {/* Status Toggle Sub-bar */}
-        <div className="mt-4 flex items-center justify-between border-b border-gray-200 pb-3">
+        <div className="flex items-center justify-between my-4">
           <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1">
             <button
               onClick={() => setStatusFilter("active")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 statusFilter === "active"
                   ? "bg-white text-(--primary) shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -104,9 +107,9 @@ export default function TeacherStudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter("inactive")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 statusFilter === "inactive"
-                  ? "bg-white text-rose-700 shadow-xs"
+                  ? "bg-white text-red-500 shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -114,7 +117,7 @@ export default function TeacherStudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter("all")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 statusFilter === "all"
                   ? "bg-white text-gray-900 shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -124,6 +127,8 @@ export default function TeacherStudentsPage() {
             </button>
           </div>
         </div>
+
+        <Separator />
 
         {actionMessage && (
           <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 flex items-center gap-2">

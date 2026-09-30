@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
-import { fetchTeacherClasses, fetchClassRoster } from "@/services/classes";
+import {
+  fetchTeacherClasses,
+  fetchClassRoster,
+  fetchClassById,
+} from "@/services/classes";
 import type { Class, Roster } from "@/interfaces/class.interface";
 
 export function useGetClasses() {
@@ -30,6 +34,40 @@ export function useGetClasses() {
   return { classes, loading, error };
 }
 
+export function useClass(classId: string | undefined) {
+  const [classData, setClassData] = useState<Class | null>(null);
+  const [roster, setRoster] = useState<Roster | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    const getClass = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const [foundRoster, foundClass] = await Promise.all([
+          fetchClassRoster(classId),
+          fetchClassById(classId ? classId : ""),
+        ]);
+        setClassData(foundClass);
+        setRoster(foundRoster);
+        setLoading(false);
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("An unknown error occurred");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getClass();
+  }, [classId]);
+
+  return { classData, roster, loading, error };
+}
 export function useGetClassRoster(classId: string | undefined) {
   const [roster, setRoster] = useState<Roster | null>(null);
   const [loading, setLoading] = useState(true);

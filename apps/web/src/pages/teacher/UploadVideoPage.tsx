@@ -1,6 +1,6 @@
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
-import Input from "@/components/Input ";
+import Input from "@/components/Input";
 import Separator from "@/components/Separator";
 import StepIndicator from "@/components/StepIndicator";
 import {
@@ -14,7 +14,11 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { useState, type FormEvent } from "react";
-import { uploadEducationalVideoFile, createEducationalVideo, type CreateEducationalVideoPayload } from "@/services/educational-videos";
+import {
+  uploadEducationalVideoFile,
+  createEducationalVideo,
+  type CreateEducationalVideoPayload,
+} from "@/services/educational-videos";
 import type { TeacherUploadVideoContext } from "@/layouts/TeacherUploadVideoLayout";
 
 const steps = [
@@ -127,7 +131,12 @@ export function TeacherUploadVideoStepOnePage() {
                 />
               </div>
               <div>
-                <label>Video URL <span className="text-xs text-gray-500">(Optional if uploading video file in Step 2)</span></label>
+                <label>
+                  Video URL{" "}
+                  <span className="text-xs text-gray-500">
+                    (Optional if uploading video file in Step 2)
+                  </span>
+                </label>
                 <Input
                   type="url"
                   placeholder="https://... (or leave blank to upload video in Step 2)"
@@ -194,7 +203,8 @@ export function TeacherUploadVideoStepOnePage() {
 }
 
 export function TeacherUploadVideoStepTwoPage() {
-  const { videoFile, setVideoFile } = useOutletContext<TeacherUploadVideoContext>();
+  const { videoFile, setVideoFile } =
+    useOutletContext<TeacherUploadVideoContext>();
 
   return (
     <section className="space-y-6 mt-6">
@@ -218,8 +228,12 @@ export function TeacherUploadVideoStepTwoPage() {
               className="max-h-72 w-auto rounded-xl shadow-md"
             />
             <div className="flex items-center justify-between w-full max-w-md">
-              <span className="font-semibold text-(--black) truncate">{videoFile.name}</span>
-              <span className="text-sm text-(--ghost)">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+              <span className="font-semibold text-(--black) truncate">
+                {videoFile.name}
+              </span>
+              <span className="text-sm text-(--ghost)">
+                {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+              </span>
             </div>
             <label className="cursor-pointer text-sm font-semibold text-(--primary) underline hover:text-(--primary-dark)">
               Replace Video
@@ -241,7 +255,9 @@ export function TeacherUploadVideoStepTwoPage() {
             <span className="paragraph-2 font-semibold text-(--black)">
               Click to upload demonstration video
             </span>
-            <span className="caption text-(--ghost)">MP4, WEBM or MOV up to 100MB</span>
+            <span className="caption text-(--ghost)">
+              MP4, WEBM or MOV up to 100MB
+            </span>
             <input
               type="file"
               accept="video/mp4,video/webm,video/quicktime"
@@ -287,12 +303,16 @@ export function TeacherUploadVideoStepThreePage() {
     event.preventDefault();
 
     if (!video.title?.trim() || !video.description?.trim()) {
-      setValidationError("Title and description are required before publishing.");
+      setValidationError(
+        "Title and description are required before publishing.",
+      );
       return;
     }
 
     if (!videoFile && !video.video_url?.trim()) {
-      setValidationError("Please provide a demonstration video file or video URL before publishing.");
+      setValidationError(
+        "Please provide a demonstration video file or video URL before publishing.",
+      );
       return;
     }
 
@@ -378,7 +398,9 @@ export function TeacherUploadVideoStepThreePage() {
             <div className="space-y-2">
               <h3 className="heading-3 text-(--info)">Preview</h3>
               <p className="paragraph-2 text-(--ghost)">
-                This lesson will automatically be unlocked for all Grade {video.grade_level} students on their Desktop Lesson Navigation map.
+                This lesson will automatically be unlocked for all Grade{" "}
+                {video.grade_level} students on their Desktop Lesson Navigation
+                map.
               </p>
             </div>
             <Separator />
@@ -423,8 +445,14 @@ export function TeacherUploadVideoStepThreePage() {
           </div>
           <div className="flex gap-4 items-center">
             <form onSubmit={handlePublish}>
-              <Button className="gap-2" type="submit" disabled={publishing || (!videoFile && !video.video_url)}>
-                {publishing ? "Extracting 3D Landmarks & Publishing..." : "Publish Lesson"}{" "}
+              <Button
+                className="gap-2"
+                type="submit"
+                disabled={publishing || (!videoFile && !video.video_url)}
+              >
+                {publishing
+                  ? "Extracting 3D Landmarks & Publishing..."
+                  : "Publish Lesson"}{" "}
                 <Upload className="size-4" />
               </Button>
             </form>

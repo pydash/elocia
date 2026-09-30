@@ -70,7 +70,7 @@ function App() {
         <Route path="/teacher" element={<TeacherLayout />}>
           {/* Classes */}
           <Route path="classes" index element={<TeacherClassesPage />} />
-          <Route path="classes/:id" element={<TeacherClassPage />} />
+          <Route path="classes/:classId" element={<TeacherClassPage />} />
           {/* Students */}
           <Route path="students" index element={<TeacherStudentsPage />} />
           <Route path="students/:id" element={<TeacherStudentProfilePage />} />
@@ -78,35 +78,35 @@ function App() {
           {/* Lessons */}
           <Route path="lessons" element={<TeacherLessonsPage />} />
 
-          {/* /lessons/:curriculumId */}
+          {/* /lessons/curriculum/:curriculumId */}
           <Route
-            path="lessons/:curriculumId"
+            path="lessons/curriculum/:curriculumId"
             element={<TeacherSectionListPage />}
           />
 
-          {/* /lessons/:curriculumId/sections/:sectionId */}
+          {/* /lessons/curriculum/:curriculumId/sections/:sectionId */}
           <Route
-            path="lessons/:curriculumId/sections/:sectionId"
+            path="lessons/curriculum/:curriculumId/sections/:sectionId"
             element={<TeacherUnitListPage />}
           />
 
-          {/* /lessons/:curriculumId/sections/:sectionId/units/:unitId */}
+          {/* /lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId */}
           <Route
-            path="lessons/:curriculumId/sections/:sectionId/units/:unitId"
+            path="lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId"
             element={<TeacherStageListPage />}
           />
           <Route
-            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/new"
+            path="lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/new"
             element={<TeacherStageCreatePage />}
           />
           <Route
-            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/preview"
+            path="lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/preview"
             element={<TeacherStagePreviewPage />}
           />
 
-          {/* /lessons/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId */}
+          {/* /lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId */}
           <Route
-            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId"
+            path="lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId"
             element={<TeacherStageItemPage />}
           />
 

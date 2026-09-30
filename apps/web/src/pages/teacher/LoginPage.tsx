@@ -17,7 +17,7 @@ export default function TeacherLoginPage() {
     e.preventDefault();
     const success = await login(username, password);
     if (success) {
-      navigate("/teacher/students");
+      navigate("/teacher/classes");
     }
   };
 

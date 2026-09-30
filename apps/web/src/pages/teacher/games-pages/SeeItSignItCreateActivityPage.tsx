@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import StepIndicator from "../../../components/StepIndicator";
 import Separator from "../../../components/Separator";
-import Input from "../../../components/Input ";
+import Input from "../../../components/Input";
 import Dropdown from "../../../components/Dropdown";
 import { useState, type FormEvent } from "react";
 import {
