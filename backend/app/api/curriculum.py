@@ -103,6 +103,11 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
                         "units": sec_units
                     })
 
+            # If a specific grade level was requested, do not fall back to flat/all stages!
+            # Return the sections matching this grade level (empty if teacher hasn't created any yet)
+            if grade_level is not None:
+                return {"sections": curriculum_sections}
+
             if curriculum_sections:
                 return {"sections": curriculum_sections}
 

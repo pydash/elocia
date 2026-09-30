@@ -3,7 +3,7 @@ import './Practice.css';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import { CURRICULUM } from '../../data/curriculum';
 import type { Section } from '../../data/curriculum';
-import { fetchNeedsPractice, fetchCurriculum, fetchStudentProgress, fetchEducationalVideos } from '../../utils/api';
+import { fetchNeedsPractice, fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, API_BASE } from '../../utils/api';
 import type { PracticeItem, StudentProgress, EducationalVideoItem } from '../../utils/api';
 
 // Assuming images are in public/images
@@ -38,40 +38,47 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
   };
 
   useEffect(() => {
-    // 1. Load dynamic curriculum
-    fetchCurriculum().then(sections => {
-      if (sections && sections.length > 0) {
+    // 1. Get student grade level if logged in
+    const rawStudent = localStorage.getItem('elocia_current_student');
+    let studentGrade: number | undefined;
+    let studentId: string | undefined;
+
+    if (rawStudent) {
+      try {
+        const student = JSON.parse(rawStudent);
+        if (student.grade_level) studentGrade = Number(student.grade_level);
+        if (student.id) studentId = student.id;
+      } catch (e) {
+        console.error('Failed to parse current student for practice:', e);
+      }
+    }
+
+    // 2. Load dynamic curriculum for this student's grade
+    fetchCurriculum(studentGrade).then(sections => {
+      if (sections) {
         setCurriculumData(sections);
       }
     });
 
-    // 2. Load educational videos from backend
-    fetchEducationalVideos().then(videos => {
-      if (videos && videos.length > 0) {
+    // 3. Load educational videos from backend for this student's grade
+    fetchEducationalVideos(studentGrade).then(videos => {
+      if (videos) {
         setEducationalVideos(videos);
       }
     });
 
-    // 3. Load student progress & needs-practice
-    const rawStudent = localStorage.getItem('elocia_current_student');
-    if (rawStudent) {
-      try {
-        const student = JSON.parse(rawStudent);
-        if (student.id) {
-          fetchNeedsPractice(student.id).then((items) => {
-            if (items && items.length > 0) {
-              setPracticeItems(items);
-            }
-          });
-          fetchStudentProgress(student.id).then((prog) => {
-            if (prog) {
-              setStudentProgress(prog);
-            }
-          });
+    // 4. Load student progress & needs-practice
+    if (studentId) {
+      fetchNeedsPractice(studentId).then((items) => {
+        if (items && items.length > 0) {
+          setPracticeItems(items);
         }
-      } catch (e) {
-        console.error('Failed to parse current student for practice:', e);
-      }
+      });
+      fetchStudentProgress(studentId).then((prog) => {
+        if (prog) {
+          setStudentProgress(prog);
+        }
+      });
     }
   }, []);
 
@@ -161,7 +168,11 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   >
                     <div className="video-thumbnail">
                       {video.thumbnail_url ? (
-                        <img src={video.thumbnail_url} alt={video.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img 
+                          src={video.thumbnail_url.startsWith('http') ? video.thumbnail_url : `${API_BASE}${video.thumbnail_url}`} 
+                          alt={video.title} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
                       ) : (
                         <div className="science-placeholder-art">
                           <div className="science-doodle dna"></div>
@@ -178,11 +189,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                       <span className="grade-badge">Grade {video.grade_level}</span>
                       <h3 className="video-title">{video.title}</h3>
                       <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
-                      <div className="video-divider"></div>
-                      <div className="video-footer">
-                        <svg className="time-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                        <span className="time-text">{video.duration_minutes} min</span>
-                      </div>
                     </div>
                   </div>
                 ))
@@ -367,9 +373,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   </span>
                   <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: '#fef3c7', color: '#b45309' }}>
                     Grade {selectedVideo.grade_level}
-                  </span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>
-                    ⏱️ {selectedVideo.duration_minutes} min
                   </span>
                 </div>
                 <h3 style={{ fontSize: '20px', fontWeight: 800, margin: '2px 0 0 0', color: '#0f172a' }}>

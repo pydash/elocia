@@ -215,21 +215,6 @@ async def upload_baseline_video(
         else:
             ssp.unlocked = True
 
-    # 9. Also record an EducationalVideo entry so it appears in both Practice and Lesson Navigation
-    try:
-        edu_vid = EducationalVideo(
-            title=sign_name,
-            description=description or f"Learn to sign {sign_name}",
-            subject="FSL Demonstration",
-            grade_level=grade_level or 1,
-            duration_minutes=5,
-            video_url=f"/videos/{video_filename}",
-            thumbnail_url=None
-        )
-        db.add(edu_vid)
-    except Exception:
-        pass
-
     await db.commit()
 
     return BaselineUploadResult(
