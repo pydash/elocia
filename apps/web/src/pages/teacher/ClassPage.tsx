@@ -16,7 +16,7 @@ import Separator from "@/components/Separator";
 
 export default function TeacherClassPage() {
   const { classId } = useParams<{ classId: string }>();
-  const { classData, roster, loading, error } = useClass(classId);
+  const { classData, roster, loading, error, refreshClass } = useClass(classId);
   const [searchQuery, setSearchQuery] = useState("");
   const rosterStudents = roster?.students ?? [];
 
@@ -60,6 +60,9 @@ export default function TeacherClassPage() {
             <h1 className="mt-3 text-3xl font-bold text-(--black)">
               {classData?.name}
             </h1>
+            <p className="mt-1 text-sm font-semibold text-(--ghost)">
+              Grade {classData?.grade_level} • School Year {classData?.school_year} • {rosterStudents.length} {rosterStudents.length === 1 ? "Student" : "Students"}
+            </p>
           </div>
           <div className="flex gap-4 items-center">
             <Input
@@ -70,6 +73,8 @@ export default function TeacherClassPage() {
             />
             <EnrollStudentDialog
               studentIds={rosterStudents.map((student) => student.id)}
+              classGradeLevel={classData?.grade_level}
+              onEnrolled={refreshClass}
             />
           </div>
         </div>

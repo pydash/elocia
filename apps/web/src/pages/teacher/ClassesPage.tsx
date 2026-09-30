@@ -7,7 +7,6 @@ import type { Class } from "@/interfaces/class.interface";
 
 import Input from "@/components/Input";
 import Separator from "@/components/Separator";
-import CreateClassDialog from "@/components/teacher/CreateClassDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
@@ -55,7 +54,6 @@ export default function TeacherClassesPage() {
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Search classes"
             />
-            <CreateClassDialog />
           </div>
         </div>
 
@@ -69,8 +67,8 @@ export default function TeacherClassesPage() {
           </ul>
         ) : (
           <EmptyState
-            title="No classes found."
-            message="Create a class to get started."
+            title="No assigned classes yet."
+            message="Your school administrator will assign you to an official class section."
           />
         )}
       </section>
@@ -88,6 +86,9 @@ function ClassCard({ classItem }: { classItem: Class }) {
         <div className="mb-5 flex items-start justify-between gap-3">
           <span className="rounded-full bg-(--gray-100) px-3 py-1 text-xs font-semibold text-(--ghost)">
             {classItem.school_year}
+          </span>
+          <span className="rounded-full bg-(--primary-light) px-3 py-1 text-xs font-bold text-(--primary)">
+            {classItem.student_count ?? 0} {(classItem.student_count ?? 0) === 1 ? "Student" : "Students"}
           </span>
         </div>
 

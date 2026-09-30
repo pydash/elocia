@@ -1,11 +1,11 @@
 import { ChevronDown } from "lucide-react";
 
 type DropdownProps = {
-  id: string;
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   options: { label: string; value: string }[];
-  className: string;
+  className?: string;
 };
 
 export default function Dropdown({
@@ -13,7 +13,7 @@ export default function Dropdown({
   value,
   onChange,
   options,
-  className,
+  className = "",
 }: DropdownProps) {
   return (
     <div className={`relative inline-block w-full ${className}`}>
