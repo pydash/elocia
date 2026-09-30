@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useGetLessonLibrary } from "@/hooks/useLessonLibrary";
 
@@ -11,16 +11,23 @@ import AddCurriculumDialog from "@/components/teacher/AddCurriculumDialog";
 import ErrorState from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
 import Separator from "@/components/Separator";
+import EmptyState from "@/components/EmptyState";
 
 import { Search } from "lucide-react";
 
-const matchesSearch = (query: string, values: unknown[]) =>
-  !query ||
-  values.some((value) =>
+import type { Curriculum } from "@/interfaces/curriculum.interface";
+import type { EducationalVideo } from "@/interfaces/educational-video.interface";
+import type { MiniGameConfig } from "@/interfaces/mini-game.interface";
+
+const matchesSearch = (query: string, ...values: unknown[]) => {
+  if (!query) return true;
+
+  return values.some((value) =>
     String(value ?? "")
       .toLowerCase()
       .includes(query),
   );
+};
 
 export default function TeacherLessonsPage() {
   const { curriculums, videos, miniGames, loading, error } =
@@ -29,41 +36,29 @@ export default function TeacherLessonsPage() {
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  const filteredCurriculum = useMemo(
-    () =>
-      curriculums?.filter((curriculum) =>
-        matchesSearch(normalizedQuery, [
-          curriculum.title,
-          curriculum.description,
-          curriculum.grade_level,
-        ]),
-      ) ?? [],
-    [curriculums, normalizedQuery],
+  const filteredCurriculum = (curriculums ?? []).filter((curriculum) =>
+    matchesSearch(normalizedQuery, [
+      curriculum.title,
+      curriculum.description,
+      curriculum.grade_level,
+    ]),
   );
 
-  const filteredVideos = useMemo(
-    () =>
-      videos.filter((video) =>
-        matchesSearch(normalizedQuery, [
-          video.title,
-          video.description,
-          video.subject,
-        ]),
-      ),
-    [videos, normalizedQuery],
+  const filteredVideos = (videos ?? []).filter((video) =>
+    matchesSearch(normalizedQuery, [
+      video.title,
+      video.description,
+      video.subject,
+    ]),
   );
 
-  const filteredMiniGames = useMemo(
-    () =>
-      miniGames.filter((game) =>
-        matchesSearch(normalizedQuery, [
-          game.title,
-          game.game_type,
-          game.target_sign,
-          game.hint_text,
-        ]),
-      ),
-    [miniGames, normalizedQuery],
+  const filteredMiniGames = (miniGames ?? []).filter((game) =>
+    matchesSearch(normalizedQuery, [
+      game.title,
+      game.game_type,
+      game.target_sign,
+      game.hint_text,
+    ]),
   );
 
   const hasResults =
@@ -111,15 +106,11 @@ export default function TeacherLessonsPage() {
             <h2 className="heading-3 text-(--black)">Curriculum</h2>
             <div className="h-1 w-36 bg-(--primary) rounded-full" />
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4">
             {filteredCurriculum.length ? (
-              filteredCurriculum.map((curriculum) => (
-                <CurriculumCard key={curriculum.id} curriculum={curriculum} />
-              ))
+              <CurriculumCardList curriculums={filteredCurriculum} />
             ) : (
-              <p className="text-center paragraph-2 text-(--gray)">
-                No curriculum available.
-              </p>
+              <EmptyState title="No Curriculum Found" />
             )}
           </div>
         </div>
@@ -130,44 +121,26 @@ export default function TeacherLessonsPage() {
             <h2 className="heading-3 text-(--black)">Educational Videos</h2>
             <div className="h-1 w-36 bg-(--primary) rounded-full" />
           </div>
-          <div className="grid gap-6 grid-cols-4 mt-8">
+          <div className="mt-4">
             {filteredVideos.length ? (
-              filteredVideos.map((video) => (
-                <div key={video.id}>
-                  <LessonCard
-                    id={video.id}
-                    imageUrl={video.thumbnailUrl || "/path/to/image.jpg"}
-                    title={video.title}
-                    description={video.description || "Video description"}
-                    status="published"
-                    onEdit={() => {}}
-                    onToggleVisibility={() => {}}
-                  />
-                </div>
-              ))
+              <EducationalVideoCardList videos={filteredVideos} />
             ) : (
-              <p className="text-center text-(--gray)">No videos available.</p>
+              <EmptyState title="No Educational Videos Found" />
             )}
           </div>
         </div>
 
         {/* Mini Games Content */}
         <div className="mt-12">
-          <div className="flex flex-col gap-3">
+          <div className="w-fit flex flex-col gap-3">
             <h2 className="heading-3 text-(--black)">Mini Games</h2>
-            <div className="h-1 w-36 bg-(--primary) rounded-full" />
+            <div className="h-1 w-full bg-(--primary) rounded-full" />
           </div>
-          <div className="grid gap-6 grid-cols-4 mt-8">
+          <div className="mt-4">
             {filteredMiniGames.length ? (
-              filteredMiniGames.map((game) => (
-                <div key={game.id}>
-                  <MiniGameCard miniGame={game} />
-                </div>
-              ))
+              <MiniGameCardList miniGames={filteredMiniGames} />
             ) : (
-              <p className="text-center text-(--gray)">
-                No mini games available.
-              </p>
+              <EmptyState title="No Mini Games Found" />
             )}
           </div>
         </div>
@@ -177,6 +150,45 @@ export default function TeacherLessonsPage() {
           </p>
         )}
       </section>
+    </div>
+  );
+}
+
+function CurriculumCardList({ curriculums }: { curriculums: Curriculum[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {curriculums.map((curriculum) => (
+        <CurriculumCard key={curriculum.id} curriculum={curriculum} />
+      ))}
+    </div>
+  );
+}
+
+function EducationalVideoCardList({ videos }: { videos: EducationalVideo[] }) {
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      {videos.map((video) => (
+        <LessonCard
+          key={video.id}
+          id={video.id}
+          imageUrl={video.thumbnailUrl || "/path/to/image.jpg"}
+          title={video.title}
+          description={video.description || "Video description"}
+          status="published"
+          onEdit={() => {}}
+          onToggleVisibility={() => {}}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MiniGameCardList({ miniGames }: { miniGames: MiniGameConfig[] }) {
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      {miniGames.map((game) => (
+        <MiniGameCard key={game.id} miniGame={game} />
+      ))}
     </div>
   );
 }
