@@ -25,7 +25,7 @@ export function TeacherStageCreatePage() {
   }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const stagePath = `/teacher/lessons/${curriculumId}/sections/${sectionId}/units/${unitId}`;
+  const stagePath = `/teacher/lessons/curriculum/${curriculumId}/sections/${sectionId}/units/${unitId}`;
   const stageNumber =
     (location.state as { stageNumber?: number } | null)?.stageNumber ?? 1;
   const savedDraft = (location.state as { draft?: StageDraft } | null)?.draft;
@@ -207,7 +207,7 @@ export function TeacherStagePreviewPage() {
   }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const stagePath = `/teacher/lessons/${curriculumId}/sections/${sectionId}/units/${unitId}`;
+  const stagePath = `/teacher/lessons/curriculum/${curriculumId}/sections/${sectionId}/units/${unitId}`;
   const draft = (location.state as { draft?: StageDraft } | null)?.draft;
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
