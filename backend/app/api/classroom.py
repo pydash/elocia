@@ -172,7 +172,8 @@ async def list_educational_videos(
     subject: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(EducationalVideo)
+    # Only show actual educational videos, exclude auto-created stage demonstration copies
+    query = select(EducationalVideo).where(EducationalVideo.subject != "FSL Demonstration")
     if grade_level:
         query = query.where(EducationalVideo.grade_level == grade_level)
     if subject:
@@ -221,6 +222,7 @@ async def upload_educational_video_file(
     duration_minutes: int = Form(5),
     thumbnail_url: Optional[str] = Form(None),
     video: UploadFile = File(...),
+    thumbnail: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db)
 ):
     ext = os.path.splitext(video.filename)[1].lower()
@@ -236,8 +238,25 @@ async def upload_educational_video_file(
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     public_dir = os.path.join(project_root, "apps", "student-desktop", "frontend", "public", "videos")
     storage_dir = os.path.join(project_root, "backend", "storage", "videos")
+    storage_thumb_dir = os.path.join(project_root, "backend", "storage", "thumbnails")
+    public_thumb_dir = os.path.join(project_root, "apps", "student-desktop", "frontend", "public", "thumbnails")
     os.makedirs(public_dir, exist_ok=True)
     os.makedirs(storage_dir, exist_ok=True)
+    os.makedirs(storage_thumb_dir, exist_ok=True)
+    os.makedirs(public_thumb_dir, exist_ok=True)
+
+    # Save local thumbnail file if uploaded
+    resolved_thumb_url = thumbnail_url
+    if thumbnail and thumbnail.filename:
+        thumb_ext = os.path.splitext(thumbnail.filename)[1].lower()
+        if thumb_ext in [".png", ".jpg", ".jpeg", ".webp", ".svg"]:
+            thumb_filename = f"thumb_{uuid.uuid4().hex[:8]}_{clean_title}{thumb_ext}"
+            thumb_stor_path = os.path.join(storage_thumb_dir, thumb_filename)
+            thumb_pub_path = os.path.join(public_thumb_dir, thumb_filename)
+            with open(thumb_stor_path, "wb") as f_th:
+                shutil.copyfileobj(thumbnail.file, f_th)
+            shutil.copyfile(thumb_stor_path, thumb_pub_path)
+            resolved_thumb_url = f"/thumbnails/{thumb_filename}"
 
     pub_path = os.path.join(public_dir, video_filename)
     stor_path = os.path.join(storage_dir, video_filename)
@@ -280,7 +299,7 @@ async def upload_educational_video_file(
         grade_level=grade_level,
         duration_minutes=duration_minutes,
         video_url=f"/videos/{video_filename}",
-        thumbnail_url=thumbnail_url
+        thumbnail_url=resolved_thumb_url
     )
     db.add(new_vid)
     await db.commit()
@@ -291,4 +310,14 @@ async def upload_educational_video_file(
         "title": new_vid.title,
         "video_url": new_vid.video_url
     }
+
+@videos_router.delete("/{video_id}")
+async def delete_educational_video(video_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(EducationalVideo).where(EducationalVideo.id == video_id))
+    video = res.scalar_one_or_none()
+    if not video:
+        raise HTTPException(status_code=404, detail="Educational video not found")
+    await db.delete(video)
+    await db.commit()
+    return {"status": "deleted", "video_id": str(video_id)}
 

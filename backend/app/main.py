@@ -61,6 +61,12 @@ video_mount_dir = public_videos_dir if os.path.exists(public_videos_dir) else st
 if os.path.exists(video_mount_dir):
     app.mount("/videos", StaticFiles(directory=video_mount_dir), name="videos")
 
+# Mount static thumbnails directory
+storage_thumbnails_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "thumbnails"))
+os.makedirs(storage_thumbnails_dir, exist_ok=True)
+app.mount("/thumbnails", StaticFiles(directory=storage_thumbnails_dir), name="thumbnails")
+
+
 @app.get("/")
 async def root():
     return {

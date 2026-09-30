@@ -76,7 +76,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
 
     // 2. Fetch live dynamic curriculum matching the student's grade level
     fetchCurriculum(studentGrade).then(sections => {
-      if (sections && sections.length > 0) {
+      if (sections) {
         setCurriculumData(sections);
       }
     });
