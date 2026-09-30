@@ -157,20 +157,22 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
               </p>
             </div>
           ) : (
-            curriculumData.map(section => (
-              <div key={section.id} className="section-group">
-                <div className="section-banner">
-                  {section.title}
-                </div>
+            curriculumData
+              .filter(section => section.units && section.units.some(u => u.stages && u.stages.length > 0))
+              .map((section, idx) => (
+                <div key={`${section.id}-${idx}`} className="section-group">
+                  <div className="section-banner">
+                    {section.title}
+                  </div>
 
-                <div className="stages-path">
-                  <div className="path-line"></div>
+                  <div className="stages-path">
+                    <div className="path-line"></div>
 
-                  {section.units
-                    .flatMap(u => u.stages)
-                    .sort((a, b) => a.id - b.id)
-                    .map((stage) => {
-                      const isLocked = !unlockedStages.includes(stage.id);
+                    {section.units
+                      .flatMap(u => u.stages)
+                      .sort((a, b) => a.id - b.id)
+                      .map((stage) => {
+                        const isLocked = !unlockedStages.includes(stage.id);
                     
                     return (
                       <div

@@ -93,11 +93,15 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
 
             curriculum_sections = []
             for sec in sections:
-                curriculum_sections.append({
-                    "id": sec.section_number,
-                    "title": sec.title,
-                    "units": units_by_sec.get(sec.id, [])
-                })
+                sec_units = units_by_sec.get(sec.id, [])
+                # Only include sections that contain at least one stage
+                has_stages = any(len(u.get("stages", [])) > 0 for u in sec_units)
+                if has_stages:
+                    curriculum_sections.append({
+                        "id": sec.section_number,
+                        "title": sec.title,
+                        "units": sec_units
+                    })
 
             if curriculum_sections:
                 return {"sections": curriculum_sections}
@@ -382,8 +386,17 @@ async def create_curriculum_section(curriculum_id: uuid.UUID, payload: SectionCr
     )
     db.add(new_sec)
     await db.commit()
-    await db.refresh(new_sec)
-    return new_sec
+    
+    # Reload with relationships so Pydantic SectionResponse can serialize .units without MissingGreenlet error
+    res = await db.execute(
+        select(CurriculumSection)
+        .options(
+            selectinload(CurriculumSection.units)
+            .selectinload(CurriculumUnit.stages)
+        )
+        .where(CurriculumSection.id == new_sec.id)
+    )
+    return res.scalar_one()
 
 @router.put("/curriculum-sections/{section_id}", response_model=SectionResponse)
 async def update_curriculum_section(section_id: uuid.UUID, payload: SectionUpdate, db: AsyncSession = Depends(get_db)):
@@ -396,8 +409,16 @@ async def update_curriculum_section(section_id: uuid.UUID, payload: SectionUpdat
     if payload.section_number is not None:
         sec.section_number = payload.section_number
     await db.commit()
-    await db.refresh(sec)
-    return sec
+    
+    reloaded = await db.execute(
+        select(CurriculumSection)
+        .options(
+            selectinload(CurriculumSection.units)
+            .selectinload(CurriculumUnit.stages)
+        )
+        .where(CurriculumSection.id == sec.id)
+    )
+    return reloaded.scalar_one()
 
 @router.delete("/curriculum-sections/{section_id}", status_code=status.HTTP_200_OK)
 async def delete_curriculum_section(section_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
@@ -442,8 +463,13 @@ async def create_section_unit(section_id: uuid.UUID, payload: UnitCreate, db: As
     )
     db.add(new_unit)
     await db.commit()
-    await db.refresh(new_unit)
-    return new_unit
+    
+    reloaded = await db.execute(
+        select(CurriculumUnit)
+        .options(selectinload(CurriculumUnit.stages))
+        .where(CurriculumUnit.id == new_unit.id)
+    )
+    return reloaded.scalar_one()
 
 @router.put("/curriculum-units/{unit_id}", response_model=UnitResponse)
 async def update_section_unit(unit_id: uuid.UUID, payload: UnitUpdate, db: AsyncSession = Depends(get_db)):

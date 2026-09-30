@@ -93,8 +93,8 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const isEvaluatingRef = useRef<boolean>(false);
 
-  // Auto-grading state (hands-free evaluation for SPED)
-  const [autoState, setAutoState] = useState<'idle' | 'holding' | 'grading' | 'cooldown' | 'passed'>('idle');
+  // Auto-grading state (hands-free dynamic motion capture for SPED)
+  const [autoState, setAutoState] = useState<'idle' | 'ready' | 'signing' | 'grading' | 'cooldown' | 'passed'>('idle');
   const [holdProgress, setHoldProgress] = useState<number>(0);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -320,21 +320,34 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           if (isHandDetected) {
             consecutiveMissRef.current = 0;
             if (autoStateRef.current === 'idle') {
-              setAutoState('holding');
-              autoStateRef.current = 'holding';
+              setAutoState('ready');
+              autoStateRef.current = 'ready';
               holdStartRef.current = Date.now();
               setHoldProgress(0);
-              setIsRecording(true);
-              if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ action: 'clear' }));
-              }
-            } else if (autoStateRef.current === 'holding') {
+            } else if (autoStateRef.current === 'ready') {
               const elapsed = Date.now() - (holdStartRef.current || Date.now());
-              const HOLD_DURATION = 2000;
-              const progress = Math.min(100, Math.round((elapsed / HOLD_DURATION) * 100));
+              const READY_DURATION = 1000; // 1s ready countdown
+              const progress = Math.min(100, Math.round((elapsed / READY_DURATION) * 100));
               setHoldProgress(progress);
 
-              if (elapsed >= HOLD_DURATION) {
+              if (elapsed >= READY_DURATION) {
+                // Transition into active dynamic signing window!
+                setAutoState('signing');
+                autoStateRef.current = 'signing';
+                holdStartRef.current = Date.now();
+                setHoldProgress(0);
+                setIsRecording(true);
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ action: 'clear' }));
+                }
+              }
+            } else if (autoStateRef.current === 'signing') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
+              const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= SIGN_DURATION) {
                 setAutoState('grading');
                 autoStateRef.current = 'grading';
                 setIsRecording(false);
@@ -357,14 +370,13 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
               }
             }
           } else {
-            if (autoStateRef.current === 'holding') {
+            if (autoStateRef.current === 'ready') {
               consecutiveMissRef.current += 1;
               if (consecutiveMissRef.current >= 3) {
                 setAutoState('idle');
                 autoStateRef.current = 'idle';
                 setHoldProgress(0);
                 holdStartRef.current = null;
-                setIsRecording(false);
               }
             }
           }
@@ -733,25 +745,35 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                     </div>
                   )}
 
-                  {autoState === 'holding' && (
-                    <div className="hud-badge hud-holding-badge">
+                  {autoState === 'ready' && (
+                    <div className="hud-badge hud-ready-badge">
+                      <span className="hud-icon pulse-target">🎯</span>
+                      <div className="hud-text-group">
+                        <span className="hud-main-text">Get Ready!</span>
+                        <span className="hud-sub-text">Starting in 1... 🎬</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {autoState === 'signing' && (
+                    <div className="hud-badge hud-signing-badge">
                       <div className="hud-countdown-ring">
                         <svg viewBox="0 0 36 36" className="circular-chart">
                           <path className="circle-bg"
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           />
-                          <path className="circle"
+                          <path className="circle circle-signing"
                             strokeDasharray={`${holdProgress}, 100`}
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           />
                         </svg>
                         <span className="countdown-number">
-                          {Math.max(1, Math.ceil((100 - holdProgress) / 40))}
+                          {Math.max(1, Math.ceil((100 - holdProgress) / 35))}
                         </span>
                       </div>
                       <div className="hud-text-group">
-                        <span className="hud-main-text">🌟 Hold steady!</span>
-                        <span className="hud-sub-text">Keep your hand still... 3, 2, 1!</span>
+                        <span className="hud-main-text">🎬 Sign Now! Move your hand!</span>
+                        <span className="hud-sub-text">Perform the sign or trace the shape... ✨</span>
                       </div>
                     </div>
                   )}
