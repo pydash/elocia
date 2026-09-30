@@ -57,3 +57,8 @@ apps/student-desktop/desktop/logs/
 # Baselines (calibration landmarks)
 apps/student-desktop/desktop/baselines/*.json
 backend/storage/baselines/*.json
+
+# Video media uploads
+*.mp4
+apps/student-desktop/frontend/public/videos/*.mp4
+backend/storage/videos/*.mp4
