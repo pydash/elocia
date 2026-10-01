@@ -30,7 +30,7 @@ const matchesSearch = (query: string, ...values: unknown[]) => {
 };
 
 export default function TeacherLessonsPage() {
-  const { curriculums, videos, miniGames, loading, error } =
+  const { curriculums, videos, miniGames, loading, error, refresh } =
     useGetLessonLibrary();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -94,7 +94,7 @@ export default function TeacherLessonsPage() {
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Search curriculum, videos, or mini games"
             />
-            <AddCurriculumDialog />
+            <AddCurriculumDialog onCreated={refresh} />
           </div>
         </div>
 

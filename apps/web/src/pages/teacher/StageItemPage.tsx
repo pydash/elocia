@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import Button from "@/components/Button";
 import Separator from "@/components/Separator";
+import EditStageDialog from "@/components/teacher/EditStageDialog";
+import EditSignDialog from "@/components/teacher/EditSignDialog";
+import AddSignDialog from "@/components/teacher/AddSignDialog";
 import { fetchStageById } from "@/services/curriculum";
 import { ChevronLeft, Play, Video, FileText, CheckCircle2 } from "lucide-react";
 
@@ -24,6 +27,7 @@ interface StageDetail {
   section_title: string;
   unit_title: string;
   is_active: boolean;
+  unit_id?: string;
   signs: StageSign[];
 }
 
@@ -35,12 +39,13 @@ export default function TeacherStageItemPage() {
     stageId: string;
   }>();
 
+  const navigate = useNavigate();
   const [stage, setStage] = useState<StageDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadStage = useCallback(() => {
     if (!stageId) return;
     setLoading(true);
     setError(null);
@@ -49,7 +54,12 @@ export default function TeacherStageItemPage() {
       .then((data) => {
         setStage(data);
         if (data.signs && data.signs.length > 0) {
-          setActiveVideo(data.signs[0].video_url);
+          setActiveVideo((prev) => {
+            const stillExists = data.signs.some((s: StageSign) => s.video_url === prev);
+            return stillExists ? prev : data.signs[0].video_url;
+          });
+        } else {
+          setActiveVideo(null);
         }
       })
       .catch((err) => {
@@ -60,7 +70,13 @@ export default function TeacherStageItemPage() {
       });
   }, [stageId]);
 
-  const backUrl = `/teacher/lessons/${curriculumId}/sections/${sectionId}/units/${unitId}`;
+  useEffect(() => {
+    loadStage();
+  }, [loadStage]);
+
+  const backUrl = curriculumId && sectionId && unitId
+    ? `/teacher/lessons/curriculum/${curriculumId}/sections/${sectionId}/units/${unitId}`
+    : "/teacher/lessons";
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -69,19 +85,38 @@ export default function TeacherStageItemPage() {
       <main className="p-6 max-w-6xl mx-auto w-full space-y-6">
         {/* Back and Breadcrumbs */}
         <div className="flex items-center justify-between">
-          <Link to={backUrl}>
-            <Button variant="outline" className="gap-2 bg-white text-gray-700 hover:bg-gray-100">
-              <ChevronLeft className="size-4" />
-              <span>Back to Stages</span>
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="gap-2 bg-white text-gray-700 hover:bg-gray-100 cursor-pointer"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(backUrl);
+              }
+            }}
+          >
+            <ChevronLeft className="size-4" />
+            <span>Back to Stages</span>
+          </Button>
 
           {stage && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full flex items-center gap-1.5">
                 <CheckCircle2 className="size-3.5" />
                 Active Curriculum Stage
               </span>
+              <EditStageDialog
+                stage={{
+                  id: stage.id,
+                  stage_number: stage.stage_number,
+                  title: stage.title,
+                  description: stage.description,
+                  is_active: stage.is_active,
+                } as any}
+                onUpdated={loadStage}
+                onDeleted={() => navigate(backUrl)}
+              />
             </div>
           )}
         </div>
@@ -122,9 +157,16 @@ export default function TeacherStageItemPage() {
                   <Video className="size-5 text-(--primary)" />
                   <h2 className="heading-3 text-gray-900">Demonstration Video & Signs</h2>
                 </div>
-                <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {stage.signs?.length || 0} Sign{stage.signs?.length === 1 ? "" : "s"} Mastered
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    {stage.signs?.length || 0} Sign{stage.signs?.length === 1 ? "" : "s"} Mastered
+                  </span>
+                  <AddSignDialog
+                    stageId={stage.id}
+                    gradeLevel={1}
+                    onAdded={loadStage}
+                  />
+                </div>
               </div>
 
               <Separator />
@@ -161,9 +203,8 @@ export default function TeacherStageItemPage() {
                       {stage.signs.map((sign, idx) => {
                         const isSelected = activeVideo === sign.video_url;
                         return (
-                          <button
+                          <div
                             key={sign.id || idx}
-                            type="button"
                             onClick={() => setActiveVideo(sign.video_url)}
                             className={`w-full p-3.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
                               isSelected
@@ -173,7 +214,7 @@ export default function TeacherStageItemPage() {
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <span
-                                className={`size-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                className={`size-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                                   isSelected ? "bg-(--primary) text-white" : "bg-gray-200 text-gray-700"
                                 }`}
                               >
@@ -181,25 +222,35 @@ export default function TeacherStageItemPage() {
                               </span>
                               <div className="truncate">
                                 <p className="font-semibold text-sm truncate">{sign.sign_name}</p>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-gray-400 truncate">
                                   {sign.total_frames ? `${sign.total_frames} frames (${sign.fps || 30} fps)` : "Sign video"}
                                 </p>
                               </div>
                             </div>
-                            <Play className={`size-4 shrink-0 ${isSelected ? "text-(--primary)" : "text-gray-400"}`} />
-                          </button>
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <EditSignDialog sign={sign} onUpdated={loadStage} />
+                              <Play className={`size-4 ${isSelected ? "text-(--primary)" : "text-gray-400"}`} />
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-8 rounded-2xl bg-gray-50 border border-dashed border-gray-300 text-center space-y-2">
+                <div className="p-8 rounded-2xl bg-gray-50 border border-dashed border-gray-300 text-center space-y-3">
                   <FileText className="size-10 text-gray-400 mx-auto" />
                   <h3 className="font-bold text-gray-800">No Videos Linked Yet</h3>
                   <p className="text-sm text-gray-500 max-w-md mx-auto">
-                    This stage does not have demonstration video baselines attached yet. You can add video signs when uploading stage content.
+                    This stage does not have demonstration video baselines attached yet. You can click &quot;Add Sign Video&quot; above to add sign demonstration rounds.
                   </p>
+                  <div className="pt-2 flex justify-center">
+                    <AddSignDialog
+                      stageId={stage.id}
+                      gradeLevel={1}
+                      onAdded={loadStage}
+                    />
+                  </div>
                 </div>
               )}
             </div>

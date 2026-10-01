@@ -16,14 +16,13 @@ export const tokenManager = {
 
 export function decodeToken(token: string | null) {
   if (!token) {
-    throw new Error("No token provided");
+    return null;
   }
   try {
     const decoded = jwtDecode(token);
     return decoded;
-  } catch (error) {
-    console.error("Invalid token:", error);
-    throw new Error("Failed to decode token");
+  } catch {
+    return null;
   }
 }
 

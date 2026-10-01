@@ -96,6 +96,10 @@ function App() {
             element={<TeacherStageListPage />}
           />
           <Route
+            path="lessons/:curriculumId/sections/:sectionId/units/:unitId"
+            element={<TeacherStageListPage />}
+          />
+          <Route
             path="lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/new"
             element={<TeacherStageCreatePage />}
           />
@@ -107,6 +111,10 @@ function App() {
           {/* /lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId */}
           <Route
             path="lessons/curriculum/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId"
+            element={<TeacherStageItemPage />}
+          />
+          <Route
+            path="lessons/:curriculumId/sections/:sectionId/units/:unitId/stages/:stageId"
             element={<TeacherStageItemPage />}
           />
 

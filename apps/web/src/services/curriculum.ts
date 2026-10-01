@@ -218,6 +218,76 @@ export async function createUnit(
   return data;
 }
 
+export async function updateSection(
+  sectionId: string,
+  payload: { title?: string; section_number?: number }
+): Promise<Section> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-sections/${sectionId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to update section");
+  }
+
+  return response.json();
+}
+
+export async function deleteSection(sectionId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-sections/${sectionId}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to delete section");
+  }
+}
+
+export async function updateUnit(
+  unitId: string,
+  payload: { title?: string; unit_number?: number }
+): Promise<Unit> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-units/${unitId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to update unit");
+  }
+
+  return response.json();
+}
+
+export async function deleteUnit(unitId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-units/${unitId}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to delete unit");
+  }
+}
+
 export async function fetchStagesByUnitId(unitId: string): Promise<Stage[]> {
   const response: Response = await fetch(
     `${API_BASE_URL}/curriculum-units/${unitId}/stages`,
@@ -318,5 +388,75 @@ export async function uploadStageBaseline(
       .catch(() => null);
 
     throw new Error(error?.detail ?? "Failed to upload stage video");
+  }
+}
+
+export async function updateStage(
+  stageId: number | string,
+  payload: { title?: string; description?: string; stage_number?: number }
+): Promise<Stage> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-stages/${stageId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to update stage");
+  }
+
+  return response.json();
+}
+
+export async function deleteStage(stageId: number | string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-stages/${stageId}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to delete stage");
+  }
+}
+
+export async function updateSign(
+  signId: number | string,
+  payload: { sign_name?: string; is_active?: boolean }
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-signs/${signId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to update sign");
+  }
+
+  return response.json();
+}
+
+export async function deleteSign(signId: number | string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/curriculum-signs/${signId}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to delete sign");
   }
 }

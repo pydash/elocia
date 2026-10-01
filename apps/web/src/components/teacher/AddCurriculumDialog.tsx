@@ -19,7 +19,11 @@ const gradeOptions = [
   { label: "Grade 3", value: "3" },
 ];
 
-export default function AddCurriculumDialog() {
+interface AddCurriculumDialogProps {
+  onCreated?: () => void;
+}
+
+export default function AddCurriculumDialog({ onCreated }: AddCurriculumDialogProps = {}) {
   const [curriculum, setCurriculum] = useState(initialCurriculum);
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,6 +48,9 @@ export default function AddCurriculumDialog() {
       await createCurriculum(curriculum);
       resetForm();
       closeDialog();
+      if (onCreated) {
+        onCreated();
+      }
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "An unexpected error occurred",
