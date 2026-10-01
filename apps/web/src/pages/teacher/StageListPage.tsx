@@ -1,13 +1,14 @@
 import Button from "@/components/Button";
 import Separator from "@/components/Separator";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
+import EditStageDialog from "@/components/teacher/EditStageDialog";
 import { useGetStages } from "@/hooks/useCurriculums";
 import type { Stage } from "@/interfaces/curriculum.interface";
 import { useNavigate, Link, useParams } from "react-router-dom";
 
 export default function TeacherStageListPage() {
   const { unitId } = useParams<{ unitId: string }>();
-  const { stages, loading, error } = useGetStages(unitId ?? "");
+  const { stages, loading, error, refresh } = useGetStages(unitId ?? "");
   const navigate = useNavigate();
 
   if (loading) {
@@ -58,13 +59,13 @@ export default function TeacherStageListPage() {
           Add Stage
         </Button>
 
-        <StageContent stages={stages} />
+        <StageContent stages={stages} onRefresh={refresh} />
       </section>
     </div>
   );
 }
 
-function StageContent({ stages }: { stages: Stage[] }) {
+function StageContent({ stages, onRefresh }: { stages: Stage[]; onRefresh: () => void }) {
   if (stages.length === 0) {
     return (
       <div className="mt-8 rounded-3xl border-3 border-dashed border-(--border) bg-(--gray-50) px-6 py-12 text-center">
@@ -79,13 +80,13 @@ function StageContent({ stages }: { stages: Stage[] }) {
   return (
     <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {stages.map((stage) => (
-        <StageCard key={stage.id} stage={stage} />
+        <StageCard key={stage.id} stage={stage} onRefresh={onRefresh} />
       ))}
     </div>
   );
 }
 
-function StageCard({ stage }: { stage: Stage }) {
+function StageCard({ stage, onRefresh }: { stage: Stage; onRefresh: () => void }) {
   return (
     <article
       className={`flex min-h-52 flex-col overflow-hidden rounded-2xl border p-4 shadow-sm transition hover:border-(--primary) hover:shadow-lg ${
@@ -94,14 +95,17 @@ function StageCard({ stage }: { stage: Stage }) {
           : "border-(--danger) bg-(--danger-light)"
       }`}
     >
-      <div className="mb-8 flex items-center gap-3">
-        <span className="h-8 w-1 rounded-full bg-(--primary)" />
-        <div>
-          <p className="caption uppercase text-(--ghost)">
-            Stage {stage.stage_number}
-          </p>
-          <h2 className="heading-3 text-(--black)">{stage.title}</h2>
+      <div className="mb-8 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <span className="h-8 w-1 rounded-full bg-(--primary)" />
+          <div>
+            <p className="caption uppercase text-(--ghost)">
+              Stage {stage.stage_number}
+            </p>
+            <h2 className="heading-3 text-(--black)">{stage.title}</h2>
+          </div>
         </div>
+        <EditStageDialog stage={stage} onUpdated={onRefresh} />
       </div>
 
       {stage.description && (

@@ -8,6 +8,7 @@ import type { Unit } from "@/interfaces/curriculum.interface";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
 import CreateUnitDialog from "@/components/teacher/CreateUnitDialog";
+import EditUnitDialog from "@/components/teacher/EditUnitDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
@@ -71,7 +72,7 @@ export default function TeacherUnitListPage() {
           </div>
         </div>
 
-        <UnitContent units={units} filteredUnits={filteredUnits} />
+        <UnitContent units={units} filteredUnits={filteredUnits} onRefresh={refresh} />
       </section>
     </div>
   );
@@ -80,9 +81,11 @@ export default function TeacherUnitListPage() {
 function UnitContent({
   units,
   filteredUnits,
+  onRefresh,
 }: {
   units: Unit[];
   filteredUnits: Unit[];
+  onRefresh: () => void;
 }) {
   if (units.length === 0) {
     return (
@@ -98,18 +101,21 @@ function UnitContent({
   return (
     <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {filteredUnits.map((unit) => (
-        <UnitCard key={unit.id} unit={unit} />
+        <UnitCard key={unit.id} unit={unit} onRefresh={onRefresh} />
       ))}
     </div>
   );
 }
 
-function UnitCard({ unit }: { unit: Unit }) {
+function UnitCard({ unit, onRefresh }: { unit: Unit; onRefresh: () => void }) {
   return (
     <article className="flex min-h-52 p-4 flex-col overflow-hidden rounded-2xl border border-(--border) shadow-sm transition hover:border-(--primary) hover:shadow-lg">
-      <div className="flex items-center gap-3 mb-8">
-        <span className="h-8 w-1 rounded-full bg-(--primary)" />
-        <h2 className="heading-3 text-(--black)">{unit.title}</h2>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <span className="h-8 w-1 rounded-full bg-(--primary)" />
+          <h2 className="heading-3 text-(--black)">{unit.title}</h2>
+        </div>
+        <EditUnitDialog unit={unit} onUpdated={onRefresh} />
       </div>
       <div className="mt-auto pt-4">
         <Link

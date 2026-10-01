@@ -7,6 +7,7 @@ import type { Section } from "@/interfaces/curriculum.interface";
 import Button from "@/components/Button";
 import Separator from "@/components/Separator";
 import CreateSectionDialog from "@/components/teacher/CreateSectionDialog";
+import EditSectionDialog from "@/components/teacher/EditSectionDialog";
 import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
@@ -44,13 +45,13 @@ export default function TeacherSectionListPage() {
             onCreated={handleSectionCreated}
           />
         </div>
-        <SectionContent sections={sections} />
+        <SectionContent sections={sections} onRefresh={refresh} />
       </section>
     </div>
   );
 }
 
-function SectionContent({ sections }: { sections: Section[] }) {
+function SectionContent({ sections, onRefresh }: { sections: Section[]; onRefresh: () => void }) {
   if (sections.length === 0) {
     return (
       <div className="mt-8 rounded-3xl border-3 border-dashed border-(--border) bg-(--gray-50) px-6 py-12 text-center">
@@ -65,20 +66,26 @@ function SectionContent({ sections }: { sections: Section[] }) {
   return (
     <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {sections.map((section) => (
-        <SectionCard key={section.id} section={section} />
+        <SectionCard key={section.id} section={section} onRefresh={onRefresh} />
       ))}
     </div>
   );
 }
 
-function SectionCard({ section }: { section: Section }) {
+function SectionCard({ section, onRefresh }: { section: Section; onRefresh: () => void }) {
   return (
-    <article className="flex min-h-52 p-4 flex-col overflow-hidden rounded-2xl border border-(--border) shadow-sm transition hover:border-(--primary) hover:shadow-lg">
-      <div className="flex items-center gap-3 mb-18">
-        <span className="h-8 w-1 rounded-full bg-(--primary)" />
-        <h2 className="heading-3 text-(--black)">{section.title}</h2>
+    <article className="flex min-h-52 p-4 flex-col overflow-hidden rounded-2xl border border-(--border) shadow-sm transition hover:border-(--primary) hover:shadow-lg bg-white">
+      <div className="flex items-start justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <span className="h-8 w-1 rounded-full bg-(--primary)" />
+          <div>
+            <span className="caption uppercase text-(--ghost)">Section {section.section_number}</span>
+            <h2 className="heading-3 text-(--black)">{section.title}</h2>
+          </div>
+        </div>
+        <EditSectionDialog section={section} onUpdated={onRefresh} />
       </div>
-      <div className="space-y-4">
+      <div className="mt-auto space-y-4 pt-4">
         <Separator />
         <div>
           <Link to={`sections/${section.id}`}>
