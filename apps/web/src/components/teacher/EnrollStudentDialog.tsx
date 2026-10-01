@@ -22,7 +22,7 @@ export default function EnrollStudentDialog({
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [error, setError] = useState("");
 
-  const { id: classId } = useParams<{ id: string }>();
+  const { classId } = useParams<{ classId: string }>();
   const { students, loading: studentsLoading } = useGetStudents();
 
   const filteredStudents = useMemo(() => {
