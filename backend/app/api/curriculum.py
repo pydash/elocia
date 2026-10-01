@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, delete
 from sqlalchemy.orm import selectinload
 from app.database.connection import get_db
 from app.models.baseline import FSLBaseline, CurriculumStage, Curriculum, CurriculumSection, CurriculumUnit
@@ -13,8 +13,36 @@ from app.schemas.curriculum import (
     StageCreate, StageUpdate, StageResponse
 )
 from typing import List, Optional, Dict, Any
+import os
 import uuid
 from app.core.streak import get_effective_streak
+
+# Storage paths for cleanup
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+PUBLIC_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "videos")
+BASELINES_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines")
+STORAGE_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "videos")
+STORAGE_BASELINES_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "baselines")
+
+def remove_baseline_disk_files(video_filename: Optional[str], stage_id: Optional[int]):
+    """Safely delete video and baseline JSON files from disk."""
+    if video_filename:
+        for folder in [PUBLIC_VIDEOS_DIR, STORAGE_VIDEOS_DIR]:
+            vpath = os.path.join(folder, video_filename)
+            if os.path.exists(vpath):
+                try:
+                    os.remove(vpath)
+                except Exception:
+                    pass
+    if stage_id is not None:
+        json_name = f"baseline_{stage_id}.json"
+        for folder in [BASELINES_DIR, STORAGE_BASELINES_DIR]:
+            jpath = os.path.join(folder, json_name)
+            if os.path.exists(jpath):
+                try:
+                    os.remove(jpath)
+                except Exception:
+                    pass
 
 router = APIRouter(tags=["Curriculum & Progression"])
 
@@ -587,16 +615,40 @@ async def get_curriculum_stage(stage_id: int, db: AsyncSession = Depends(get_db)
     }
 
 @router.put("/curriculum-stages/{stage_id}", response_model=StageResponse)
-async def update_curriculum_stage(stage_id: int, payload: StageUpdate, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(CurriculumStage).where(CurriculumStage.id == stage_id))
-    st = res.scalar_one_or_none()
+async def update_curriculum_stage(stage_id: str, payload: StageUpdate, db: AsyncSession = Depends(get_db)):
+    int_id = None
+    try:
+        int_id = int(stage_id)
+    except (ValueError, TypeError):
+        pass
+
+    st = None
+    if int_id is not None:
+        res = await db.execute(select(CurriculumStage).where(CurriculumStage.id == int_id))
+        st = res.scalar_one_or_none()
+        if not st:
+            res_num = await db.execute(select(CurriculumStage).where(CurriculumStage.stage_number == int_id))
+            st = res_num.scalar_one_or_none()
+
     if not st:
         raise HTTPException(status_code=404, detail="Stage not found")
     if payload.title is not None:
         st.title = payload.title
     if payload.description is not None:
         st.description = payload.description
-    if payload.stage_number is not None:
+    if payload.stage_number is not None and payload.stage_number != st.stage_number:
+        # Check if stage_number is already used by another stage
+        existing_dup = await db.execute(
+            select(CurriculumStage.id).where(
+                CurriculumStage.stage_number == payload.stage_number,
+                CurriculumStage.id != st.id
+            )
+        )
+        if existing_dup.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stage number {payload.stage_number} already exists. Please choose a different stage number."
+            )
         st.stage_number = payload.stage_number
     if payload.is_active is not None:
         st.is_active = payload.is_active
@@ -605,11 +657,99 @@ async def update_curriculum_stage(stage_id: int, payload: StageUpdate, db: Async
     return st
 
 @router.delete("/curriculum-stages/{stage_id}", status_code=status.HTTP_200_OK)
-async def delete_curriculum_stage(stage_id: int, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(CurriculumStage).where(CurriculumStage.id == stage_id))
-    st = res.scalar_one_or_none()
+async def delete_curriculum_stage(stage_id: str, db: AsyncSession = Depends(get_db)):
+    int_id = None
+    try:
+        int_id = int(stage_id)
+    except (ValueError, TypeError):
+        pass
+
+    st = None
+    if int_id is not None:
+        res = await db.execute(select(CurriculumStage).where(CurriculumStage.id == int_id))
+        st = res.scalar_one_or_none()
+        if not st:
+            res_num = await db.execute(select(CurriculumStage).where(CurriculumStage.stage_number == int_id))
+            st = res_num.scalar_one_or_none()
+
     if not st:
         raise HTTPException(status_code=404, detail="Stage not found")
-    st.is_active = False
+    
+    stage_id_val = st.id
+    
+    # 1. Clean up student stage progress
+    await db.execute(delete(StudentStageProgress).where(StudentStageProgress.stage_id == stage_id_val))
+    
+    # 2. Clean up associated baselines and evaluation attempts & disk files
+    baselines_res = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id_new == stage_id_val))
+    for b in baselines_res.scalars().all():
+        remove_baseline_disk_files(b.video_filename, b.stage_id)
+        if b.sign_id is not None:
+            await db.execute(delete(EvaluationAttempt).where(EvaluationAttempt.sign_id == b.sign_id))
+        if b.stage_id is not None:
+            await db.execute(delete(EvaluationAttempt).where(EvaluationAttempt.stage_id == b.stage_id))
+        await db.delete(b)
+        
+    await db.delete(st)
     await db.commit()
-    return {"status": "deactivated", "stage_id": stage_id}
+    return {"status": "deleted", "stage_id": stage_id_val}
+
+@router.delete("/curriculum-signs/{sign_id}", status_code=status.HTTP_200_OK)
+async def delete_curriculum_sign(sign_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a specific baseline sign (round) from a stage and purge disk files."""
+    b = None
+    # 1. Try matching UUID primary key if sign_id is uuid-like
+    try:
+        uuid_val = uuid.UUID(sign_id)
+        res_uuid = await db.execute(select(FSLBaseline).where(FSLBaseline.id == uuid_val))
+        b = res_uuid.scalar_one_or_none()
+    except (ValueError, TypeError):
+        pass
+
+    # 2. Try integer sign_id or stage_id
+    if not b:
+        try:
+            int_id = int(sign_id)
+            res = await db.execute(select(FSLBaseline).where(FSLBaseline.sign_id == int_id))
+            b = res.scalar_one_or_none()
+            if not b:
+                res_alt = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id == int_id))
+                b = res_alt.scalar_one_or_none()
+        except (ValueError, TypeError):
+            pass
+
+    if not b:
+        raise HTTPException(status_code=404, detail="Sign baseline not found")
+
+    # 3. Purge physical video & baseline json files from backend & student-desktop
+    remove_baseline_disk_files(b.video_filename, b.stage_id)
+
+    # 4. Clean up evaluation attempts referencing this sign
+    if b.sign_id is not None:
+        await db.execute(delete(EvaluationAttempt).where(EvaluationAttempt.sign_id == b.sign_id))
+    if b.stage_id is not None:
+        await db.execute(delete(EvaluationAttempt).where(EvaluationAttempt.stage_id == b.stage_id))
+
+    await db.delete(b)
+    await db.commit()
+    return {"status": "deleted", "sign_id": sign_id}
+
+@router.put("/curriculum-signs/{sign_id}", status_code=status.HTTP_200_OK)
+async def update_curriculum_sign(sign_id: int, payload: dict, db: AsyncSession = Depends(get_db)):
+    """Update sign name or details of a baseline round."""
+    res = await db.execute(select(FSLBaseline).where(FSLBaseline.sign_id == sign_id))
+    b = res.scalar_one_or_none()
+    if not b:
+        res_alt = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id == sign_id))
+        b = res_alt.scalar_one_or_none()
+        if not b:
+            raise HTTPException(status_code=404, detail="Sign baseline not found")
+
+    if "sign_name" in payload and payload["sign_name"]:
+        b.sign_name = payload["sign_name"].strip()
+    if "is_active" in payload:
+        b.is_active = bool(payload["is_active"])
+
+    await db.commit()
+    await db.refresh(b)
+    return {"status": "updated", "sign_id": b.sign_id, "sign_name": b.sign_name, "is_active": b.is_active}
