@@ -14,25 +14,27 @@ export function useGetLessonLibrary() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getLessonLibrary = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const curriculumData = await fetchCurriculums();
+      const videosData = await fetchEducationalVideos();
+      const miniGamesData = await fetchMiniGames();
+
+      setCurriculums(curriculumData);
+      setVideos(videosData);
+      setMiniGames(miniGamesData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const getLessonLibrary = async () => {
-      try {
-        const curriculumData = await fetchCurriculums();
-        const videosData = await fetchEducationalVideos();
-        const miniGamesData = await fetchMiniGames();
-
-        setCurriculums(curriculumData);
-        setVideos(videosData);
-        setMiniGames(miniGamesData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     getLessonLibrary();
   }, []);
 
-  return { curriculums, videos, miniGames, loading, error };
+  return { curriculums, videos, miniGames, loading, error, refresh: getLessonLibrary };
 }

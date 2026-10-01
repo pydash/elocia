@@ -37,15 +37,15 @@ export async function fetchClassRoster(
 
 export async function fetchTeacherClasses(): Promise<Class[]> {
   const token = tokenManager.getAccessToken();
-  if (!token) {
-    throw new Error("No access token found");
-  }
+  const teacherId = token ? getIdFromToken(token) : null;
+  const url = teacherId
+    ? `${API_BASE_URL}/classes/?teacher_id=${teacherId}`
+    : `${API_BASE_URL}/classes/`;
 
-  const response = await fetch(
-    `${API_BASE_URL}/classes/?teacher_id=${getIdFromToken(token)}`,
-  );
+  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Error fetching classes: ${response.statusText}`);
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? `Error fetching classes: ${response.statusText}`);
   }
 
   return response.json();
