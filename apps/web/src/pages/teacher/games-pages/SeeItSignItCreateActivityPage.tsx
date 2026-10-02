@@ -17,6 +17,7 @@ import Dropdown from "../../../components/Dropdown";
 import { useState, type FormEvent } from "react";
 import {
   createMiniGame,
+  uploadMiniGameMedia,
   type CreateMiniGamePayload,
 } from "@/services/mini-games";
 
@@ -137,8 +138,31 @@ export function SeeItSignItCreateActivityStepOnePage() {
 
 export function SeeItSignItCreateActivityStepTwoPage() {
   const [game, setGame] = useState(readDraft);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
   const saveDraft = () =>
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(game));
+
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError("");
+    try {
+      const res = await uploadMiniGameMedia(file);
+      const fullUrl = `http://localhost:8000${res.url}`;
+      setGame(prev => ({
+        ...prev,
+        prompt_image: fullUrl,
+      }));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <section className="space-y-6 mt-6">
@@ -152,16 +176,28 @@ export function SeeItSignItCreateActivityStepTwoPage() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <label className="flex flex-col min-h-56 cursor-pointer items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-6 text-center transition-colors hover:border-(--primary) hover:bg-(--primary-light)">
-            <ImagePlus className="size-10 text-(--primary)" />
-            <span className="paragraph-2 font-semibold text-(--black)">
-              Click to upload an image
-            </span>
-            <span className="caption text-(--ghost)">
-              PNG or JPG up to 10MB
-            </span>
+            {game.prompt_image ? (
+              <img
+                src={game.prompt_image}
+                alt="Uploaded objective"
+                className="max-h-40 max-w-full rounded-xl object-contain"
+              />
+            ) : (
+              <>
+                <ImagePlus className="size-10 text-(--primary)" />
+                <span className="paragraph-2 font-semibold text-(--black)">
+                  {isUploading ? "Uploading image..." : "Click to upload an image"}
+                </span>
+                <span className="caption text-(--ghost)">
+                  PNG or JPG up to 10MB
+                </span>
+              </>
+            )}
             <input
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleImageFileChange}
+              disabled={isUploading}
               className="sr-only"
             />
           </label>
@@ -174,6 +210,7 @@ export function SeeItSignItCreateActivityStepTwoPage() {
             placeholder="Add a hint for students"
           />
         </div>
+        {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
         <div className="grid gap-4 md:grid-cols-2">
           <label>
             Prompt image URL
@@ -236,7 +273,9 @@ export function SeeItSignItCreateActivityStepThreePage() {
 
   const handlePublish = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!game.title.trim() || !game.target_sign.trim()) {
+    const title = (game.title || "").trim();
+    const targetSign = (game.target_sign || "").trim();
+    if (!title || !targetSign) {
       setError("Title and target sign are required.");
       return;
     }
@@ -246,11 +285,20 @@ export function SeeItSignItCreateActivityStepThreePage() {
     try {
       await createMiniGame({
         ...game,
-        title: game.title.trim(),
-        target_sign: game.target_sign.trim(),
-        prompt_image: game.prompt_image.trim(),
-        hint_text: game.hint_text.trim(),
-        options: game.options.trim(),
+        title,
+        description: (game.hint_text || "").trim() || "See It Sign It Activity",
+        difficulty: game.difficulty || 1,
+        target_sign: targetSign,
+        prompt_image: (game.prompt_image || "").trim(),
+        hint_text: (game.hint_text || "").trim(),
+        options: (game.options || "").trim(),
+        see_it_sign_it_items: [
+          {
+            objective_image_url: (game.prompt_image || "").trim(),
+            objective_answer: targetSign,
+            index_order: 0,
+          },
+        ],
       });
       sessionStorage.removeItem(DRAFT_KEY);
       navigate("/teacher/tasks");
