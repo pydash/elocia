@@ -1,13 +1,58 @@
 export const API_BASE = 'http://127.0.0.1:8000';
 
+export interface SeeItSignItItemDetail {
+  id: string;
+  config_id: string;
+  objective_image_url: string | null;
+  objective_answer: string;
+  reference_video_url: string | null;
+  index_order: number;
+}
+
+export interface PuzzleSignItemDetail {
+  id: string;
+  config_id: string;
+  word_one: string;
+  word_two: string;
+  hidden_word: string;
+  word_form: string;
+  word_one_image_url: string | null;
+  word_two_image_url: string | null;
+  word_form_image_url: string | null;
+  reference_video_url: string | null;
+  index_order: number;
+}
+
+export interface MagicFingersItemDetail {
+  id: string;
+  config_id: string;
+  word: string;
+  hidden_positions: number[];
+  objective_image_url: string | null;
+  reference_video_url: string | null;
+  index_order: number;
+}
+
+export interface MiniGameActivityDetail {
+  id: string;
+  game_type: string;
+  title: string;
+  description: string | null;
+  difficulty: number;
+  is_active: boolean;
+  see_it_sign_it_items: SeeItSignItItemDetail[];
+  puzzle_sign_items: PuzzleSignItemDetail[];
+  magic_fingers_items: MagicFingersItemDetail[];
+}
+
 export interface MiniGameConfigItem {
   id: string;
   game_type: string;
   title: string;
-  target_sign: string;
-  prompt_image: string | null;
-  hint_text: string | null;
-  options: string | null;
+  target_sign?: string;
+  prompt_image?: string | null;
+  hint_text?: string | null;
+  options?: string | null;
   difficulty: number;
 }
 
@@ -81,11 +126,22 @@ export async function studentLogin(studentName: string, pin: string): Promise<{ 
 
 export async function fetchMiniGameConfigs(gameType: string): Promise<MiniGameConfigItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/minigames/config/${gameType}`);
+    const res = await fetch(`${API_BASE}/minigames/config?game_type=${gameType}`);
     if (!res.ok) return [];
     return await res.json();
   } catch (err) {
     console.warn('Failed to fetch mini-game configs (offline?):', err);
+    return [];
+  }
+}
+
+export async function fetchMiniGameActivities(gameType: string): Promise<MiniGameActivityDetail[]> {
+  try {
+    const res = await fetch(`${API_BASE}/minigames/activities/${gameType}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch mini-game activities with items (offline?):', err);
     return [];
   }
 }

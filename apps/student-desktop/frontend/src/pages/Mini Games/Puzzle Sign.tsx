@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
-import { saveMiniGameScore } from '../../utils/api';
+import { saveMiniGameScore, fetchMiniGameActivities } from '../../utils/api';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import './Puzzle Sign.css';
@@ -123,7 +123,51 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const recordingTimerRef = useRef<number | null>(null);
 
-  const rounds = activeActivity != null ? (PUZZLE_ACTIVITIES[activeActivity] ?? []) : [];
+  const [puzzleActivities, setPuzzleActivities] = useState<Record<number, PuzzleRound[]>>(PUZZLE_ACTIVITIES);
+  const [activityTitles, setActivityTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    async function loadDynamicPuzzleActivities() {
+      const dynamic = await fetchMiniGameActivities('puzzle_sign');
+      if (dynamic && dynamic.length > 0) {
+        const mappedDict: Record<number, PuzzleRound[]> = {};
+        const titlesDict: Record<number, string> = {};
+
+        dynamic.forEach((act, actIdx) => {
+          const actNumber = actIdx + 1;
+          titlesDict[actNumber] = act.title;
+          if (act.puzzle_sign_items && act.puzzle_sign_items.length > 0) {
+            mappedDict[actNumber] = act.puzzle_sign_items.map((item) => {
+              const numAnswer = parseInt(item.hidden_word, 10);
+              const resolveImg = (url: string | null, fallbackEmoji: string) => {
+                if (!url) return fallbackEmoji;
+                if (url.startsWith('http') || url.startsWith('/')) {
+                  return url.startsWith('/minigames') ? `http://127.0.0.1:8000${url}` : url;
+                }
+                return `http://127.0.0.1:8000/${url}`;
+              };
+
+              return {
+                image1: resolveImg(item.word_one_image_url, item.word_one),
+                answer: !isNaN(numAnswer) ? numAnswer : 1,
+                image3: resolveImg(item.word_form_image_url, item.word_form),
+                instruction: `${item.word_one} + ? = ${item.word_form}`,
+                answerText: item.hidden_word,
+              };
+            });
+          }
+        });
+
+        if (Object.keys(mappedDict).length > 0) {
+          setPuzzleActivities(mappedDict);
+          setActivityTitles(titlesDict);
+        }
+      }
+    }
+    loadDynamicPuzzleActivities();
+  }, []);
+
+  const rounds = activeActivity != null ? (puzzleActivities[activeActivity] ?? PUZZLE_ACTIVITIES[activeActivity] ?? []) : [];
   const currentRound = rounds[roundIndex];
   const currentAnswer = currentRound?.answer ?? 1;
 
@@ -395,7 +439,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                     onClick={() => handleStartActivity(num)}
                   >
                     <div className="activity-number">{num}</div>
-                    <span className="activity-text">Activity {num}</span>
+                    <span className="activity-text">{activityTitles[num] || `Activity ${num}`}</span>
                     <span className="activity-arrow">➔</span>
                   </button>
                 ))}
@@ -542,13 +586,26 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
           <div className="ps-puzzle-card">
             <div className="puzzle-equation">
               <div className="puzzle-item">
-                <span className="puzzle-emoji">{currentRound?.image1 ?? '☀️'}</span>
+                {currentRound?.image1?.startsWith('http') || currentRound?.image1?.startsWith('/') ? (
+                  <img
+                    src={currentRound.image1}
+                    alt="Word 1"
+                    className="puzzle-emoji-img"
+                    style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">☀️</span>';
+                    }}
+                  />
+                ) : (
+                  <span className="puzzle-emoji">{currentRound?.image1 ?? '☀️'}</span>
+                )}
                 <div className="puzzle-underscore"></div>
               </div>
               <div className="puzzle-operator">+</div>
               <div className="puzzle-item unknown">
                 {answerShown ? (
-                  <span className="puzzle-emoji ps-revealed">{currentAnswer}</span>
+                  <span className="puzzle-emoji ps-revealed">{currentRound?.answerText ?? currentAnswer}</span>
                 ) : (
                   <span className="puzzle-qmark">?</span>
                 )}
@@ -556,12 +613,25 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
               </div>
               <div className="puzzle-operator">=</div>
               <div className="puzzle-item">
-                <span
-                  className="puzzle-emoji"
-                  style={currentRound && currentRound.image3.length > 2 ? { fontSize: '3.5rem' } : undefined}
-                >
-                  {currentRound?.image3 ?? '🌻'}
-                </span>
+                {currentRound?.image3?.startsWith('http') || currentRound?.image3?.startsWith('/') ? (
+                  <img
+                    src={currentRound.image3}
+                    alt="Result"
+                    className="puzzle-emoji-img"
+                    style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">🌤</span>';
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="puzzle-emoji"
+                    style={currentRound && currentRound.image3.length > 2 ? { fontSize: '3.5rem' } : undefined}
+                  >
+                    {currentRound?.image3 ?? '🌻'}
+                  </span>
+                )}
                 <div className="puzzle-underscore"></div>
               </div>
             </div>

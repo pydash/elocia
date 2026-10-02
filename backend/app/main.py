@@ -38,7 +38,12 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await init_db()
+    try:
+        await init_db()
+        print("[INFO] Database schema initialized successfully.")
+    except Exception as db_err:
+        print(f"[WARNING] Database connection on startup failed: {db_err}")
+        print("[INFO] Server is continuing to run. Endpoints will connect when network is available.")
 
 # Include Modular Routers
 app.include_router(auth_router)
@@ -65,6 +70,14 @@ if os.path.exists(video_mount_dir):
 storage_thumbnails_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "thumbnails"))
 os.makedirs(storage_thumbnails_dir, exist_ok=True)
 app.mount("/thumbnails", StaticFiles(directory=storage_thumbnails_dir), name="thumbnails")
+
+# Mount static minigame images and videos directories
+minigame_images_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "minigames", "images"))
+minigame_videos_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "minigames", "videos"))
+os.makedirs(minigame_images_dir, exist_ok=True)
+os.makedirs(minigame_videos_dir, exist_ok=True)
+app.mount("/minigames/images", StaticFiles(directory=minigame_images_dir), name="minigames_images")
+app.mount("/minigames/videos", StaticFiles(directory=minigame_videos_dir), name="minigames_videos")
 
 
 @app.get("/")

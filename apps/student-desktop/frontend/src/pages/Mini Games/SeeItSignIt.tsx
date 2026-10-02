@@ -2,7 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
-import { fetchMiniGameConfigs, saveMiniGameScore, type MiniGameConfigItem } from '../../utils/api';
+import {
+  fetchMiniGameConfigs,
+  fetchMiniGameActivities,
+  saveMiniGameScore,
+  type MiniGameConfigItem
+} from '../../utils/api';
 import './SeeItSignIt.css';
 import '../../pages/Evaluation/EvaluationSession.css';
 import { startSeeItSignItTour, stopCurrentTour } from '../../utils/activityTours';
@@ -60,17 +65,49 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const isEvaluatingRef = useRef(false);
   const recordingTimerRef = useRef<number | null>(null);
 
-  // Fetch dynamic game configurations from the backend
+  // Fetch dynamic game configurations and items from the backend
   useEffect(() => {
     async function loadConfigs() {
+      // 1. Try relational activities with items first
+      const remoteActivities = await fetchMiniGameActivities('see_it_sign_it');
+      if (remoteActivities && remoteActivities.length > 0) {
+        const flatItems: ActivityItem[] = [];
+        remoteActivities.forEach((act) => {
+          if (act.see_it_sign_it_items && act.see_it_sign_it_items.length > 0) {
+            act.see_it_sign_it_items.forEach((item, itemIdx) => {
+              const signNum = parseInt(item.objective_answer, 10);
+              const resolvedImage = item.objective_image_url
+                ? (item.objective_image_url.startsWith('http') || item.objective_image_url.startsWith('/')
+                    ? (item.objective_image_url.startsWith('/minigames') ? `http://127.0.0.1:8000${item.objective_image_url}` : item.objective_image_url)
+                    : `http://127.0.0.1:8000/${item.objective_image_url}`)
+                : `/images/${item.objective_answer}.png`;
+
+              flatItems.push({
+                id: flatItems.length + 1,
+                name: `${act.title} - Round ${itemIdx + 1}`,
+                image: resolvedImage,
+                item: item.objective_answer,
+                targetSign: !isNaN(signNum) ? signNum : item.objective_answer,
+              });
+            });
+          }
+        });
+
+        if (flatItems.length > 0) {
+          setActivities(flatItems);
+          return;
+        }
+      }
+
+      // 2. Fallback to basic configs
       const remoteConfigs = await fetchMiniGameConfigs('see_it_sign_it');
       if (remoteConfigs && remoteConfigs.length > 0) {
         const mapped: ActivityItem[] = remoteConfigs.map((cfg: MiniGameConfigItem, idx: number) => {
-          const signNum = parseInt(cfg.target_sign, 10);
+          const signNum = parseInt(cfg.target_sign || '1', 10);
           return {
             id: idx + 1,
             name: cfg.title,
-            image: cfg.prompt_image || `/images/${cfg.target_sign}.png`,
+            image: cfg.prompt_image || `/images/${cfg.target_sign || '1'}.png`,
             item: cfg.hint_text || cfg.title,
             targetSign: !isNaN(signNum) ? signNum : 1,
           };
