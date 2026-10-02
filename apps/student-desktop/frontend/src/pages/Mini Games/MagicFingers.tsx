@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
-import { fetchMiniGameConfigs, saveMiniGameScore, type MiniGameConfigItem } from '../../utils/api';
+import { fetchMiniGameConfigs, fetchMiniGameActivities, saveMiniGameScore, type MiniGameConfigItem } from '../../utils/api';
 import './MagicFingers.css';
 import '../../pages/Evaluation/EvaluationSession.css';
 import { startMagicFingersTour, stopCurrentTour } from '../../utils/activityTours';
@@ -104,14 +104,61 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const isEvaluatingRef = useRef(false);
   const recordingTimerRef = useRef<number | null>(null);
 
-  // Fetch dynamic game configurations from backend
+  // Fetch dynamic game configurations and items from backend
   useEffect(() => {
     async function loadConfigs() {
+      // 1. Try relational activities with items first
+      const remoteActivities = await fetchMiniGameActivities('magic_fingers');
+      if (remoteActivities && remoteActivities.length > 0) {
+        const flatItems: MagicActivity[] = [];
+        remoteActivities.forEach((act) => {
+          if (act.magic_fingers_items && act.magic_fingers_items.length > 0) {
+            act.magic_fingers_items.forEach((item, itemIdx) => {
+              const rawWord = item.word.toUpperCase();
+              const hiddenSet = new Set(item.hidden_positions || []);
+              // Default to hiding index 1 if no positions configured
+              if (hiddenSet.size === 0) {
+                hiddenSet.add(rawWord.length > 2 ? 1 : 0);
+              }
+
+              const wordSlots: WordLetter[] = rawWord.split('').map((char, cIdx) => ({
+                char,
+                visible: !hiddenSet.has(cIdx)
+              }));
+
+              const firstHiddenIdx = Array.from(hiddenSet)[0] ?? 0;
+              const missingChar = rawWord[firstHiddenIdx] || 'A';
+
+              const resolvedImage = item.objective_image_url
+                ? (item.objective_image_url.startsWith('http') || item.objective_image_url.startsWith('/')
+                    ? (item.objective_image_url.startsWith('/minigames') ? `http://127.0.0.1:8000${item.objective_image_url}` : item.objective_image_url)
+                    : `http://127.0.0.1:8000/${item.objective_image_url}`)
+                : `/images/${itemIdx + 1}.png`;
+
+              flatItems.push({
+                id: flatItems.length + 1,
+                name: `${act.title} - Round ${itemIdx + 1}`,
+                image: resolvedImage,
+                wordText: rawWord,
+                word: wordSlots,
+                missingLetter: missingChar,
+                targetStage: flatItems.length + 1
+              });
+            });
+          }
+        });
+
+        if (flatItems.length > 0) {
+          setActivities(flatItems);
+          return;
+        }
+      }
+
+      // 2. Fallback to basic configs
       const remoteConfigs = await fetchMiniGameConfigs('magic_fingers');
       if (remoteConfigs && remoteConfigs.length > 0) {
         const mapped: MagicActivity[] = remoteConfigs.map((cfg: MiniGameConfigItem, idx: number) => {
           const rawWord = (cfg.target_sign || 'CAT').toUpperCase();
-          // Hide second character or middle character
           const hideIdx = rawWord.length > 2 ? 1 : 0;
           const wordSlots: WordLetter[] = rawWord.split('').map((char, cIdx) => ({
             char,
