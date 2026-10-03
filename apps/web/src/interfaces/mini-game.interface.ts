@@ -40,6 +40,7 @@ export interface MiniGameConfig {
   is_active?: boolean;
   target_sign?: string;
   prompt_image?: string;
+  reference_video_url?: string;
   hint_text?: string;
   options?: string;
   created_at?: string;

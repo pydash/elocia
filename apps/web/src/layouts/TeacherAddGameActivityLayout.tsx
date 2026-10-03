@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import TopHeaderBar from "../components/teacher/TopHeaderBar";
+import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 
 export default function TeacherAddGameActivityLayout() {
   return (
