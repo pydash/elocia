@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,6 +22,10 @@ app = FastAPI(
     description="Educational Motion Analysis & FSL Assessment System - Manuscript v4.1 Backend",
     version="4.1.0"
 )
+
+MEDIA_DIR = Path(__file__).resolve().parents[1] / "storage"
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 app.add_middleware(
     CORSMiddleware,

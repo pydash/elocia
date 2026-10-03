@@ -15,6 +15,7 @@ export type CreateMiniGamePayload = {
   // Optional legacy fields
   target_sign?: string;
   prompt_image?: string;
+  reference_video_url?: string;
   hint_text?: string;
   options?: string;
   // Relational round items
