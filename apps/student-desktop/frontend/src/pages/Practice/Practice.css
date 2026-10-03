@@ -117,6 +117,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 12px 14px;
+  text-align: center;
   border: clamp(3px, 0.4vw, 5px) solid;
   position: relative;
   box-shadow: 0 5px 12px rgba(0,0,0,0.07);
@@ -154,15 +156,18 @@
 }
 
 .kp-number {
-  font-size: clamp(3rem, 5vw, 4.8rem);
+  font-size: clamp(2rem, 3.2vw, 3.8rem);
   font-weight: 800;
-  line-height: 1;
-  margin-bottom: clamp(0.4rem, 0.8vh, 0.8rem);
+  line-height: 1.1;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: normal;
+  margin-bottom: clamp(0.3rem, 0.6vh, 0.6rem);
 }
 
 .kp-stage {
-  font-size: clamp(1.1rem, 1.4vw, 1.4rem);
-  font-weight: 800;
+  font-size: clamp(0.95rem, 1.2vw, 1.2rem);
+  font-weight: 700;
 }
 
 /* Educational Videos */

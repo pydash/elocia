@@ -26,6 +26,9 @@ from app.schemas.minigame import (
     SeeItSignItItemResponse,
     PuzzleSignItemResponse,
     MagicFingersItemResponse,
+    SeeItSignItActivityCreate,
+    PuzzleSignActivityCreate,
+    MagicFingersActivityCreate,
     MiniGameScoreSubmit,
     MiniGameScoreResponse
 )
@@ -36,8 +39,8 @@ router = APIRouter(prefix="/minigames", tags=["Mini-Games (Modules 7, 8, 9)"])
 
 # Define storage directories for uploaded minigame assets
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-MINIGAME_IMAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "minigames", "images"))
-MINIGAME_VIDEOS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage", "minigames", "videos"))
+MINIGAME_IMAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "minigames", "images"))
+MINIGAME_VIDEOS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "minigames", "videos"))
 
 # Also keep student desktop frontend public assets synchronized for direct offline access if present
 DESKTOP_PUBLIC_VIDEOS = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "videos")
@@ -150,6 +153,7 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
                 hidden_positions=item_data.hidden_positions or [],
                 objective_image_url=item_data.objective_image_url,
                 reference_video_url=item_data.reference_video_url,
+                reference_video_url_2=item_data.reference_video_url_2,
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             )
             db.add(item)
@@ -222,6 +226,78 @@ async def get_all_activities_by_game_type(game_type: str, db: AsyncSession = Dep
         .order_by(MiniGameConfig.difficulty.asc(), MiniGameConfig.created_at.asc())
     )
     return result.scalars().all()
+
+
+# ── Dedicated Mini-Game Endpoints ──────────────────────────────────────────
+
+# 1. See It Sign It
+@router.get("/see-it-sign-it", response_model=List[MiniGameConfigDetailResponse])
+async def get_see_it_sign_it_activities(db: AsyncSession = Depends(get_db)):
+    """
+    Dedicated endpoint to fetch all active 'See It Sign It' activities with rounds and reference videos.
+    """
+    return await get_all_activities_by_game_type("see_it_sign_it", db)
+
+@router.post("/see-it-sign-it", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
+async def create_see_it_sign_it_activity(data: SeeItSignItActivityCreate, db: AsyncSession = Depends(get_db)):
+    """
+    Dedicated endpoint to create a 'See It Sign It' activity with rounds and reference videos.
+    """
+    payload = MiniGameConfigCreate(
+        game_type="see_it_sign_it",
+        title=data.title,
+        description=data.description,
+        difficulty=data.difficulty,
+        see_it_sign_it_items=data.items
+    )
+    return await create_minigame_config(payload, db)
+
+
+# 2. Puzzle Sign
+@router.get("/puzzle-sign", response_model=List[MiniGameConfigDetailResponse])
+async def get_puzzle_sign_activities(db: AsyncSession = Depends(get_db)):
+    """
+    Dedicated endpoint to fetch all active 'Puzzle Sign' activities with rounds and reference videos.
+    """
+    return await get_all_activities_by_game_type("puzzle_sign", db)
+
+@router.post("/puzzle-sign", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
+async def create_puzzle_sign_activity(data: PuzzleSignActivityCreate, db: AsyncSession = Depends(get_db)):
+    """
+    Dedicated endpoint to create a 'Puzzle Sign' activity with rounds and reference videos.
+    """
+    payload = MiniGameConfigCreate(
+        game_type="puzzle_sign",
+        title=data.title,
+        description=data.description,
+        difficulty=data.difficulty,
+        puzzle_sign_items=data.items
+    )
+    return await create_minigame_config(payload, db)
+
+
+# 3. Magic Fingers
+@router.get("/magic-fingers", response_model=List[MiniGameConfigDetailResponse])
+async def get_magic_fingers_activities(db: AsyncSession = Depends(get_db)):
+    """
+    Dedicated endpoint to fetch all active 'Magic Fingers' activities with rounds and reference videos.
+    """
+    return await get_all_activities_by_game_type("magic_fingers", db)
+
+@router.post("/magic-fingers", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
+async def create_magic_fingers_activity(data: MagicFingersActivityCreate, db: AsyncSession = Depends(get_db)):
+    """
+    Dedicated endpoint to create a 'Magic Fingers' activity with rounds and reference videos.
+    """
+    payload = MiniGameConfigCreate(
+        game_type="magic_fingers",
+        title=data.title,
+        description=data.description,
+        difficulty=data.difficulty,
+        magic_fingers_items=data.items
+    )
+    return await create_minigame_config(payload, db)
+
 
 
 @router.put("/config/{config_id}", response_model=MiniGameConfigDetailResponse)
@@ -298,6 +374,7 @@ async def update_minigame_config(
                 hidden_positions=item_data.hidden_positions or [],
                 objective_image_url=item_data.objective_image_url,
                 reference_video_url=item_data.reference_video_url,
+                reference_video_url_2=item_data.reference_video_url_2,
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             ))
 

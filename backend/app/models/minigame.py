@@ -88,6 +88,7 @@ class MagicFingersItem(Base):
     hidden_positions = Column(JSON, nullable=False, default=list)  # e.g. [1, 2]
     objective_image_url = Column(String, nullable=True)
     reference_video_url = Column(String, nullable=True)
+    reference_video_url_2 = Column(String, nullable=True)
     index_order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

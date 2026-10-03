@@ -1,5 +1,33 @@
 export const API_BASE = 'http://127.0.0.1:8000';
 
+/**
+ * Normalizes image and video URLs returned by the backend.
+ * Handles relative paths (/minigames/...), localhost:8000 origins, and direct paths.
+ */
+export function resolveMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  // Replace localhost or 127.0.0.1 origins with current API_BASE
+  if (trimmed.startsWith('http://localhost:8000') || trimmed.startsWith('http://127.0.0.1:8000')) {
+    return trimmed.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000/, API_BASE);
+  }
+
+  // Relative path starting with slash (e.g. /minigames/images/...)
+  if (trimmed.startsWith('/')) {
+    return `${API_BASE}${trimmed}`;
+  }
+
+  // Already a full external URL
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  // Relative path without leading slash
+  return `${API_BASE}/${trimmed}`;
+}
+
 export interface SeeItSignItItemDetail {
   id: string;
   config_id: string;
@@ -30,6 +58,7 @@ export interface MagicFingersItemDetail {
   hidden_positions: number[];
   objective_image_url: string | null;
   reference_video_url: string | null;
+  reference_video_url_2?: string | null;
   index_order: number;
 }
 

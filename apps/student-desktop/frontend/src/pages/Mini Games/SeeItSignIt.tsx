@@ -6,6 +6,7 @@ import {
   fetchMiniGameConfigs,
   fetchMiniGameActivities,
   saveMiniGameScore,
+  resolveMediaUrl,
   type MiniGameConfigItem
 } from '../../utils/api';
 import './SeeItSignIt.css';
@@ -29,6 +30,7 @@ interface ActivityItem {
   image: string;
   item: string;
   targetSign: number | string;
+  referenceVideoUrl?: string | null;
 }
 
 // Fallback activities if backend is unreachable
@@ -58,6 +60,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [roundPassed, setRoundPassed] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [showDemoVideo, setShowDemoVideo] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -76,11 +79,8 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
           if (act.see_it_sign_it_items && act.see_it_sign_it_items.length > 0) {
             act.see_it_sign_it_items.forEach((item, itemIdx) => {
               const signNum = parseInt(item.objective_answer, 10);
-              const resolvedImage = item.objective_image_url
-                ? (item.objective_image_url.startsWith('http') || item.objective_image_url.startsWith('/')
-                    ? (item.objective_image_url.startsWith('/minigames') ? `http://127.0.0.1:8000${item.objective_image_url}` : item.objective_image_url)
-                    : `http://127.0.0.1:8000/${item.objective_image_url}`)
-                : `/images/${item.objective_answer}.png`;
+              const resolvedImage = resolveMediaUrl(item.objective_image_url) || `/images/${item.objective_answer}.png`;
+              const resolvedVideo = resolveMediaUrl(item.reference_video_url);
 
               flatItems.push({
                 id: flatItems.length + 1,
@@ -88,6 +88,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
                 image: resolvedImage,
                 item: item.objective_answer,
                 targetSign: !isNaN(signNum) ? signNum : item.objective_answer,
+                referenceVideoUrl: resolvedVideo,
               });
             });
           }
@@ -479,10 +480,68 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
           {/* Right Column */}
           <section className="eval-right-col-container sisi-right-col">
             <div className="sisi-puzzle-card sisi-image-card-container">
-              <img src={itemImage} alt={itemShown} className="sisi-target-image" onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                  e.currentTarget.parentElement!.innerHTML = '<span class="sisi-fallback-emoji">🖐️</span>';
-              }}/>
+              {showDemoVideo && currentActivity.referenceVideoUrl ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
+                  <video
+                    src={currentActivity.referenceVideoUrl}
+                    controls
+                    autoPlay
+                    loop
+                    className="max-h-full max-w-full rounded-2xl bg-black"
+                    style={{ maxHeight: '220px', width: 'auto', borderRadius: '16px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDemoVideo(false)}
+                    style={{
+                      marginTop: '10px',
+                      padding: '6px 14px',
+                      borderRadius: '12px',
+                      background: '#4B5563',
+                      color: '#fff',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      border: 'none',
+                    }}
+                  >
+                    Back to Picture
+                  </button>
+                </div>
+              ) : (
+                <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={itemImage} alt={itemShown} className="sisi-target-image" onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<span class="sisi-fallback-emoji">🖐️</span>';
+                  }}/>
+                  {currentActivity.referenceVideoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDemoVideo(true)}
+                      style={{
+                        position: 'absolute',
+                        bottom: '12px',
+                        right: '12px',
+                        background: 'linear-gradient(135deg, #2EABFF 0%, #0084FF 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '8px 16px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,132,255,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.9rem',
+                        zIndex: 10,
+                      }}
+                    >
+                      ▶ Watch Demo
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="sisi-score-card">

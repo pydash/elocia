@@ -61,6 +61,7 @@ class MagicFingersItemCreate(BaseModel):
     hidden_positions: List[int] = []
     objective_image_url: Optional[str] = None
     reference_video_url: Optional[str] = None
+    reference_video_url_2: Optional[str] = None
     index_order: Optional[int] = 0
 
 class MagicFingersItemResponse(BaseModel):
@@ -70,6 +71,7 @@ class MagicFingersItemResponse(BaseModel):
     hidden_positions: List[int]
     objective_image_url: Optional[str] = None
     reference_video_url: Optional[str] = None
+    reference_video_url_2: Optional[str] = None
     index_order: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -79,6 +81,24 @@ class MagicFingersItemResponse(BaseModel):
 
 
 # ── Config Schemas ──────────────────────────────────────────
+class SeeItSignItActivityCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    difficulty: Optional[int] = 1
+    items: List[SeeItSignItItemCreate] = []
+
+class PuzzleSignActivityCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    difficulty: Optional[int] = 1
+    items: List[PuzzleSignItemCreate] = []
+
+class MagicFingersActivityCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    difficulty: Optional[int] = 1
+    items: List[MagicFingersItemCreate] = []
+
 class MiniGameConfigCreate(BaseModel):
     game_type: str  # "see_it_sign_it" | "puzzle_sign" | "magic_fingers"
     title: str
@@ -88,6 +108,8 @@ class MiniGameConfigCreate(BaseModel):
     see_it_sign_it_items: Optional[List[SeeItSignItItemCreate]] = None
     puzzle_sign_items: Optional[List[PuzzleSignItemCreate]] = None
     magic_fingers_items: Optional[List[MagicFingersItemCreate]] = None
+    # Flexible alias for dedicated creation
+    items: Optional[List[dict]] = None
 
 class MiniGameConfigUpdate(BaseModel):
     title: Optional[str] = None

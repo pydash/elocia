@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
-import { fetchMiniGameConfigs, fetchMiniGameActivities, saveMiniGameScore, type MiniGameConfigItem } from '../../utils/api';
+import { fetchMiniGameConfigs, fetchMiniGameActivities, saveMiniGameScore, resolveMediaUrl, type MiniGameConfigItem } from '../../utils/api';
 import './MagicFingers.css';
 import '../../pages/Evaluation/EvaluationSession.css';
 import { startMagicFingersTour, stopCurrentTour } from '../../utils/activityTours';
@@ -23,14 +23,22 @@ interface WordLetter {
   visible: boolean;
 }
 
+interface MissingTarget {
+  charIndex: number;
+  char: string;
+  stageId: number;
+  videoUrl?: string | null;
+}
+
 interface MagicActivity {
   id: number;
   name: string;
   image: string;
   wordText: string;
   word: WordLetter[];
-  missingLetter: string;
-  targetStage: number;
+  missingTargets: MissingTarget[];
+  referenceVideoUrl?: string | null;
+  referenceVideoUrl2?: string | null;
 }
 
 // Fallback activities for fingerspelling
@@ -45,8 +53,9 @@ const DEFAULT_ACTIVITIES: MagicActivity[] = [
       { char: 'S', visible: false },
       { char: 'L', visible: true }
     ],
-    missingLetter: 'S',
-    targetStage: 1
+    missingTargets: [
+      { charIndex: 1, char: 'S', stageId: 19 }
+    ]
   },
   { 
     id: 2, 
@@ -59,12 +68,13 @@ const DEFAULT_ACTIVITIES: MagicActivity[] = [
       { char: 'A', visible: true },
       { char: 'F', visible: true }
     ],
-    missingLetter: 'E',
-    targetStage: 2
+    missingTargets: [
+      { charIndex: 1, char: 'E', stageId: 5 }
+    ]
   },
   { 
     id: 3, 
-    name: 'Everyday Objects: WATCH', 
+    name: 'Everyday Objects: WATCH (2 Missing Letters)', 
     image: '/images/watch.png', 
     wordText: 'WATCH',
     word: [
@@ -74,8 +84,10 @@ const DEFAULT_ACTIVITIES: MagicActivity[] = [
       { char: 'C', visible: true },
       { char: 'H', visible: true }
     ],
-    missingLetter: 'A',
-    targetStage: 1
+    missingTargets: [
+      { charIndex: 1, char: 'A', stageId: 1 },
+      { charIndex: 2, char: 'T', stageId: 20 }
+    ]
   }
 ];
 
@@ -97,12 +109,20 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [roundPassed, setRoundPassed] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [showDemoVideo, setShowDemoVideo] = useState(false);
+
+  // Multi-missing letters sequential progression state
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [solvedIndices, setSolvedIndices] = useState<number[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const isEvaluatingRef = useRef(false);
   const recordingTimerRef = useRef<number | null>(null);
+  const currentStepIndexRef = useRef(0);
+  const solvedIndicesRef = useRef<number[]>([]);
+  const currentActivityRef = useRef<MagicActivity>(DEFAULT_ACTIVITIES[0]);
 
   // Fetch dynamic game configurations and items from backend
   useEffect(() => {
@@ -115,25 +135,37 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           if (act.magic_fingers_items && act.magic_fingers_items.length > 0) {
             act.magic_fingers_items.forEach((item, itemIdx) => {
               const rawWord = item.word.toUpperCase();
-              const hiddenSet = new Set(item.hidden_positions || []);
-              // Default to hiding index 1 if no positions configured
-              if (hiddenSet.size === 0) {
-                hiddenSet.add(rawWord.length > 2 ? 1 : 0);
+              let hiddenPositions = (item.hidden_positions || []).filter(pos => pos >= 0 && pos < rawWord.length);
+              if (hiddenPositions.length === 0) {
+                hiddenPositions = [rawWord.length > 2 ? 1 : 0];
               }
+              // Sort positions sequentially from left to right
+              hiddenPositions.sort((a, b) => a - b);
+              const hiddenSet = new Set(hiddenPositions);
 
               const wordSlots: WordLetter[] = rawWord.split('').map((char, cIdx) => ({
                 char,
                 visible: !hiddenSet.has(cIdx)
               }));
 
-              const firstHiddenIdx = Array.from(hiddenSet)[0] ?? 0;
-              const missingChar = rawWord[firstHiddenIdx] || 'A';
+              const resolvedVideo1 = resolveMediaUrl(item.reference_video_url);
+              const resolvedVideo2 = resolveMediaUrl(item.reference_video_url_2);
 
-              const resolvedImage = item.objective_image_url
-                ? (item.objective_image_url.startsWith('http') || item.objective_image_url.startsWith('/')
-                    ? (item.objective_image_url.startsWith('/minigames') ? `http://127.0.0.1:8000${item.objective_image_url}` : item.objective_image_url)
-                    : `http://127.0.0.1:8000/${item.objective_image_url}`)
-                : `/images/${itemIdx + 1}.png`;
+              const missingTargets: MissingTarget[] = hiddenPositions.map((pos, targetIdx) => {
+                const char = rawWord[pos] || 'A';
+                const code = char.charCodeAt(0);
+                const letterStage = (code >= 65 && code <= 90) ? (code - 64) : 1;
+                // Use dedicated video for targetIdx if present, else fallback to primary video
+                const dedicatedVideo = targetIdx === 1 ? (resolvedVideo2 || resolvedVideo1) : resolvedVideo1;
+                return {
+                  charIndex: pos,
+                  char,
+                  stageId: letterStage,
+                  videoUrl: dedicatedVideo
+                };
+              });
+
+              const resolvedImage = resolveMediaUrl(item.objective_image_url) || `/images/${itemIdx + 1}.png`;
 
               flatItems.push({
                 id: flatItems.length + 1,
@@ -141,8 +173,9 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                 image: resolvedImage,
                 wordText: rawWord,
                 word: wordSlots,
-                missingLetter: missingChar,
-                targetStage: flatItems.length + 1
+                missingTargets,
+                referenceVideoUrl: resolvedVideo1,
+                referenceVideoUrl2: resolvedVideo2,
               });
             });
           }
@@ -165,14 +198,18 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             visible: cIdx !== hideIdx
           }));
 
+          const char = rawWord[hideIdx] || 'A';
+          const code = char.charCodeAt(0);
+          const letterStage = (code >= 65 && code <= 90) ? (code - 64) : 1;
+
           return {
             id: idx + 1,
             name: cfg.title,
             image: cfg.prompt_image || `/images/${idx + 1}.png`,
             wordText: rawWord,
             word: wordSlots,
-            missingLetter: rawWord[hideIdx] || 'A',
-            targetStage: idx + 1
+            missingTargets: [{ charIndex: hideIdx, char, stageId: letterStage }],
+            referenceVideoUrl: null,
           };
         });
         setActivities(mapped);
@@ -195,10 +232,15 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     setActiveActivity(id);
     const foundIdx = activities.findIndex(a => a.id === id);
     setRoundIndex(foundIdx >= 0 ? foundIdx : 0);
+    setCurrentStepIndex(0);
+    currentStepIndexRef.current = 0;
+    setSolvedIndices([]);
+    solvedIndicesRef.current = [];
     setScore(0);
     setStreak(0);
     setRoundPassed(false);
     setFeedbackError(null);
+    setShowDemoVideo(false);
     setView('camera-check');
   };
 
@@ -208,6 +250,9 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
+  useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
+  useEffect(() => { solvedIndicesRef.current = solvedIndices; }, [solvedIndices]);
+  useEffect(() => { currentActivityRef.current = currentActivity; }, [currentActivity]);
 
   useEffect(() => {
     if (view === 'game') {
@@ -257,30 +302,53 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             scores.location >= PASS_THRESHOLD &&
             scores.movement >= PASS_THRESHOLD;
 
-          if (passed) {
-            setRoundPassed(true);
-            setFeedbackError(null);
-            const currentStreak = streakRef.current;
-            const currentScore = scoreRef.current;
-            const multiplier = 1 + (currentStreak * 0.2);
-            const pointsEarned = Math.round(overall * multiplier);
-            const newScore = currentScore + pointsEarned;
-            setScore(newScore);
-            setHighScore(prev => Math.max(prev, newScore));
-            setStreak(prev => prev + 1);
+          const act = currentActivityRef.current;
+          const targets = act.missingTargets || [];
+          const step = currentStepIndexRef.current;
+          const currentTarget = targets[step];
 
-            try {
-              if (newScore >= 500) {
-                localStorage.setItem('elocia_game_score_500', 'true');
+          if (passed) {
+            setFeedbackError(null);
+            const targetCharIdx = currentTarget ? currentTarget.charIndex : -1;
+            const newSolved = targetCharIdx >= 0 && !solvedIndicesRef.current.includes(targetCharIdx)
+              ? [...solvedIndicesRef.current, targetCharIdx]
+              : solvedIndicesRef.current;
+            
+            setSolvedIndices(newSolved);
+            solvedIndicesRef.current = newSolved;
+
+            // Check if there are more missing letters to solve in this word
+            if (step + 1 < targets.length) {
+              // Intermediate letter passed!
+              const nextStep = step + 1;
+              setCurrentStepIndex(nextStep);
+              currentStepIndexRef.current = nextStep;
+              // Give partial score reward for completing a letter
+              setScore(prev => prev + 50);
+            } else {
+              // All missing letters completed for this word!
+              setRoundPassed(true);
+              const currentStreak = streakRef.current;
+              const currentScore = scoreRef.current;
+              const multiplier = 1 + (currentStreak * 0.2);
+              const pointsEarned = Math.round(overall * multiplier);
+              const newScore = currentScore + pointsEarned;
+              setScore(newScore);
+              setHighScore(prev => Math.max(prev, newScore));
+              setStreak(prev => prev + 1);
+
+              try {
+                if (newScore >= 500) {
+                  localStorage.setItem('elocia_game_score_500', 'true');
+                }
+                localStorage.setItem('elocia_magic_fingers_finished', 'true');
+              } catch (err) {
+                console.warn('Failed to save magic fingers game stats:', err);
               }
-              localStorage.setItem('elocia_magic_fingers_finished', 'true');
-            } catch (err) {
-              console.warn('Failed to save magic fingers game stats:', err);
             }
           } else {
-            setRoundPassed(false);
             setStreak(0); // V4.1 rule: Reset streak on incorrect answer
-            setFeedbackError("Check your finger shape and try again!");
+            setFeedbackError(currentTarget ? `Check your sign for '${currentTarget.char}' and try again!` : "Check your finger shape and try again!");
           }
         } else if (data.error) {
           setIsEvaluating(false);
@@ -331,7 +399,6 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
 
   const triggerEvaluation = () => {
     setFeedbackError(null);
-    setRoundPassed(false);
     setIsRecording(true);
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -343,7 +410,9 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
       setIsRecording(false);
       setIsEvaluating(true);
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        const stageNum = currentActivity.targetStage || 1;
+        const targets = currentActivity.missingTargets || [];
+        const currentTarget = targets[currentStepIndexRef.current] || targets[0];
+        const stageNum = currentTarget?.stageId || 1;
         wsRef.current.send(JSON.stringify({ action: 'evaluate', stageId: stageNum }));
       } else {
         setIsEvaluating(false);
@@ -357,8 +426,13 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
       const nextIdx = roundIndex + 1;
       setRoundIndex(nextIdx);
       setActiveActivity(activities[nextIdx]?.id || nextIdx + 1);
+      setCurrentStepIndex(0);
+      currentStepIndexRef.current = 0;
+      setSolvedIndices([]);
+      solvedIndicesRef.current = [];
       setRoundPassed(false);
       setFeedbackError(null);
+      setShowDemoVideo(false);
     } else {
       // Game Complete - save score to backend (capped at 500 XP max for mini-games)
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
@@ -428,6 +502,9 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const renderGame = () => {
     const itemImage = currentActivity.image;
     const wordData = currentActivity.word;
+    const targets = currentActivity.missingTargets || [];
+    const currentTarget = targets[currentStepIndex] || targets[0];
+    const totalMissing = targets.length;
 
     return (
       <div className="evaluation-layout-1920">
@@ -477,15 +554,43 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             {/* The Specific "Magic Fingers" Missing Letters UI */}
             <div className="eval-instruction-card sisi-instruction-card">
               <div className="mf-word-container">
-                {wordData.map((letter, idx) => (
-                  <div key={idx} className="mf-letter-slot">
-                    <span className={`mf-letter ${!letter.visible && !roundPassed ? 'hidden' : ''}`}>
-                      {letter.char}
-                    </span>
-                    <div className="mf-underline"></div>
-                  </div>
-                ))}
+                {wordData.map((letter, idx) => {
+                  const isMissing = !letter.visible;
+                  const isSolved = solvedIndices.includes(idx) || roundPassed;
+                  const isTarget = isMissing && !isSolved && currentTarget?.charIndex === idx;
+
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`mf-letter-slot ${isTarget ? 'active' : ''} ${isSolved ? 'slot-solved' : ''}`}
+                    >
+                      {isTarget && <span className="mf-slot-arrow">▼</span>}
+                      <span className={`mf-letter ${isMissing && !isSolved ? 'hidden' : ''} ${isSolved ? 'solved' : ''}`}>
+                        {letter.char}
+                      </span>
+                      <div className="mf-underline"></div>
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Sub-progress pills if 2 missing letters */}
+              {totalMissing > 1 && (
+                <div className="mf-sub-progress">
+                  {targets.map((tgt, sIdx) => {
+                    const isDone = solvedIndices.includes(tgt.charIndex) || roundPassed;
+                    const isCurrent = currentStepIndex === sIdx && !roundPassed;
+                    return (
+                      <span 
+                        key={sIdx} 
+                        className={`mf-sub-pill ${isDone ? 'done' : isCurrent ? 'current' : ''}`}
+                      >
+                        Letter {sIdx + 1}: {tgt.char} {isDone ? '✓' : ''}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="eval-camera-wrapper sisi-camera-wrapper">
@@ -502,7 +607,9 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                 {isRecording && (
                   <div className="ps-recording-badge">
                     <span className="ps-recording-dot" />
-                    Sign the missing letter: {currentActivity.missingLetter}!
+                    {totalMissing > 1
+                      ? `Sign letter ${currentStepIndex + 1} of ${totalMissing}: ${currentTarget?.char}!`
+                      : `Sign the missing letter: ${currentTarget?.char}!`}
                   </div>
                 )}
 
@@ -542,7 +649,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                     onClick={triggerEvaluation}
                     disabled={isEvaluating || isRecording}
                   >
-                    {isRecording ? 'Recording...' : isEvaluating ? 'Grading...' : 'Check My Sign'}
+                    {isRecording ? 'Recording...' : isEvaluating ? 'Grading...' : (totalMissing > 1 ? `Check Letter ${currentStepIndex + 1} (${currentTarget?.char})` : 'Check My Sign')}
                   </button>
                 )}
               </div>
@@ -552,10 +659,76 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           {/* Right Column */}
           <section className="eval-right-col-container sisi-right-col">
             <div className="mf-puzzle-card sisi-image-card-container">
-              <img src={itemImage} alt="Word hint" className="mf-target-image" onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                  e.currentTarget.parentElement!.innerHTML = '<span class="sisi-fallback-emoji">🔤</span>';
-              }}/>
+              {(() => {
+                const activeVideo = currentTarget?.videoUrl || currentActivity.referenceVideoUrl;
+                const activeLetter = currentTarget?.char || currentActivity.missingTargets?.[0]?.char || '';
+                return showDemoVideo && activeVideo ? (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1E293B', marginBottom: '6px' }}>
+                      {totalMissing > 1 ? `Reference Video: Step ${currentStepIndex + 1} (Letter ${activeLetter})` : `Reference Video: Letter ${activeLetter}`}
+                    </div>
+                    <video
+                      key={activeVideo}
+                      src={activeVideo}
+                      controls
+                      autoPlay
+                      loop
+                      className="max-h-full max-w-full rounded-2xl bg-black"
+                      style={{ maxHeight: '200px', width: 'auto', borderRadius: '16px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDemoVideo(false)}
+                      style={{
+                        marginTop: '10px',
+                        padding: '6px 14px',
+                        borderRadius: '12px',
+                        background: '#4B5563',
+                        color: '#fff',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        border: 'none',
+                      }}
+                    >
+                      Back to Picture
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src={itemImage} alt="Word hint" className="mf-target-image" onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = '<span class="sisi-fallback-emoji">🔤</span>';
+                    }}/>
+                    {activeVideo && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDemoVideo(true)}
+                        style={{
+                          position: 'absolute',
+                          bottom: '12px',
+                          right: '12px',
+                          background: 'linear-gradient(135deg, #2EABFF 0%, #0084FF 100%)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '20px',
+                          padding: '8px 16px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(0,132,255,0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '0.9rem',
+                          zIndex: 10,
+                        }}
+                      >
+                        ▶ {totalMissing > 1 ? `Watch Demo (${activeLetter})` : 'Watch Demo'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             
             <div className="mf-score-card">
