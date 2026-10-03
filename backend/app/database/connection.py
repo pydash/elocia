@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
@@ -27,3 +28,21 @@ async def init_db():
     async with engine.begin() as conn:
         from app.models import user, session, minigame, baseline
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(
+            text(
+                "ALTER TABLE mini_games_config "
+                "ADD COLUMN IF NOT EXISTS target_sign VARCHAR"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE mini_games_config "
+                "ADD COLUMN IF NOT EXISTS description VARCHAR"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE mini_games_config "
+                "ADD COLUMN IF NOT EXISTS reference_video_url VARCHAR"
+            )
+        )
