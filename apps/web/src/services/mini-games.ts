@@ -114,3 +114,67 @@ export async function fetchMiniGameDetails(configId: string): Promise<MiniGameCo
 
   return response.json() as Promise<MiniGameConfig>;
 }
+
+/**
+ * Create a See It Sign It activity using dedicated endpoint.
+ */
+export async function createSeeItSignItActivity(payload: {
+  title: string;
+  description?: string;
+  difficulty?: number;
+  items: SeeItSignItItem[];
+}): Promise<MiniGameConfig> {
+  const response = await fetch(`${API_BASE_URL}/minigames/see-it-sign-it`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to create See It Sign It activity");
+  }
+  return response.json();
+}
+
+/**
+ * Create a Puzzle Sign activity using dedicated endpoint.
+ */
+export async function createPuzzleSignActivity(payload: {
+  title: string;
+  description?: string;
+  difficulty?: number;
+  items: PuzzleSignItem[];
+}): Promise<MiniGameConfig> {
+  const response = await fetch(`${API_BASE_URL}/minigames/puzzle-sign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to create Puzzle Sign activity");
+  }
+  return response.json();
+}
+
+/**
+ * Create a Magic Fingers activity using dedicated endpoint.
+ */
+export async function createMagicFingersActivity(payload: {
+  title: string;
+  description?: string;
+  difficulty?: number;
+  items: MagicFingersItem[];
+}): Promise<MiniGameConfig> {
+  const response = await fetch(`${API_BASE_URL}/minigames/magic-fingers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to create Magic Fingers activity");
+  }
+  return response.json();
+}
+

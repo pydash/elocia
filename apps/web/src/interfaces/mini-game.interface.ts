@@ -28,6 +28,7 @@ export interface MagicFingersItem {
   hidden_positions: number[];
   objective_image_url?: string;
   reference_video_url?: string;
+  reference_video_url_2?: string;
   index_order?: number;
 }
 
