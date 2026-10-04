@@ -183,7 +183,16 @@ async def upload_baseline_video(
         )
         db.add(baseline_record)
 
-    # 8. Unlock this stage for all students matching the grade level!
+    # 8. Enroll students for this stage (only auto-unlock the FIRST active stage)
+    first_stage_res = await db.execute(
+        select(CurriculumStage)
+        .where(CurriculumStage.is_active == True)
+        .order_by(CurriculumStage.stage_number.asc())
+        .limit(1)
+    )
+    first_stage = first_stage_res.scalar_one_or_none()
+    is_first_stage = (first_stage and first_stage.id == curr_stage.id)
+
     stud_query = (
         select(User)
         .join(StudentProfile, StudentProfile.student_id == User.id)
@@ -203,17 +212,41 @@ async def upload_baseline_video(
         )
         ssp = ssp_res.scalar_one_or_none()
         if not ssp:
+            # Only auto-unlock if this is the first stage; subsequent stages stay locked
+            should_unlock = bool(is_first_stage)
+            if not is_first_stage:
+                # Check if the student already passed the immediately preceding stage
+                prev_stage_res = await db.execute(
+                    select(CurriculumStage)
+                    .where(
+                        CurriculumStage.is_active == True,
+                        CurriculumStage.stage_number < curr_stage.stage_number
+                    )
+                    .order_by(CurriculumStage.stage_number.desc())
+                    .limit(1)
+                )
+                prev_stage = prev_stage_res.scalar_one_or_none()
+                if prev_stage:
+                    prev_ssp_res = await db.execute(
+                        select(StudentStageProgress).where(
+                            StudentStageProgress.student_id == stud.id,
+                            StudentStageProgress.stage_id == prev_stage.id
+                        )
+                    )
+                    prev_ssp = prev_ssp_res.scalar_one_or_none()
+                    if prev_ssp and prev_ssp.passed:
+                        should_unlock = True
+
             ssp = StudentStageProgress(
                 student_id=stud.id,
                 stage_id=curr_stage.id,
-                unlocked=True,
+                unlocked=should_unlock,
                 passed=False,
                 best_score=0.0,
                 stars=0
             )
             db.add(ssp)
-        else:
-            ssp.unlocked = True
+        # If SSP already exists, do NOT force unlocked=True (preserve earned progression)
 
     await db.commit()
 

@@ -164,8 +164,9 @@ def calculate_movement_score(student_seq, baseline_seq):
     """
     Compares the full 3D movement trajectory of the wrist relative to the nose,
     normalized by body scale (shoulder width) so camera distance doesn't matter.
-    Uses multivariate DTW, so direction matters in every axis:
-    horizontal, vertical, and depth movements are all evaluated.
+    Uses multivariate DTW across horizontal, vertical, and depth movement.
+    Supports both dynamic motion signs and static holding signs (e.g., numbers 1-10)
+    by aligning against both the full trajectory and the active signing stroke/apex.
     """
     if len(student_seq) < 2 or len(baseline_seq) < 2: return 0
 
@@ -177,28 +178,38 @@ def calculate_movement_score(student_seq, baseline_seq):
             pts.append(v)
         arr = np.array(pts, dtype=np.double)
         # Center the path: absolute position is Location's job;
-        # Movement judges the path SHAPE (direction changes), so a
-        # constant offset should not be punished here twice.
+        # Movement judges the path SHAPE (direction changes).
         return arr - arr.mean(axis=0, keepdims=True)
 
-    s_traj = trajectory(student_seq)
-    b_traj = trajectory(baseline_seq)
+    s_full = trajectory(student_seq)
+    b_full = trajectory(baseline_seq)
 
-    distance_standard = _dtw_distance(s_traj, b_traj)
+    # 1. Full DTW distance
+    dist_full = min(
+        _dtw_distance(s_full, b_full),
+        _dtw_distance(s_full, b_full * np.array([-1.0, 1.0, 1.0]))
+    )
+    norm_full = dist_full / max(len(s_full), len(b_full))
 
-    # Check the mirrored trajectory (invert the X axis)
-    b_traj_mirrored = b_traj.copy()
-    b_traj_mirrored[:, 0] = -b_traj_mirrored[:, 0]
-    distance_mirrored = _dtw_distance(s_traj, b_traj_mirrored)
+    # 2. Apex / active stroke phase (central 60% of baseline sequence)
+    # Baseline videos often contain arm-raising and arm-lowering phases.
+    # Evaluating against the active sign apex ensures students who cleanly hold
+    # the target sign steady (e.g. Numbers 1-10) receive full credit for their movement.
+    n_b = len(baseline_seq)
+    q1 = max(0, int(n_b * 0.20))
+    q3 = min(n_b, int(n_b * 0.80) + 1)
+    if q3 - q1 >= 2:
+        b_apex = trajectory(baseline_seq[q1:q3])
+        dist_apex = min(
+            _dtw_distance(s_full, b_apex),
+            _dtw_distance(s_full, b_apex * np.array([-1.0, 1.0, 1.0]))
+        )
+        norm_apex = dist_apex / max(len(s_full), len(b_apex))
+        best_norm = min(norm_full, norm_apex)
+    else:
+        best_norm = norm_full
 
-    best_distance = min(distance_standard, distance_mirrored)
-
-    # Normalize by sequence length (approximate average per-frame deviation)
-    normalized_distance = best_distance / max(len(s_traj), len(b_traj))
-
-    # A more forgiving multiplier (100 instead of 300) so that shorter
-    # 3-second student recordings don't fail when matching 5-second teacher videos.
-    score = max(0, min(100, 100 - (normalized_distance * 100)))
+    score = max(0, min(100, 100 - (best_norm * 100)))
     return score
 
 def filter_valid_frames(sequence):

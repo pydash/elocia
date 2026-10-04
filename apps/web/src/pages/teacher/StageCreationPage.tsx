@@ -5,6 +5,7 @@ import TopHeaderBar from "@/components/teacher/TopHeaderBar";
 import { createStage, uploadStageBaseline } from "@/services/curriculum";
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { UploadCloud, ArrowUp, ArrowDown } from "lucide-react";
 
 type Round = { signName: string; video: File | null };
 type StageDraft = {
@@ -110,68 +111,188 @@ export function TeacherStageCreatePage() {
               <div>
                 <h2 className="heading-3 text-(--black)">Rounds</h2>
                 <p className="paragraph-2 mt-1 text-(--ghost)">
-                  Add a sign and demonstration video for each round.
+                  Add sign demonstration videos. You can upload in batch and re-order them anytime.
                 </p>
               </div>
-              <Button
-                type="button"
-                onClick={() =>
-                  setDraft({ ...draft, rounds: [...draft.rounds, newRound()] })
-                }
-              >
-                Add round
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setDraft({ ...draft, rounds: [...draft.rounds, newRound()] })
+                  }
+                >
+                  + Add 1 round
+                </Button>
+              </div>
             </div>
+
+            {/* Batch Video Dropzone */}
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--primary) bg-(--primary-light)/40 p-6 text-center transition-colors hover:bg-(--primary-light)">
+              <UploadCloud className="size-8 text-(--primary)" />
+              <span className="paragraph-2 font-semibold text-(--primary)">
+                ⚡ Batch Upload Videos (Auto-Generates Rounds)
+              </span>
+              <span className="caption text-(--ghost)">
+                Drop multiple .mp4 / .webm videos at once — words will be auto-named from filenames!
+              </span>
+              <input
+                type="file"
+                multiple
+                accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+                className="sr-only"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length === 0) return;
+                  const newBatchRounds: Round[] = files.map((file) => {
+                    const cleanName = file.name
+                      .replace(/\.[^/.]+$/, "")
+                      .replace(/[-_]/g, " ")
+                      .trim();
+                    const capitalized = cleanName
+                      .split(" ")
+                      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                      .join(" ");
+                    return {
+                      signName: capitalized || "Sign",
+                      video: file,
+                    };
+                  });
+                  setDraft((prev) => ({
+                    ...prev,
+                    rounds: [...prev.rounds, ...newBatchRounds],
+                  }));
+                  // Clear input so re-selecting same files works
+                  e.target.value = "";
+                }}
+              />
+            </label>
 
             {draft.rounds.map((round, index) => (
               <div
                 key={index}
-                className="rounded-2xl border-2 border-(--border) bg-(--gray-50) p-4"
+                className="rounded-2xl border-2 border-(--border) bg-(--gray-50) p-4 transition-all"
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="heading-4 text-(--black)">
-                    Round {index + 1}
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        rounds: draft.rounds.filter(
-                          (_, roundIndex) => roundIndex !== index,
-                        ),
-                      })
-                    }
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-(--primary) text-xs font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <h3 className="heading-4 text-(--black)">
+                      Round {index + 1}
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {/* Move Up */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="px-2.5 py-1 text-xs"
+                      disabled={index === 0}
+                      onClick={() => {
+                        if (index === 0) return;
+                        setDraft((prev) => {
+                          const updated = [...prev.rounds];
+                          const temp = updated[index - 1];
+                          updated[index - 1] = updated[index];
+                          updated[index] = temp;
+                          return { ...prev, rounds: updated };
+                        });
+                      }}
+                      title="Move up"
+                    >
+                      <ArrowUp className="size-4" />
+                    </Button>
+
+                    {/* Move Down */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="px-2.5 py-1 text-xs"
+                      disabled={index === draft.rounds.length - 1}
+                      onClick={() => {
+                        if (index >= draft.rounds.length - 1) return;
+                        setDraft((prev) => {
+                          const updated = [...prev.rounds];
+                          const temp = updated[index + 1];
+                          updated[index + 1] = updated[index];
+                          updated[index] = temp;
+                          return { ...prev, rounds: updated };
+                        });
+                      }}
+                      title="Move down"
+                    >
+                      <ArrowDown className="size-4" />
+                    </Button>
+
+                    {/* Remove */}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="px-2.5 py-1 text-xs"
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          rounds: draft.rounds.filter(
+                            (_, roundIndex) => roundIndex !== index,
+                          ),
+                        })
+                      }
+                      title="Remove round"
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
-                <label className="caption text-(--black)">
-                  Sign name
-                  <Input
-                    className="mt-2"
-                    value={round.signName}
-                    onChange={(event) =>
-                      updateRound(index, { signName: event.target.value })
-                    }
-                    required
-                  />
-                </label>
-                <label className="caption mt-4 block text-(--black)">
-                  Video
-                  <Input
-                    className="mt-2"
-                    type="file"
-                    accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
-                    onChange={(event) =>
-                      updateRound(index, {
-                        video: event.target.files?.[0] ?? null,
-                      })
-                    }
-                    required
-                  />
-                </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="caption text-(--black)">
+                    Sign name
+                    <Input
+                      className="mt-2"
+                      value={round.signName}
+                      placeholder="e.g. Apple or Good Morning"
+                      onChange={(event) =>
+                        updateRound(index, { signName: event.target.value })
+                      }
+                      required
+                    />
+                  </label>
+                  <label className="caption block text-(--black)">
+                    Video
+                    {round.video ? (
+                      <div className="mt-2 flex items-center justify-between rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
+                        <span className="truncate font-semibold">🎬 {round.video.name}</span>
+                        <label className="ml-2 cursor-pointer font-bold underline hover:text-green-950">
+                          Change
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+                            className="sr-only"
+                            onChange={(event) =>
+                              updateRound(index, {
+                                video: event.target.files?.[0] ?? round.video,
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <Input
+                        className="mt-2"
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+                        onChange={(event) =>
+                          updateRound(index, {
+                            video: event.target.files?.[0] ?? null,
+                          })
+                        }
+                        required
+                      />
+                    )}
+                  </label>
+                </div>
               </div>
             ))}
           </section>

@@ -139,6 +139,11 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
             if curriculum_sections:
                 return {"sections": curriculum_sections}
 
+        # If a specific grade level was requested and no normalized curriculum exists for it,
+        # return empty sections so Grade 2 & Grade 3 students don't mistakenly see Grade 1 lessons!
+        if grade_level is not None:
+            return {"sections": []}
+
         # 2. Fallback to reading flat curriculum_stages if normalized tables are not yet populated
         stages_res = await db.execute(
             select(CurriculumStage)
@@ -242,38 +247,88 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
     )
     rows = prog_res.all()
 
+    # Fetch ordered list of active curriculum stages for this student's grade level
+    student_grade = profile.grade_level if profile else 1
+    all_stages_query = (
+        select(CurriculumStage)
+        .join(CurriculumUnit, CurriculumStage.unit_id == CurriculumUnit.id)
+        .join(CurriculumSection, CurriculumUnit.section_id == CurriculumSection.id)
+        .join(Curriculum, CurriculumSection.curriculum_id == Curriculum.id)
+        .where(CurriculumStage.is_active == True, Curriculum.grade_level == student_grade)
+        .order_by(CurriculumStage.stage_number.asc())
+    )
+    all_stages_res = await db.execute(all_stages_query)
+    all_active_stages = all_stages_res.scalars().all()
+
+    # Build a map of stage progression keyed by stage id
+    ssp_map = {ssp.stage_id: ssp for ssp, stage in rows}
+
     unlocked_stages = []
     stage_progress = []
 
-    for ssp, stage in rows:
-        if ssp.unlocked:
+    # Self-healing sequential unlock: iterate stages in order
+    prev_passed = True  # The "stage before the first" is implicitly passed
+    for stage in all_active_stages:
+        ssp = ssp_map.get(stage.id)
+
+        # Determine correct unlock state
+        should_be_unlocked = prev_passed  # Only unlocked if all prior stages passed
+
+        if ssp:
+            # Self-heal: fix stale unlocked=True when prior stages not passed
+            if ssp.unlocked and not should_be_unlocked:
+                ssp.unlocked = False
+            # Self-heal: unlock if prior stage passed but this wasn't marked
+            elif not ssp.unlocked and should_be_unlocked:
+                ssp.unlocked = True
+
+            effective_unlocked = ssp.unlocked
+            effective_passed = ssp.passed
+            best_score = round(float(ssp.best_score or 0.0), 1)
+            stars = ssp.stars or 0
+        else:
+            effective_unlocked = should_be_unlocked
+            effective_passed = False
+            best_score = 0.0
+            stars = 0
+
+        # Count distinct passed signs in this stage for partial progress display
+        completed_res = await db.execute(
+            select(func.count(func.distinct(EvaluationAttempt.sign_id)))
+            .where(
+                EvaluationAttempt.student_id == stud_uuid,
+                EvaluationAttempt.stage_id_new == stage.id,
+                EvaluationAttempt.passed == True
+            )
+        )
+        completed_signs = completed_res.scalar() or 0
+
+        if effective_unlocked:
             unlocked_stages.append(stage.stage_number)
+
         stage_progress.append({
             "stage_id": stage.stage_number,
-            "unlocked": ssp.unlocked,
-            "passed": ssp.passed,
-            "best_score": round(float(ssp.best_score or 0.0), 1),
-            "stars": ssp.stars
+            "unlocked": effective_unlocked,
+            "passed": effective_passed,
+            "best_score": best_score,
+            "stars": stars,
+            "completed_signs": completed_signs
         })
 
-    # If student has no unlocked stages yet, dynamically unlock the first active curriculum stage
-    if not unlocked_stages:
-        first_st_res = await db.execute(
-            select(CurriculumStage)
-            .where(CurriculumStage.is_active == True)
-            .order_by(CurriculumStage.stage_number.asc())
-            .limit(1)
-        )
-        first_st = first_st_res.scalar_one_or_none()
-        default_stage_num = first_st.stage_number if first_st else 1
-        unlocked_stages = [default_stage_num]
-        stage_progress.append({
-            "stage_id": default_stage_num,
-            "unlocked": True,
-            "passed": False,
-            "best_score": 0.0,
-            "stars": 0
-        })
+        # For the next iteration: this stage must be passed to unlock the next
+        prev_passed = effective_passed
+
+    # Commit any self-healing changes
+    await db.commit()
+
+    # If stages exist for this grade level but none unlocked yet, unlock the first one
+    if all_active_stages and not unlocked_stages:
+        first_st = all_active_stages[0]
+        unlocked_stages = [first_st.stage_number]
+        for sp in stage_progress:
+            if sp["stage_id"] == first_st.stage_number:
+                sp["unlocked"] = True
+                break
 
     streak = get_effective_streak(profile)
 

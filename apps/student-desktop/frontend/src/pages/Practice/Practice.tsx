@@ -3,8 +3,8 @@ import './Practice.css';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import { CURRICULUM } from '../../data/curriculum';
 import type { Section } from '../../data/curriculum';
-import { fetchNeedsPractice, fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, API_BASE } from '../../utils/api';
-import type { PracticeItem, StudentProgress, EducationalVideoItem } from '../../utils/api';
+import { fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, API_BASE } from '../../utils/api';
+import type { StudentProgress, EducationalVideoItem } from '../../utils/api';
 
 // Assuming images are in public/images
 const seeItSignItImg = '/images/See it, Sign it!.png';
@@ -20,10 +20,9 @@ interface PracticeProps {
 
 
 export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
-  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
-
   const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<EducationalVideoItem | null>(null);
+  const [showAllVideos, setShowAllVideos] = useState<boolean>(false);
   const [videoError, setVideoError] = useState<boolean>(false);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
@@ -67,13 +66,8 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
       }
     });
 
-    // 4. Load student progress & needs-practice
+    // 4. Load student progress
     if (studentId) {
-      fetchNeedsPractice(studentId).then((items) => {
-        if (items && items.length > 0) {
-          setPracticeItems(items);
-        }
-      });
       fetchStudentProgress(studentId).then((prog) => {
         if (prog) {
           setStudentProgress(prog);
@@ -96,66 +90,25 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             </div>
           </header>
 
-          {/* Section 1: Keep Practicing */}
-          <section className="practice-section keep-practicing">
-            <div className="section-header kp-section-header">
-              <div className="section-title-group">
-                <h2>Keep Practicing</h2>
-                <p>Signs to help you build your skills</p>
-              </div>
-              <button className="view-all-btn">
-                <img src={viewAllBtnImg} alt="View all" />
-              </button>
-            </div>
-            
-            <div className="kp-cards-row">
-              {practiceItems.length > 0 ? (
-                practiceItems.map((item, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`kp-card ${item.color}`}
-                    onClick={() => {
-                      try {
-                        const prev = parseInt(localStorage.getItem('elocia_cleared_needs_practice') || '0', 10);
-                        localStorage.setItem('elocia_cleared_needs_practice', Math.min(4, prev + 1).toString());
-                      } catch (err) {
-                        console.warn('Failed to update cleared needs practice count:', err);
-                      }
-                      if (onStartLesson) {
-                        onStartLesson(item.stage_id, true);
-                      } else {
-                        onNavigate('setup');
-                      }
-                    }}
-                    title={item.reason || `Practice sign: ${item.sign}`}
-                  >
-                    <div className="kp-number">{item.sign}</div>
-                    <div className="kp-stage">{item.section_label}</div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', width: '100%', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
-                  🎉 Great job! No signs currently flagged for extra practice. Keep up the good work!
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Section 2: Educational Videos */}
+          {/* Section 1: Educational Videos */}
           <section className="practice-section educational-videos">
             <div className="section-header">
               <div className="section-title-group">
                 <h2>Educational Videos</h2>
                 <p>Learn new signs with videos</p>
               </div>
-              <button className="view-all-btn">
+              <button 
+                className="view-all-btn"
+                onClick={() => setShowAllVideos(true)}
+                title="View all educational videos"
+              >
                 <img src={viewAllBtnImg} alt="View all" />
               </button>
             </div>
 
             <div className="video-cards-row">
               {educationalVideos.length > 0 ? (
-                educationalVideos.map((video) => (
+                educationalVideos.slice(0, 4).map((video) => (
                   <div 
                     key={video.id} 
                     className="video-card" 
@@ -443,6 +396,143 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* View All Educational Videos Modal */}
+      {showAllVideos && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px'
+          }}
+          onClick={() => setShowAllVideos(false)}
+        >
+          <div 
+            style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '920px',
+              width: '100%',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '20px 28px',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc'
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>
+                  All Educational Videos 🎥
+                </h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                  Showing all {educationalVideos.length} educational videos for your grade
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAllVideos(false)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: '#e2e8f0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: '#475569',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.background = '#cbd5e1')}
+                onMouseOut={(e) => (e.currentTarget.style.background = '#e2e8f0')}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Video Grid */}
+            <div style={{ padding: '24px', overflowY: 'auto' }}>
+              {educationalVideos.length > 0 ? (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '20px'
+                }}>
+                  {educationalVideos.map((video) => (
+                    <div 
+                      key={video.id} 
+                      className="video-card" 
+                      onClick={() => {
+                        setShowAllVideos(false);
+                        setVideoError(false);
+                        setSelectedVideo(video);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                      title={`Click to watch: ${video.title}`}
+                    >
+                      <div className="video-thumbnail">
+                        {video.thumbnail_url ? (
+                          <img 
+                            src={video.thumbnail_url.startsWith('http') ? video.thumbnail_url : `${API_BASE}${video.thumbnail_url}`} 
+                            alt={video.title} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
+                        ) : (
+                          <div className="science-placeholder-art">
+                            <div className="science-doodle dna"></div>
+                            <div className="science-doodle stars"></div>
+                            <div className="science-doodle molecules"></div>
+                            <div className="science-text-container">
+                              <span className="science-text">{video.subject.toUpperCase()}</span>
+                              <span className="science-sub">{video.title.toUpperCase()}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="video-info">
+                        <span className="grade-badge">Grade {video.grade_level}</span>
+                        <h3 className="video-title">{video.title}</h3>
+                        <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  padding: '48px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  borderRadius: '16px',
+                  background: '#f8fafc',
+                  border: '2px dashed #cbd5e1',
+                  fontSize: '15px'
+                }}>
+                  📹 No educational videos uploaded yet. Videos uploaded by teachers will appear here!
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
