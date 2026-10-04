@@ -45,7 +45,7 @@ function App() {
       } catch {}
     }
     fetchCurriculum(grade).then(sections => {
-      if (sections && sections.length > 0) {
+      if (sections !== null) {
         setCurriculumData(sections);
       }
     });
@@ -59,7 +59,7 @@ function App() {
         const student = JSON.parse(rawStudent);
         if (student.grade_level) {
           fetchCurriculum(Number(student.grade_level)).then(sections => {
-            if (sections && sections.length > 0) {
+            if (sections !== null) {
               setCurriculumData(sections);
             }
           });

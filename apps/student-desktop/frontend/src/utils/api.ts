@@ -242,6 +242,7 @@ export interface StudentProgress {
     passed: boolean;
     best_score: number;
     stars: number;
+    completed_signs: number;
   }[];
   total_signs_mastered: number;
   current_streak: number;

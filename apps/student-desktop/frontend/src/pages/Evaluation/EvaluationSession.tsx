@@ -127,7 +127,10 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
   useEffect(() => {
     currentItemRef.current = currentItem;
-  }, [currentItem]);
+    if (diagOn && wsRef.current?.readyState === WebSocket.OPEN && currentItem?.globalId) {
+      wsRef.current.send(JSON.stringify({ action: 'start_diagnostic', stageId: currentItem.globalId }));
+    }
+  }, [currentItem, diagOn]);
 
   useEffect(() => {
     currentTierRef.current = currentTier;

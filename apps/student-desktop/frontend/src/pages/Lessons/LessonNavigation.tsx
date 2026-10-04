@@ -80,7 +80,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
         setCurriculumData(sections);
       }
     });
-  }, []);
+  }, [unlockedStages]);
 
   const handleStageClick = (stageId: number, isLocked: boolean) => {
     if (isLocked) return;
@@ -230,7 +230,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                             );
                           }
                           return (
-                            <span className="progress-text">Progress <span className="progress-highlight">0/{selectedStageData.items.length} completed</span></span>
+                            <span className="progress-text">Progress <span className="progress-highlight">{stageInfo?.completed_signs || 0}/{selectedStageData.items.length} completed</span></span>
                           );
                         })()}
                       </div>
