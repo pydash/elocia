@@ -39,6 +39,7 @@ import {
 } from "./pages/teacher/UploadVideoPage.tsx";
 import TeacherSettingsPage from "./pages/teacher/SettingsPage.tsx";
 import TeacherHelpPage from "./pages/teacher/HelpPage.tsx";
+import TeacherViewMiniGamePage from "./pages/teacher/ViewMiniGamePage.tsx";
 
 // Parent Pages
 import ParentLoginPage from "./pages/parent/LoginPage.tsx";
@@ -157,6 +158,9 @@ function App() {
               element={<TeacherUploadVideoStepThreePage />}
             />
           </Route>
+          {/* Mini Games Detail & Management */}
+          <Route path="mini-games/:id" element={<TeacherViewMiniGamePage />} />
+
           <Route path="settings" element={<TeacherSettingsPage />} />
           <Route path="help" element={<TeacherHelpPage />} />
         </Route>
