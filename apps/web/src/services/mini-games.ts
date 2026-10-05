@@ -177,4 +177,73 @@ export async function createMagicFingersActivity(payload: {
   }
   return response.json();
 }
+export type UpdateMiniGamePayload = {
+  title?: string;
+  description?: string;
+  difficulty?: number;
+  is_active?: boolean;
+  see_it_sign_it_items?: SeeItSignItItem[];
+  puzzle_sign_items?: PuzzleSignItem[];
+  magic_fingers_items?: MagicFingersItem[];
+};
 
+/**
+ * Resolve media URL to ensure proper absolute path with backend origin.
+ */
+export function resolveMediaUrl(url?: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return `${API_BASE_URL}${url}`;
+  }
+  return `${API_BASE_URL}/${url}`;
+}
+
+/**
+ * Update an existing mini-game configuration and its nested items.
+ */
+export async function updateMiniGame(
+  configId: string,
+  payload: UpdateMiniGamePayload,
+): Promise<MiniGameConfig> {
+  const response = await fetch(`${API_BASE_URL}/minigames/config/${configId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to update mini-game");
+  }
+
+  return response.json() as Promise<MiniGameConfig>;
+}
+
+/**
+ * Delete / deactivate a mini-game configuration.
+ */
+export async function deleteMiniGame(
+  configId: string,
+  hardDelete: boolean = false,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/minigames/config/${configId}?hard_delete=${hardDelete}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to delete mini-game");
+  }
+}

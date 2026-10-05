@@ -138,7 +138,7 @@ export default function TeacherLessonsPage() {
           </div>
           <div className="mt-4">
             {filteredMiniGames.length ? (
-              <MiniGameCardList miniGames={filteredMiniGames} />
+              <MiniGameCardList miniGames={filteredMiniGames} onRefresh={refresh} />
             ) : (
               <EmptyState title="No Mini Games Found" />
             )}
@@ -183,11 +183,17 @@ function EducationalVideoCardList({ videos }: { videos: EducationalVideo[] }) {
   );
 }
 
-function MiniGameCardList({ miniGames }: { miniGames: MiniGameConfig[] }) {
+function MiniGameCardList({
+  miniGames,
+  onRefresh,
+}: {
+  miniGames: MiniGameConfig[];
+  onRefresh?: () => void;
+}) {
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {miniGames.map((game) => (
-        <MiniGameCard key={game.id} miniGame={game} />
+        <MiniGameCard key={game.id} miniGame={game} onRefresh={onRefresh} />
       ))}
     </div>
   );
