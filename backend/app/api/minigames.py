@@ -173,7 +173,7 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
     return result.scalar_one()
 
 
-@router.get("/config", response_model=List[MiniGameConfigResponse])
+@router.get("/config", response_model=List[MiniGameConfigDetailResponse])
 async def list_all_minigame_configs(
     game_type: Optional[str] = Query(None, description="Optional filter by game type"),
     db: AsyncSession = Depends(get_db)
@@ -181,7 +181,15 @@ async def list_all_minigame_configs(
     """
     Fetch all active mini-game configurations across all games.
     """
-    query = select(MiniGameConfig).where(MiniGameConfig.is_active == True)
+    query = (
+        select(MiniGameConfig)
+        .options(
+            selectinload(MiniGameConfig.see_it_sign_it_items),
+            selectinload(MiniGameConfig.puzzle_sign_items),
+            selectinload(MiniGameConfig.magic_fingers_items)
+        )
+        .where(MiniGameConfig.is_active == True)
+    )
     if game_type:
         query = query.where(MiniGameConfig.game_type == game_type)
     query = query.order_by(MiniGameConfig.game_type.asc(), MiniGameConfig.difficulty.asc(), MiniGameConfig.created_at.asc())
@@ -394,15 +402,22 @@ async def update_minigame_config(
 
 
 @router.delete("/config/{config_id}", status_code=status.HTTP_200_OK)
-async def delete_minigame_config(config_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_minigame_config(
+    config_id: uuid.UUID,
+    hard_delete: bool = Query(False, description="Whether to permanently remove the config"),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(MiniGameConfig).where(MiniGameConfig.id == config_id))
     config = result.scalar_one_or_none()
     if not config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game configuration not found")
     
-    config.is_active = False
+    if hard_delete:
+        await db.delete(config)
+    else:
+        config.is_active = False
     await db.commit()
-    return {"status": "deactivated", "config_id": str(config_id)}
+    return {"status": "deleted" if hard_delete else "deactivated", "config_id": str(config_id)}
 
 
 # ── Scores & Sessions ───────────────────────────────────────────────────────

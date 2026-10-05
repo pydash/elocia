@@ -25,31 +25,82 @@ const backButtonImg = '/images/Back Button.png';
 const cloud1Img = '/images/Cloud 1.png';
 const confettiImg = '/images/Confetti.png';
 
-interface ActivityItem {
-  id: number;
-  name: string;
+interface ScoreSet {
+  handshape: number;
+  palmOrientation: number;
+  location: number;
+  movement: number;
+}
+
+interface Point3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface LandmarksData {
+  hand: Point3D[];
+  pose: {
+    nose: Point3D;
+    leftShoulder: Point3D;
+    rightShoulder: Point3D;
+  };
+  scores: ScoreSet;
+  frames: number;
+}
+
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17]
+];
+
+interface SeeItSignItRound {
   image: string;
   item: string;
   targetSign: number | string;
   referenceVideoUrl?: string | null;
 }
 
+interface SeeItSignItGroup {
+  id: number;
+  title: string;
+  rounds: SeeItSignItRound[];
+}
+
 // Fallback activities if backend is unreachable
-const DEFAULT_ACTIVITIES: ActivityItem[] = [
-  { id: 1, name: 'Number 1', image: '/images/1.png', item: 'Number 1', targetSign: 1 },
-  { id: 2, name: 'Number 2', image: '/images/2.png', item: 'Number 2', targetSign: 2 },
-  { id: 3, name: 'Number 3', image: '/images/3.png', item: 'Number 3', targetSign: 3 },
-  { id: 4, name: 'Number 4', image: '/images/4.png', item: 'Number 4', targetSign: 4 },
-  { id: 5, name: 'Number 5', image: '/images/5.png', item: 'Number 5', targetSign: 5 },
+const DEFAULT_ACTIVITY_GROUPS: SeeItSignItGroup[] = [
+  {
+    id: 1,
+    title: 'FSL Numbers Practice',
+    rounds: [
+      { image: '/images/1.png', item: 'Number 1', targetSign: 1 },
+      { image: '/images/2.png', item: 'Number 2', targetSign: 2 },
+      { image: '/images/3.png', item: 'Number 3', targetSign: 3 },
+      { image: '/images/4.png', item: 'Number 4', targetSign: 4 },
+      { image: '/images/5.png', item: 'Number 5', targetSign: 5 },
+    ]
+  }
 ];
 
 const PASS_THRESHOLD = 60;
 
 export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
-  const [activities, setActivities] = useState<ActivityItem[]>(DEFAULT_ACTIVITIES);
-  const [activeActivity, setActiveActivity] = useState<number | null>(null);
+  const [activityGroups, setActivityGroups] = useState<SeeItSignItGroup[]>(DEFAULT_ACTIVITY_GROUPS);
+  const [activeGroupId, setActiveGroupId] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Diagnostic Mode State & Refs
+  const [diagOn, setDiagOn] = useState<boolean>(false);
+  const [diagData, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
+  const diagRef = useRef(diagOn);
+  const landmarksRef = useRef<LandmarksData | null>(null);
+  const trailRef = useRef<{ x: number, y: number, a: number }[]>([]);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
 
   // Game state
   const [roundIndex, setRoundIndex] = useState(0);
@@ -86,28 +137,32 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
       // 1. Try relational activities with items first
       const remoteActivities = await fetchMiniGameActivities('see_it_sign_it');
       if (remoteActivities && remoteActivities.length > 0) {
-        const flatItems: ActivityItem[] = [];
-        remoteActivities.forEach((act) => {
+        const groups: SeeItSignItGroup[] = [];
+        remoteActivities.forEach((act, actIdx) => {
           if (act.see_it_sign_it_items && act.see_it_sign_it_items.length > 0) {
-            act.see_it_sign_it_items.forEach((item, itemIdx) => {
+            const rounds: SeeItSignItRound[] = act.see_it_sign_it_items.map((item) => {
               const signNum = parseInt(item.objective_answer, 10);
               const resolvedImage = resolveMediaUrl(item.objective_image_url) || `/images/${item.objective_answer}.png`;
               const resolvedVideo = resolveMediaUrl(item.reference_video_url);
 
-              flatItems.push({
-                id: flatItems.length + 1,
-                name: `${act.title} - Round ${itemIdx + 1}`,
+              return {
                 image: resolvedImage,
                 item: item.objective_answer,
                 targetSign: !isNaN(signNum) ? signNum : item.objective_answer,
                 referenceVideoUrl: resolvedVideo,
-              });
+              };
+            });
+
+            groups.push({
+              id: actIdx + 1,
+              title: act.title,
+              rounds,
             });
           }
         });
 
-        if (flatItems.length > 0) {
-          setActivities(flatItems);
+        if (groups.length > 0) {
+          setActivityGroups(groups);
           return;
         }
       }
@@ -115,36 +170,39 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
       // 2. Fallback to basic configs
       const remoteConfigs = await fetchMiniGameConfigs('see_it_sign_it');
       if (remoteConfigs && remoteConfigs.length > 0) {
-        const mapped: ActivityItem[] = remoteConfigs.map((cfg: MiniGameConfigItem, idx: number) => {
+        const rounds: SeeItSignItRound[] = remoteConfigs.map((cfg: MiniGameConfigItem) => {
           const signNum = parseInt(cfg.target_sign || '1', 10);
           return {
-            id: idx + 1,
-            name: cfg.title,
             image: cfg.prompt_image || `/images/${cfg.target_sign || '1'}.png`,
             item: cfg.hint_text || cfg.title,
             targetSign: !isNaN(signNum) ? signNum : 1,
           };
         });
-        setActivities(mapped);
+        setActivityGroups([{
+          id: 1,
+          title: 'See It Sign It Practice',
+          rounds,
+        }]);
       }
     }
     loadConfigs();
   }, []);
 
-  const totalRounds = activities.length > 0 ? activities.length : DEFAULT_ACTIVITIES.length;
-  const currentActivity = activities.find(a => a.id === activeActivity) || activities[0] || DEFAULT_ACTIVITIES[0];
+  const currentGroup = activityGroups.find(g => g.id === activeGroupId) || activityGroups[0] || DEFAULT_ACTIVITY_GROUPS[0];
+  const rounds = currentGroup.rounds || [];
+  const totalRounds = rounds.length;
+  const currentActivity = rounds[roundIndex] || rounds[0];
 
   // Filter activities for menu
-  const filteredActivities = activities.filter(act => {
-    return act.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           `activity ${act.id}`.includes(searchQuery.toLowerCase());
+  const filteredActivities = activityGroups.filter(grp => {
+    return grp.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           `activity ${grp.id}`.includes(searchQuery.toLowerCase());
   });
 
   // Handle start activity
   const handleStartActivity = (id: number) => {
-    setActiveActivity(id);
-    const foundIdx = activities.findIndex(a => a.id === id);
-    setRoundIndex(foundIdx >= 0 ? foundIdx : 0);
+    setActiveGroupId(id);
+    setRoundIndex(0);
     setScore(0);
     setStreak(0);
     setRoundPassed(false);
@@ -160,6 +218,165 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { currentActivityRef.current = currentActivity; }, [currentActivity]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
+
+  useEffect(() => {
+    diagRef.current = diagOn;
+    if (diagOn && wsRef.current?.readyState === WebSocket.OPEN && currentActivity) {
+      const stageNum = typeof currentActivity.targetSign === 'number' ? currentActivity.targetSign : 1;
+      wsRef.current.send(JSON.stringify({ 
+        action: 'start_diagnostic', 
+        stageId: stageNum,
+        activityType: 'see_it_sign_it'
+      }));
+    }
+  }, [currentActivity, diagOn]);
+
+  const toggleDiagnostic = () => {
+    const next = !diagOn;
+    setDiagOn(next);
+    diagRef.current = next;
+    if (next) {
+      trailRef.current = [];
+      if (wsRef.current?.readyState === WebSocket.OPEN && currentActivity) {
+        const stageNum = typeof currentActivity.targetSign === 'number' ? currentActivity.targetSign : 1;
+        wsRef.current.send(JSON.stringify({ 
+          action: 'start_diagnostic', 
+          stageId: stageNum,
+          activityType: 'see_it_sign_it'
+        }));
+      }
+    } else {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ action: 'stop_diagnostic' }));
+      }
+      setDiagData(null);
+    }
+  };
+
+  const triggerDevEvaluation = () => {
+    setIsEvaluating(true);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentActivity) {
+      const stageNum = typeof currentActivity.targetSign === 'number' ? currentActivity.targetSign : 1;
+      wsRef.current.send(JSON.stringify({ 
+        action: 'evaluate', 
+        stageId: stageNum,
+        stageName: currentActivity.item || `Sign ${stageNum}`,
+        activityType: 'see_it_sign_it'
+      }));
+    }
+  };
+
+  // Diagnostic Canvas Render Loop
+  useEffect(() => {
+    let raf: number;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      const canvas = overlayRef.current;
+      const video = videoRef.current;
+      if (!canvas || !video) return;
+
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+
+      if (!diagRef.current) return;
+
+      const lm = landmarksRef.current;
+      if (!lm || !lm.pose || !lm.hand) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.font = 'bold 16px Quicksand';
+        ctx.fillText('Waiting for skeleton...', 10, 24);
+        return;
+      }
+
+      const X = (x: number) => x * w;
+      const Y = (y: number) => y * h;
+
+      // Draw Pose (Shoulders & Nose)
+      const locOk = lm.scores.location >= 60;
+      const bodyLineColor = locOk ? '#E02EE0' : '#E5484D';
+      const bodyDotColor = locOk ? '#4A90E2' : '#8B0000';
+      const nose = lm.pose.nose;
+      const ls = lm.pose.leftShoulder;
+      const rs = lm.pose.rightShoulder;
+
+      ctx.strokeStyle = bodyLineColor;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (ls && rs && ls.x !== 0 && rs.x !== 0) {
+        ctx.beginPath();
+        ctx.moveTo(X(ls.x), Y(ls.y));
+        ctx.lineTo(X(rs.x), Y(rs.y));
+        ctx.stroke();
+
+        if (nose && nose.x !== 0) {
+          ctx.beginPath();
+          ctx.moveTo(X(nose.x), Y(nose.y));
+          ctx.lineTo(X(ls.x), Y(ls.y));
+          ctx.moveTo(X(nose.x), Y(nose.y));
+          ctx.lineTo(X(rs.x), Y(rs.y));
+          ctx.stroke();
+
+          ctx.fillStyle = bodyDotColor;
+          for (const p of [nose, ls, rs]) {
+            ctx.beginPath();
+            ctx.arc(X(p.x), Y(p.y), 6, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      }
+
+      // Draw Wrist Trail
+      if (trailRef.current.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(X(trailRef.current[0].x), Y(trailRef.current[0].y));
+        for (let i = 1; i < trailRef.current.length; i++) {
+          const pt = trailRef.current[i];
+          ctx.lineTo(X(pt.x), Y(pt.y));
+          pt.a *= 0.95;
+        }
+        ctx.strokeStyle = `rgba(245, 158, 11, 0.8)`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Draw Hand
+      if (lm.hand[0] && lm.hand[0].x !== 0) {
+        const handOk = Math.min(lm.scores.handshape, lm.scores.palmOrientation) >= 60;
+        const handLineColor = handOk ? '#39FF14' : '#E5484D';
+        const handDotColor = handOk ? '#FF0000' : '#8B0000';
+
+        ctx.strokeStyle = handLineColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (const [a, b] of HAND_CONNECTIONS) {
+          const p1 = lm.hand[a];
+          const p2 = lm.hand[b];
+          ctx.moveTo(X(p1.x), Y(p1.y));
+          ctx.lineTo(X(p2.x), Y(p2.y));
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = handDotColor;
+        for (const p of lm.hand) {
+          ctx.beginPath();
+          ctx.arc(X(p.x), Y(p.y), 4, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     if (view === 'game') {
@@ -194,6 +411,18 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
 
     const ws = new WebSocket('ws://127.0.0.1:8001/ws/evaluate');
     wsRef.current = ws;
+
+    ws.onopen = () => {
+      const curAct = currentActivityRef.current;
+      if (curAct) {
+        const stageNum = typeof curAct.targetSign === 'number' ? curAct.targetSign : 1;
+        ws.send(JSON.stringify({
+          action: 'start_diagnostic',
+          stageId: stageNum,
+          activityType: 'see_it_sign_it'
+        }));
+      }
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -276,6 +505,16 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
             }, 1000);
           }
         } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          if (data.action === 'landmarks') {
+            landmarksRef.current = data;
+            setDiagData({ scores: data.scores, frames: data.frames });
+          }
+          // Update wrist trail
+          if (data.hand && data.hand[0] && data.hand[0].x !== 0) {
+            trailRef.current.push({ x: data.hand[0].x, y: data.hand[0].y, a: 1.0 });
+            if (trailRef.current.length > 40) trailRef.current.shift();
+          }
+
           // Automatic hand detection engine identical to Lesson Proper
           const isHandDetected = Boolean(
             data.hand_detected ||
@@ -327,7 +566,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
                   ws.send(JSON.stringify({ 
                     action: 'evaluate', 
                     stageId: stageNum,
-                    stageName: curAct.item || curAct.name,
+                    stageName: curAct.item || `Sign ${stageNum}`,
                     activityType: 'see_it_sign_it'
                   }));
                 }
@@ -405,9 +644,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
     if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
 
     if (roundIndex < totalRounds - 1) {
-      const nextIdx = roundIndex + 1;
-      setRoundIndex(nextIdx);
-      setActiveActivity(activities[nextIdx]?.id || nextIdx + 1);
+      setRoundIndex(prev => prev + 1);
       setRoundPassed(false);
       setFeedbackError(null);
     } else {
@@ -425,6 +662,15 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
       }
       setView('results');
     }
+  };
+
+  const giveUpReveal = () => {
+    setShowDemoVideo(true);
+    setFeedbackError(null);
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    autoNextTimerRef.current = window.setTimeout(() => {
+      handleNextRound();
+    }, 3500);
   };
 
   // Menu Render
@@ -450,14 +696,19 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
             </div>
 
             <div className="sisi-activities">
-              {filteredActivities.map((act) => (
+              {filteredActivities.map((grp) => (
                 <button
-                  key={act.id}
+                  key={grp.id}
                   className="sisi-activity-btn"
-                  onClick={() => handleStartActivity(act.id)}
+                  onClick={() => handleStartActivity(grp.id)}
                 >
-                  <div className="sisi-activity-number">{act.id}</div>
-                  <span className="sisi-activity-text">{act.name}</span>
+                  <div className="sisi-activity-number">{grp.id}</div>
+                  <div className="sisi-activity-text-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <span className="sisi-activity-text">{grp.title}</span>
+                    <span style={{ fontSize: '0.8rem', color: '#666', fontWeight: 500 }}>
+                      {grp.rounds.length} {grp.rounds.length === 1 ? 'Round' : 'Rounds'}
+                    </span>
+                  </div>
                   <span className="sisi-activity-arrow">→</span>
                 </button>
               ))}
@@ -492,7 +743,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
           
           <div className="eval-title-block">
             <div className="eval-main-title">
-              Activity {activeActivity} - {currentActivity.name}
+              Activity {activeGroupId} - {currentGroup.title}
             </div>
             <div className="eval-progress-track">
               {Array.from({ length: totalRounds }).map((_, index) => (
@@ -510,6 +761,14 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
               onClick={() => startSeeItSignItTour()}
             >
               {"\u2753"} Guide
+            </button>
+            <button 
+              className={`eval-diag-toggle ${diagOn ? 'active' : ''}`} 
+              type="button" 
+              title="Toggle Diagnostics (Dev Mode)"
+              onClick={toggleDiagnostic}
+            >
+              {"\uD83D\uDD2C"}
             </button>
             <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { 
               sessionStorage.setItem('scrollToBug', 'true'); 
@@ -612,6 +871,39 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
                     )}
                   </div>
                 )}
+
+                {/* Diagnostic Skeleton Canvas Overlay */}
+                <canvas ref={overlayRef} className="eval-overlay-canvas" />
+
+                {diagOn && diagData && (
+                  <div className="eval-diag-panel">
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.handshape >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.handshape}</span>
+                      <span className="diag-stat-label">Hand</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.palmOrientation >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.palmOrientation}</span>
+                      <span className="diag-stat-label">Palm</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.location >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.location}</span>
+                      <span className="diag-stat-label">Loc</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className="diag-stat-value" style={{ color: '#F59E0B' }}>{diagData.frames}</span>
+                      <span className="diag-stat-label">Frames</span>
+                    </div>
+                    <button
+                      className="eval-dev-btn"
+                      type="button"
+                      onClick={triggerDevEvaluation}
+                      disabled={isEvaluating}
+                      style={{ margin: 0, padding: '4px 10px', background: '#334155', color: '#fff', border: '1px solid #64748b', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      🔬 Dev Grade
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Large Friendly Mascot sitting at bottom-left */}
@@ -635,7 +927,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
               {/* Floating Bottom Action Bar */}
               {attempts >= 3 && !roundPassed && (
                 <div className="mg-bottom-actions">
-                  <button className="ps-give-up-btn" type="button" onClick={() => setShowDemoVideo(true)}>
+                  <button className="ps-give-up-btn" type="button" onClick={giveUpReveal}>
                     💡 Show Answer
                   </button>
                 </div>
@@ -680,32 +972,6 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
                       (e.target as HTMLElement).style.display = 'none';
                       e.currentTarget.parentElement!.innerHTML = '<span class="sisi-fallback-emoji">🖐️</span>';
                   }}/>
-                  {currentActivity.referenceVideoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setShowDemoVideo(true)}
-                      style={{
-                        position: 'absolute',
-                        bottom: '12px',
-                        right: '12px',
-                        background: 'linear-gradient(135deg, #2EABFF 0%, #0084FF 100%)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '20px',
-                        padding: '8px 16px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(0,132,255,0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '0.9rem',
-                        zIndex: 10,
-                      }}
-                    >
-                      ▶ Watch Demo
-                    </button>
-                  )}
                 </div>
               )}
             </div>
@@ -732,8 +998,8 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
 
   // Results Render
   const renderResults = () => {
-    const playedRounds = activities.slice(0, totalRounds).map(a => ({
-      answerText: a.item
+    const playedRounds = rounds.map(r => ({
+      answerText: r.item
     }));
 
     return (
