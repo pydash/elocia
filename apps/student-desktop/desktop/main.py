@@ -68,6 +68,59 @@ diag_state = {
     "stage_id": None
 }
 
+def resolve_baseline_file(stage_id, activity_type="evaluation"):
+    """
+    Resolves the baseline JSON file from organized directories:
+    1. Minigames: baselines/minigames/<activity_type>/baseline_<id>.json
+    2. Lessons: baselines/lessons/baseline_<id>.json
+    3. Root fallback & backend storage fallback for complete compatibility
+    """
+    base_dirs = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), 'baselines')),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'backend', 'storage', 'baselines'))
+    ]
+
+    # Map raw numbers (1-10) to sign IDs (101-110) if needed
+    alt_ids = [str(stage_id)]
+    try:
+        num = int(stage_id)
+        if 1 <= num <= 10:
+            alt_ids.append(str(100 + num))
+        elif 101 <= num <= 110:
+            alt_ids.append(str(num - 100))
+    except (ValueError, TypeError):
+        pass
+
+    # Build prioritized candidate relative paths
+    candidate_paths = []
+    if activity_type in ["puzzle_sign", "see_it_sign_it", "magic_fingers"]:
+        # 1. Exact game folder
+        for sid in alt_ids:
+            candidate_paths.append(os.path.join("minigames", activity_type, f"baseline_{sid}.json"))
+        # 2. General minigames folder
+        for sid in alt_ids:
+            candidate_paths.append(os.path.join("minigames", f"baseline_{sid}.json"))
+        # 3. Lessons fallback
+        for sid in alt_ids:
+            candidate_paths.append(os.path.join("lessons", f"baseline_{sid}.json"))
+    else:
+        # Lesson proper
+        for sid in alt_ids:
+            candidate_paths.append(os.path.join("lessons", f"baseline_{sid}.json"))
+
+    # Also include flat root fallback
+    for sid in alt_ids:
+        candidate_paths.append(f"baseline_{sid}.json")
+
+    # Search candidates across desktop baselines and backend storage baselines
+    for bdir in base_dirs:
+        for rel in candidate_paths:
+            full_path = os.path.abspath(os.path.join(bdir, rel))
+            if os.path.exists(full_path):
+                return full_path
+
+    return None
+
 @app.websocket("/ws/evaluate")
 async def evaluate_endpoint(websocket: WebSocket):
     global student_sequence, diag_state
@@ -97,9 +150,9 @@ async def evaluate_endpoint(websocket: WebSocket):
 
             if payload.get('action') == 'start_diagnostic':
                 stage_id = payload.get('stageId', 1)
-                baseline_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'baselines', f'baseline_{stage_id}.json'))
-                if os.path.exists(baseline_file):
-                    with open(baseline_file, 'r') as f:
+                baseline_file = resolve_baseline_file(stage_id, "evaluation")
+                if baseline_file and os.path.exists(baseline_file):
+                    with open(baseline_file, 'r', encoding='utf-8') as f:
                         b_seq = json.load(f)
                         diag_state["baseline"] = b_seq
                         diag_state["mid"] = get_diagnostic_baseline(b_seq)
@@ -120,17 +173,13 @@ async def evaluate_endpoint(websocket: WebSocket):
                 tier_level = payload.get('tierLevel', 1)
                 activity_type = payload.get('activityType', "evaluation")
 
-                # Look for baseline file in desktop/baselines first, then fallback to backend/storage/baselines
-                baseline_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'baselines', f'baseline_{stage_id}.json'))
-                if not os.path.exists(baseline_file):
-                    backend_baseline = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'backend', 'storage', 'baselines', f'baseline_{stage_id}.json'))
-                    if os.path.exists(backend_baseline):
-                        baseline_file = backend_baseline
+                # Resolve baseline from organized folders (minigames vs lessons)
+                baseline_file = resolve_baseline_file(stage_id, activity_type)
                 
-                if not os.path.exists(baseline_file):
+                if not baseline_file or not os.path.exists(baseline_file):
                     await websocket.send_json({
                         "action": "error",
-                        "error": f"Baseline reference not found for stage {stage_id}."
+                        "error": f"Baseline reference not found for {activity_type} sign {stage_id}."
                     })
                     student_sequence = []
                     frame_timestamps = []

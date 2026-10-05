@@ -100,7 +100,6 @@ interface ScoreSet {
 }
 
 const MISSING_BASELINE_MSG = "This round's reference is missing. Ask your teacher to upload it!";
-const NOT_CONNECTED_MSG = "Not connected to the scoring server. Is the desktop app running?";
 
 export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
@@ -112,18 +111,29 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0); // Added streak tracking
   const [attempts, setAttempts] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [lastResult, setLastResult] = useState<{ passed: boolean; overall: number; scores: ScoreSet } | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [baselineError, setBaselineError] = useState<string | null>(null);
   const [showDemoVideo, setShowDemoVideo] = useState(false);
 
+  // Auto-evaluation engine state matching EvaluationSession
+  type AutoState = 'idle' | 'ready' | 'signing' | 'grading' | 'cooldown' | 'passed';
+  const [autoState, setAutoState] = useState<AutoState>('idle');
+  const autoStateRef = useRef<AutoState>('idle');
+  const holdStartRef = useRef<number | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const cooldownTimerRef = useRef<number | null>(null);
+  const consecutiveMissRef = useRef(0);
+  const hasPassedRef = useRef(false);
+
   const isEvaluatingRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const recordingTimerRef = useRef<number | null>(null);
+  const autoNextTimerRef = useRef<number | null>(null);
 
   const [puzzleActivities, setPuzzleActivities] = useState<Record<number, PuzzleRound[]>>(PUZZLE_ACTIVITIES);
   const [activityTitles, setActivityTitles] = useState<Record<number, string>>({});
@@ -186,31 +196,21 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
       setView('camera-check');
     };
 
-  const triggerEvaluation = () => {
-    if (!currentRound) return;
-    setBaselineError(null);
-    setLastResult(null);
-    setIsRecording(true);
-
-    // Tell the backend to discard any old frames
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ action: 'clear' }));
-    }
-
-    // Give the student 3 seconds to perform the sign while frames stream
-    recordingTimerRef.current = window.setTimeout(() => {
-      setIsRecording(false);
-      setIsEvaluating(true);
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ action: 'evaluate', stageId: currentRound.answer }));
-      } else {
-        setIsEvaluating(false);
-        setBaselineError(NOT_CONNECTED_MSG);
-      }
-    }, 3000);
-  };
+  const currentRoundRef = useRef(currentRound);
+  useEffect(() => { currentRoundRef.current = currentRound; }, [currentRound]);
 
   const handleNextRound = () => {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    hasPassedRef.current = false;
+    setAutoState('idle');
+    autoStateRef.current = 'idle';
+    setHoldProgress(0);
+    holdStartRef.current = null;
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+
     if (roundIndex < rounds.length - 1) {
       setRoundIndex(prev => prev + 1);
       setAttempts(0);
@@ -236,8 +236,9 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   };
 
   const giveUpReveal = () => {
-    // After 3 failed attempts the round is revealed for free (0 XP)
+    // After 3 failed attempts the student can reveal the answer
     setRevealed(true);
+    setShowDemoVideo(true);
     setBaselineError(null);
   };
 
@@ -305,6 +306,16 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.action === 'error' || data.error) {
+          setIsEvaluating(false);
+          setAutoState('idle');
+          autoStateRef.current = 'idle';
+          setHoldProgress(0);
+          holdStartRef.current = null;
+          setBaselineError(data.error || MISSING_BASELINE_MSG);
+          return;
+        }
+
         if (data.action === 'result') {
           const scores: ScoreSet = data.scores;
           const overall = data.overall;
@@ -315,47 +326,141 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             scores.location >= PASS_THRESHOLD &&
             scores.movement >= PASS_THRESHOLD;
 
-            setIsEvaluating(false);
-            setLastResult({ passed, overall, scores });
-            setAttempts(prev => prev + 1);
-
-            const currentStreak = streakRef.current;
-            let earned = 0;
-
-            if (passed) {
-              const multiplier = 1 + (currentStreak * 0.2);
-              earned = Math.round(overall * multiplier);
-              setScore(prev => {
-                const nextScore = prev + earned;
-                if (nextScore >= 500) {
-                  try {
-                    localStorage.setItem('elocia_game_score_500', 'true');
-                  } catch (err) {
-                    console.warn('Failed to save game_score_500:', err);
-                  }
-                }
-                return nextScore;
-              });
-              setStreak(prev => {
-                const nextStreak = prev + 1;
-                try {
-                  const savedMax = parseInt(localStorage.getItem('elocia_puzzle_streak') || '0', 10);
-                  if (nextStreak > savedMax) {
-                    localStorage.setItem('elocia_puzzle_streak', nextStreak.toString());
-                  }
-                } catch (err) {
-                  console.warn('Failed to save puzzle streak:', err);
-                }
-                return nextStreak;
-              });
-            } else {
-              setStreak(0); // Reset streak on incorrect sign
-            }
-          } else if (data.error) {
-          // e.g. "Baseline not found for stage 2" -> friendly message
           setIsEvaluating(false);
-          setIsRecording(false);
-          setBaselineError(MISSING_BASELINE_MSG);
+          setLastResult({ passed, overall, scores });
+          setAttempts(prev => prev + 1);
+
+          const currentStreak = streakRef.current;
+          let earned = 0;
+
+          if (passed) {
+            hasPassedRef.current = true;
+            setAutoState('passed');
+            autoStateRef.current = 'passed';
+            setBaselineError(null);
+
+            const multiplier = 1 + (currentStreak * 0.2);
+            earned = Math.round(overall * multiplier);
+            setScore(prev => {
+              const nextScore = prev + earned;
+              if (nextScore >= 500) {
+                try {
+                  localStorage.setItem('elocia_game_score_500', 'true');
+                } catch (err) {
+                  console.warn('Failed to save game_score_500:', err);
+                }
+              }
+              return nextScore;
+            });
+            setStreak(prev => {
+              const nextStreak = prev + 1;
+              try {
+                const savedMax = parseInt(localStorage.getItem('elocia_puzzle_streak') || '0', 10);
+                if (nextStreak > savedMax) {
+                  localStorage.setItem('elocia_puzzle_streak', nextStreak.toString());
+                }
+              } catch (err) {
+                console.warn('Failed to save puzzle streak:', err);
+              }
+              return nextStreak;
+            });
+
+            // Automatically advance to the next round after celebration (2.5s)
+            if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+            autoNextTimerRef.current = window.setTimeout(() => {
+              handleNextRound();
+            }, 2500);
+          } else {
+            hasPassedRef.current = false;
+            setStreak(0); // Reset streak on incorrect sign
+            setAutoState('cooldown');
+            autoStateRef.current = 'cooldown';
+            setHoldProgress(0);
+            holdStartRef.current = null;
+            setCooldownRemaining(2);
+
+            if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+            let rem = 2;
+            cooldownTimerRef.current = window.setInterval(() => {
+              rem -= 1;
+              setCooldownRemaining(rem);
+              if (rem <= 0) {
+                if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+                if (!hasPassedRef.current) {
+                  setAutoState('idle');
+                  autoStateRef.current = 'idle';
+                }
+              }
+            }, 1000);
+          }
+        } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          // Automatic hand detection engine identical to Lesson Proper
+          const isHandDetected = Boolean(
+            data.hand_detected ||
+            (data.hand && data.hand[0] && data.hand[0].x !== 0)
+          );
+
+          if (hasPassedRef.current || autoStateRef.current === 'grading' || autoStateRef.current === 'cooldown' || autoStateRef.current === 'passed') {
+            return;
+          }
+
+          if (isHandDetected) {
+            consecutiveMissRef.current = 0;
+            if (autoStateRef.current === 'idle') {
+              setAutoState('ready');
+              autoStateRef.current = 'ready';
+              holdStartRef.current = Date.now();
+              setHoldProgress(0);
+            } else if (autoStateRef.current === 'ready') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const READY_DURATION = 1000; // 1s ready countdown
+              const progress = Math.min(100, Math.round((elapsed / READY_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= READY_DURATION) {
+                // Transition into active dynamic signing window!
+                setAutoState('signing');
+                autoStateRef.current = 'signing';
+                holdStartRef.current = Date.now();
+                setHoldProgress(0);
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ action: 'clear' }));
+                }
+              }
+            } else if (autoStateRef.current === 'signing') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
+              const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= SIGN_DURATION) {
+                setAutoState('grading');
+                autoStateRef.current = 'grading';
+                setIsEvaluating(true);
+                holdStartRef.current = null;
+
+                const curR = currentRoundRef.current;
+                if (ws.readyState === WebSocket.OPEN && curR) {
+                  ws.send(JSON.stringify({ 
+                    action: 'evaluate', 
+                    stageId: curR.answer,
+                    stageName: curR.answerText || `Number ${curR.answer}`,
+                    activityType: 'puzzle_sign'
+                  }));
+                }
+              }
+            }
+          } else {
+            if (autoStateRef.current === 'ready') {
+              consecutiveMissRef.current += 1;
+              if (consecutiveMissRef.current >= 3) {
+                setAutoState('idle');
+                autoStateRef.current = 'idle';
+                setHoldProgress(0);
+                holdStartRef.current = null;
+              }
+            }
+          }
         }
       } catch (err) {
         console.error('WebSocket parse error:', err);
@@ -390,11 +495,14 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
         clearTimeout(recordingTimerRef.current);
         recordingTimerRef.current = null;
       }
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+        autoNextTimerRef.current = null;
+      }
       if (stream) stream.getTracks().forEach((t) => t.stop());
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
-      setIsRecording(false);
       setIsEvaluating(false);
     };
   }, [view]);
@@ -498,8 +606,8 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
               <h2>{currentRound?.instruction ?? 'Can you guess the blank "?"'}</h2>
             </div>
 
-            <div className="eval-camera-wrapper" style={{ marginBottom: 0 }}>
-              <div className="eval-camera-card" style={{ position: 'relative' }}>
+            <div className="eval-camera-wrapper">
+              <div className={`eval-camera-card eval-camera-card--${autoState}`} style={{ position: 'relative' }}>
                 <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
                 <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
 
@@ -509,59 +617,107 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                   <div className="ch-circle"></div>
                 </div>
 
-                {isRecording && (
-                  <div className="ps-recording-badge">
-                    <span className="ps-recording-dot" />
-                    Sign the number {currentAnswer}!
-                  </div>
-                )}
+                {/* Real-time automatic grading HUD - Child-friendly, identical to Lesson Proper */}
+                {!roundPassed && (
+                  <div className={`eval-grading-hud hud-${autoState}`}>
+                    {autoState === 'idle' && (
+                      <div className="hud-badge hud-idle-badge">
+                        <span className="hud-icon pulse-hand">✋</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Show your hand to begin!</span>
+                          <span className="hud-sub-text">Hold it up high so the camera can see!</span>
+                        </div>
+                      </div>
+                    )}
 
-                {baselineError && (
-                  <div className="ps-baseline-error">⚠ {baselineError}</div>
+                    {autoState === 'ready' && (
+                      <div className="hud-badge hud-ready-badge">
+                        <span className="hud-icon pulse-target">🎯</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Get Ready!</span>
+                          <span className="hud-sub-text">Starting in 1... 🎬</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'signing' && (
+                      <div className="hud-badge hud-signing-badge">
+                        <div className="hud-countdown-ring">
+                          <svg viewBox="0 0 36 36" className="circular-chart">
+                            <path className="circle-bg"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                            <path className="circle circle-signing"
+                              strokeDasharray={`${holdProgress}, 100`}
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                          </svg>
+                          <span className="countdown-number">
+                            {Math.max(1, Math.ceil((100 - holdProgress) / 35))}
+                          </span>
+                        </div>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">🎬 Sign the number {currentAnswer}!</span>
+                          <span className="hud-sub-text">Move your hand clearly in frame... ✨</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'grading' && (
+                      <div className="hud-badge hud-grading-badge">
+                        <span className="hud-icon rotating-star">✨</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Checking your sign!</span>
+                          <span className="hud-sub-text">Looking at your fingers and palm... 🔍</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'cooldown' && (
+                      <div className="hud-badge hud-cooldown-badge">
+                        <span className="hud-icon">⏱️</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Try again in {cooldownRemaining}s!</span>
+                          <span className="hud-sub-text">Shake your hands and get ready!</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {baselineError && (
+                      <div className="hud-error-banner">
+                        <span>⚠️ {baselineError}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
+              {/* Large Friendly Mascot sitting at bottom-left */}
+              {!answerShown && (
+                <div className="mg-mascot-wrap">
+                  <img 
+                    src={wonderMascot} 
+                    alt="Mascot" 
+                    className="mg-mascot-img"
+                  />
+                </div>
+              )}
+
+              {/* Celebration Mascot on passing */}
               {answerShown && (
                 <div className="correct-mascot-container">
                   <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
                 </div>
               )}
-            </div>
 
-            <div className="ps-bottom-controls">
-              <div className="ps-mascot-area">
-                {!answerShown && (
-                  <img 
-                    src={wonderMascot} 
-                    alt="Mascot" 
-                    className="ps-mascot-img"
-                  />
-                )}
-              </div>
-              
-              <div className="ps-button-area">
-                {maxedAttempts && (
+              {/* Floating Bottom Action Bar */}
+              {maxedAttempts && (
+                <div className="mg-bottom-actions">
                   <button className="ps-give-up-btn" type="button" onClick={giveUpReveal}>
-                    Show me the answer
+                    💡 Show Answer
                   </button>
-                )}
-                
-                {answerShown ? (
-                  <button className="eval-next-btn ps-action-btn" type="button" onClick={handleNextRound}>
-                    Next
-                  </button>
-                ) : (
-                  <button
-                    className="eval-next-btn ps-action-btn"
-                    style={{ backgroundColor: '#2EABFF' }}
-                    type="button"
-                    onClick={triggerEvaluation}
-                    disabled={isEvaluating || isRecording}
-                  >
-                    {isRecording ? 'Recording...' : isEvaluating ? 'Grading...' : 'Check My Sign'}
-                  </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </section>
 

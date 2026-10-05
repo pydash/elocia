@@ -10,6 +10,7 @@ import {
   type MiniGameConfigItem
 } from '../../utils/api';
 import './SeeItSignIt.css';
+import './Puzzle Sign.css';
 import '../../pages/Evaluation/EvaluationSession.css';
 import { startSeeItSignItTour, stopCurrentTour } from '../../utils/activityTours';
 
@@ -43,7 +44,6 @@ const DEFAULT_ACTIVITIES: ActivityItem[] = [
 ];
 
 const PASS_THRESHOLD = 60;
-const NOT_CONNECTED_MSG = "Not connected to the scoring server. Is the desktop app running?";
 
 export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
@@ -56,17 +56,29 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(300);
   const [streak, setStreak] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [roundPassed, setRoundPassed] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showDemoVideo, setShowDemoVideo] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+
+  // Auto-evaluation engine state matching EvaluationSession
+  type AutoState = 'idle' | 'ready' | 'signing' | 'grading' | 'cooldown' | 'passed';
+  const [autoState, setAutoState] = useState<AutoState>('idle');
+  const autoStateRef = useRef<AutoState>('idle');
+  const holdStartRef = useRef<number | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const cooldownTimerRef = useRef<number | null>(null);
+  const consecutiveMissRef = useRef(0);
+  const hasPassedRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const isEvaluatingRef = useRef(false);
   const recordingTimerRef = useRef<number | null>(null);
+  const autoNextTimerRef = useRef<number | null>(null);
 
   // Fetch dynamic game configurations and items from the backend
   useEffect(() => {
@@ -142,9 +154,11 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
 
   const streakRef = useRef(streak);
   const scoreRef = useRef(score);
+  const currentActivityRef = useRef(currentActivity);
 
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { currentActivityRef.current = currentActivity; }, [currentActivity]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
 
   useEffect(() => {
@@ -184,6 +198,16 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.action === 'error' || data.error) {
+          setIsEvaluating(false);
+          setAutoState('idle');
+          autoStateRef.current = 'idle';
+          setHoldProgress(0);
+          holdStartRef.current = null;
+          setFeedbackError(data.error || "Sign baseline reference not found for this round.");
+          return;
+        }
+
         if (data.action === 'result') {
           setIsEvaluating(false);
           const scores = data.scores;
@@ -196,6 +220,9 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
             scores.movement >= PASS_THRESHOLD;
 
           if (passed) {
+            hasPassedRef.current = true;
+            setAutoState('passed');
+            autoStateRef.current = 'passed';
             setRoundPassed(true);
             setFeedbackError(null);
             const currentStreak = streakRef.current;
@@ -216,15 +243,107 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
             } catch (err) {
               console.warn('Failed to save see-it-sign-it rounds:', err);
             }
+
+            // Automatically advance to the next round after celebration (2.5s)
+            if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+            autoNextTimerRef.current = window.setTimeout(() => {
+              handleNextRound();
+            }, 2500);
           } else {
+            hasPassedRef.current = false;
             setRoundPassed(false);
+            setAttempts(prev => prev + 1);
             setStreak(0); // V4.1 rule: Reset streak on incorrect answer
             setFeedbackError("Keep trying! Make sure your hand shape matches the sign.");
+            setAutoState('cooldown');
+            autoStateRef.current = 'cooldown';
+            setHoldProgress(0);
+            holdStartRef.current = null;
+            setCooldownRemaining(2);
+
+            if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+            let rem = 2;
+            cooldownTimerRef.current = window.setInterval(() => {
+              rem -= 1;
+              setCooldownRemaining(rem);
+              if (rem <= 0) {
+                if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+                if (!hasPassedRef.current) {
+                  setAutoState('idle');
+                  autoStateRef.current = 'idle';
+                }
+              }
+            }, 1000);
           }
-        } else if (data.error) {
-          setIsEvaluating(false);
-          setIsRecording(false);
-          setFeedbackError("Sign baseline reference not found for this round.");
+        } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          // Automatic hand detection engine identical to Lesson Proper
+          const isHandDetected = Boolean(
+            data.hand_detected ||
+            (data.hand && data.hand[0] && data.hand[0].x !== 0)
+          );
+
+          if (hasPassedRef.current || autoStateRef.current === 'grading' || autoStateRef.current === 'cooldown' || autoStateRef.current === 'passed') {
+            return;
+          }
+
+          if (isHandDetected) {
+            consecutiveMissRef.current = 0;
+            if (autoStateRef.current === 'idle') {
+              setAutoState('ready');
+              autoStateRef.current = 'ready';
+              holdStartRef.current = Date.now();
+              setHoldProgress(0);
+            } else if (autoStateRef.current === 'ready') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const READY_DURATION = 1000; // 1s ready countdown
+              const progress = Math.min(100, Math.round((elapsed / READY_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= READY_DURATION) {
+                // Transition into active dynamic signing window!
+                setAutoState('signing');
+                autoStateRef.current = 'signing';
+                holdStartRef.current = Date.now();
+                setHoldProgress(0);
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ action: 'clear' }));
+                }
+              }
+            } else if (autoStateRef.current === 'signing') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
+              const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= SIGN_DURATION) {
+                setAutoState('grading');
+                autoStateRef.current = 'grading';
+                setIsEvaluating(true);
+                holdStartRef.current = null;
+
+                const curAct = currentActivityRef.current;
+                if (ws.readyState === WebSocket.OPEN && curAct) {
+                  const stageNum = typeof curAct.targetSign === 'number' ? curAct.targetSign : 1;
+                  ws.send(JSON.stringify({ 
+                    action: 'evaluate', 
+                    stageId: stageNum,
+                    stageName: curAct.item || curAct.name,
+                    activityType: 'see_it_sign_it'
+                  }));
+                }
+              }
+            }
+          } else {
+            if (autoStateRef.current === 'ready') {
+              consecutiveMissRef.current += 1;
+              if (consecutiveMissRef.current >= 3) {
+                setAutoState('idle');
+                autoStateRef.current = 'idle';
+                setHoldProgress(0);
+                holdStartRef.current = null;
+              }
+            }
+          }
         }
       } catch (err) {
         console.error('WebSocket parse error:', err);
@@ -259,39 +378,32 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
         clearTimeout(recordingTimerRef.current);
         recordingTimerRef.current = null;
       }
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+        autoNextTimerRef.current = null;
+      }
       if (stream) stream.getTracks().forEach(t => t.stop());
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
-      setIsRecording(false);
       setIsEvaluating(false);
     };
   }, [view]);
 
-  const triggerEvaluation = () => {
-    setFeedbackError(null);
-    setRoundPassed(false);
-    setIsRecording(true);
-
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ action: 'clear' }));
-    }
-
-    // 3 seconds window to capture student sign
-    recordingTimerRef.current = window.setTimeout(() => {
-      setIsRecording(false);
-      setIsEvaluating(true);
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        const stageNum = typeof currentActivity.targetSign === 'number' ? currentActivity.targetSign : 1;
-        wsRef.current.send(JSON.stringify({ action: 'evaluate', stageId: stageNum }));
-      } else {
-        setIsEvaluating(false);
-        setFeedbackError(NOT_CONNECTED_MSG);
-      }
-    }, 3000);
-  };
-
   const handleNextRound = () => {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    hasPassedRef.current = false;
+    setAutoState('idle');
+    autoStateRef.current = 'idle';
+    setHoldProgress(0);
+    holdStartRef.current = null;
+    setAttempts(0);
+    setShowDemoVideo(false);
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+
     if (roundIndex < totalRounds - 1) {
       const nextIdx = roundIndex + 1;
       setRoundIndex(nextIdx);
@@ -406,74 +518,128 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
           </div>
         </header>
 
-        <main className="eval-main-row sisi-game-main">
-          <img src={cloud1Img} alt="Cloud" className="sisi-cloud-overlay" />
+        <main className="eval-main-row" style={{ backgroundImage: `url('/images/Grass.png')`, backgroundPosition: 'bottom', backgroundRepeat: 'no-repeat', backgroundSize: '100% 20%' }}>
+          <img src={cloud1Img} alt="Cloud" style={{ position: 'absolute', top: 50, left: '10%', opacity: 0.8, width: 150 }} />
           
           {/* Left Column */}
           <section className="eval-left-col">
-            <div className="eval-instruction-card sisi-instruction-card">
+            <div className="eval-instruction-card">
               <span className="eval-instruction-tag">Target Sign:</span>
               <h2 className="sisi-item-name">{itemShown}</h2>
             </div>
 
-            <div className="eval-camera-wrapper sisi-camera-wrapper">
-              <div className="eval-camera-card sisi-camera-card">
+            <div className="eval-camera-wrapper">
+              <div className={`eval-camera-card eval-camera-card--${autoState}`} style={{ position: 'relative' }}>
                 <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
                 <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
 
-                <div className="sisi-crosshair">
-                  <div className="sisi-ch-line sisi-ch-h"></div>
-                  <div className="sisi-ch-line sisi-ch-v"></div>
-                  <div className="sisi-ch-circle"></div>
+                <div className="ps-crosshair">
+                  <div className="ch-line ch-h"></div>
+                  <div className="ch-line ch-v"></div>
+                  <div className="ch-circle"></div>
                 </div>
 
-                {isRecording && (
-                  <div className="ps-recording-badge">
-                    <span className="ps-recording-dot" />
-                    Signing in progress... Keep steady!
-                  </div>
-                )}
+                {/* Real-time automatic grading HUD - Child-friendly, identical to Lesson Proper */}
+                {!roundPassed && (
+                  <div className={`eval-grading-hud hud-${autoState}`}>
+                    {autoState === 'idle' && (
+                      <div className="hud-badge hud-idle-badge">
+                        <span className="hud-icon pulse-hand">✋</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Show your hand to begin!</span>
+                          <span className="hud-sub-text">Hold it up high so the camera can see!</span>
+                        </div>
+                      </div>
+                    )}
 
-                {feedbackError && (
-                  <div className="ps-baseline-error">⚠ {feedbackError}</div>
+                    {autoState === 'ready' && (
+                      <div className="hud-badge hud-ready-badge">
+                        <span className="hud-icon pulse-target">🎯</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Get Ready!</span>
+                          <span className="hud-sub-text">Starting in 1... 🎬</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'signing' && (
+                      <div className="hud-badge hud-signing-badge">
+                        <div className="hud-countdown-ring">
+                          <svg viewBox="0 0 36 36" className="circular-chart">
+                            <path className="circle-bg"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                            <path className="circle circle-signing"
+                              strokeDasharray={`${holdProgress}, 100`}
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                          </svg>
+                          <span className="countdown-number">
+                            {Math.max(1, Math.ceil((100 - holdProgress) / 35))}
+                          </span>
+                        </div>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">🎬 Sign "{itemShown}" now!</span>
+                          <span className="hud-sub-text">Move your hand clearly in frame... ✨</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'grading' && (
+                      <div className="hud-badge hud-grading-badge">
+                        <span className="hud-icon rotating-star">✨</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Checking your sign!</span>
+                          <span className="hud-sub-text">Looking at your fingers and palm... 🔍</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'cooldown' && (
+                      <div className="hud-badge hud-cooldown-badge">
+                        <span className="hud-icon">⏱️</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Try again in {cooldownRemaining}s!</span>
+                          <span className="hud-sub-text">Shake your hands and get ready!</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {feedbackError && (
+                      <div className="hud-error-banner">
+                        <span>⚠️ {feedbackError}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {roundPassed && (
+              {/* Large Friendly Mascot sitting at bottom-left */}
+              {!(roundPassed || showDemoVideo) && (
+                <div className="mg-mascot-wrap">
+                  <img 
+                    src={wonderMascot} 
+                    alt="Mascot" 
+                    className="mg-mascot-img"
+                  />
+                </div>
+              )}
+
+              {/* Celebration Mascot on passing */}
+              {(roundPassed || showDemoVideo) && (
                 <div className="correct-mascot-container">
                   <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
                 </div>
               )}
-            </div>
 
-            <div className="ps-bottom-controls">
-              <div className="sisi-mascot-area">
-                {!roundPassed && (
-                  <img 
-                    src={wonderMascot} 
-                    alt="Mascot" 
-                    className="sisi-mascot-img"
-                  />
-                )}
-              </div>
-
-              <div className="ps-button-area">
-                {roundPassed ? (
-                  <button className="eval-next-btn ps-action-btn" type="button" onClick={handleNextRound}>
-                    Next Round
+              {/* Floating Bottom Action Bar */}
+              {attempts >= 3 && !roundPassed && (
+                <div className="mg-bottom-actions">
+                  <button className="ps-give-up-btn" type="button" onClick={() => setShowDemoVideo(true)}>
+                    💡 Show Answer
                   </button>
-                ) : (
-                  <button
-                    className="eval-next-btn ps-action-btn"
-                    style={{ backgroundColor: '#2EABFF' }}
-                    type="button"
-                    onClick={triggerEvaluation}
-                    disabled={isEvaluating || isRecording}
-                  >
-                    {isRecording ? 'Recording...' : isEvaluating ? 'Grading...' : 'Check My Sign'}
-                  </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </section>
 
