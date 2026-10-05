@@ -359,34 +359,5 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-.mf-sub-progress {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.mf-sub-pill {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #E5E7EB;
-  border: 2px solid #D1D5DB;
-  transition: all 0.3s ease;
-}
-
-.mf-sub-pill.active {
-  background: #3B82F6;
-  border-color: #2563EB;
-  transform: scale(1.25);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
-}
-
-.mf-sub-pill.done {
-  background: #10B981;
-  border-color: #059669;
-}
-
 
 

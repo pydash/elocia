@@ -99,6 +99,32 @@ interface ScoreSet {
   movement: number;
 }
 
+interface Point3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface LandmarksData {
+  hand: Point3D[];
+  pose: {
+    nose: Point3D;
+    leftShoulder: Point3D;
+    rightShoulder: Point3D;
+  };
+  scores: ScoreSet;
+  frames: number;
+}
+
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17]
+];
+
 const MISSING_BASELINE_MSG = "This round's reference is missing. Ask your teacher to upload it!";
 
 export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
@@ -116,6 +142,14 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   const [revealed, setRevealed] = useState(false);
   const [baselineError, setBaselineError] = useState<string | null>(null);
   const [showDemoVideo, setShowDemoVideo] = useState(false);
+
+  // Diagnostic Mode State & Refs
+  const [diagOn, setDiagOn] = useState<boolean>(false);
+  const [diagData, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
+  const diagRef = useRef(diagOn);
+  const landmarksRef = useRef<LandmarksData | null>(null);
+  const trailRef = useRef<{ x: number, y: number, a: number }[]>([]);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
 
   // Auto-evaluation engine state matching EvaluationSession
   type AutoState = 'idle' | 'ready' | 'signing' | 'grading' | 'cooldown' | 'passed';
@@ -240,6 +274,12 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     setRevealed(true);
     setShowDemoVideo(true);
     setBaselineError(null);
+
+    // After showing the answer and demo, automatically advance to next round
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    autoNextTimerRef.current = window.setTimeout(() => {
+      handleNextRound();
+    }, 3500);
   };
 
   // Dev helper callable from the browser console (same convention as
@@ -265,6 +305,162 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   useEffect(() => {
     isEvaluatingRef.current = isEvaluating;
   }, [isEvaluating]);
+
+  useEffect(() => {
+    diagRef.current = diagOn;
+    if (diagOn && wsRef.current?.readyState === WebSocket.OPEN && currentRound) {
+      wsRef.current.send(JSON.stringify({ 
+        action: 'start_diagnostic', 
+        stageId: currentRound.answer,
+        activityType: 'puzzle_sign'
+      }));
+    }
+  }, [currentRound, diagOn]);
+
+  const toggleDiagnostic = () => {
+    const next = !diagOn;
+    setDiagOn(next);
+    diagRef.current = next;
+    if (next) {
+      trailRef.current = [];
+      if (wsRef.current?.readyState === WebSocket.OPEN && currentRound) {
+        wsRef.current.send(JSON.stringify({ 
+          action: 'start_diagnostic', 
+          stageId: currentRound.answer,
+          activityType: 'puzzle_sign'
+        }));
+      }
+    } else {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ action: 'stop_diagnostic' }));
+      }
+      setDiagData(null);
+    }
+  };
+
+  const triggerDevEvaluation = () => {
+    setIsEvaluating(true);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentRound) {
+      wsRef.current.send(JSON.stringify({ 
+        action: 'evaluate', 
+        stageId: currentRound.answer,
+        stageName: currentRound.answerText || `Number ${currentRound.answer}`,
+        activityType: 'puzzle_sign'
+      }));
+    }
+  };
+
+  // Diagnostic Canvas Render Loop
+  useEffect(() => {
+    let raf: number;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      const canvas = overlayRef.current;
+      const video = videoRef.current;
+      if (!canvas || !video) return;
+
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+
+      if (!diagRef.current) return;
+
+      const lm = landmarksRef.current;
+      if (!lm || !lm.pose || !lm.hand) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.font = 'bold 16px Quicksand';
+        ctx.fillText('Waiting for skeleton...', 10, 24);
+        return;
+      }
+
+      const X = (x: number) => x * w;
+      const Y = (y: number) => y * h;
+
+      // Draw Pose (Shoulders & Nose)
+      const locOk = lm.scores.location >= 60;
+      const bodyLineColor = locOk ? '#E02EE0' : '#E5484D';
+      const bodyDotColor = locOk ? '#4A90E2' : '#8B0000';
+      const nose = lm.pose.nose;
+      const ls = lm.pose.leftShoulder;
+      const rs = lm.pose.rightShoulder;
+
+      ctx.strokeStyle = bodyLineColor;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (ls && rs && ls.x !== 0 && rs.x !== 0) {
+        ctx.beginPath();
+        ctx.moveTo(X(ls.x), Y(ls.y));
+        ctx.lineTo(X(rs.x), Y(rs.y));
+        ctx.stroke();
+
+        if (nose && nose.x !== 0) {
+          ctx.beginPath();
+          ctx.moveTo(X(nose.x), Y(nose.y));
+          ctx.lineTo(X(ls.x), Y(ls.y));
+          ctx.moveTo(X(nose.x), Y(nose.y));
+          ctx.lineTo(X(rs.x), Y(rs.y));
+          ctx.stroke();
+
+          ctx.fillStyle = bodyDotColor;
+          for (const p of [nose, ls, rs]) {
+            ctx.beginPath();
+            ctx.arc(X(p.x), Y(p.y), 6, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      }
+
+      // Draw Wrist Trail
+      if (trailRef.current.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(X(trailRef.current[0].x), Y(trailRef.current[0].y));
+        for (let i = 1; i < trailRef.current.length; i++) {
+          const pt = trailRef.current[i];
+          ctx.lineTo(X(pt.x), Y(pt.y));
+          pt.a *= 0.95;
+        }
+        ctx.strokeStyle = `rgba(245, 158, 11, 0.8)`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Draw Hand
+      if (lm.hand[0] && lm.hand[0].x !== 0) {
+        const handOk = Math.min(lm.scores.handshape, lm.scores.palmOrientation) >= 60;
+        const handLineColor = handOk ? '#39FF14' : '#E5484D';
+        const handDotColor = handOk ? '#FF0000' : '#8B0000';
+
+        ctx.strokeStyle = handLineColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (const [a, b] of HAND_CONNECTIONS) {
+          const p1 = lm.hand[a];
+          const p2 = lm.hand[b];
+          ctx.moveTo(X(p1.x), Y(p1.y));
+          ctx.lineTo(X(p2.x), Y(p2.y));
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = handDotColor;
+        for (const p of lm.hand) {
+          ctx.beginPath();
+          ctx.arc(X(p.x), Y(p.y), 4, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     if (view === 'game') {
@@ -302,6 +498,17 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
 
     const ws = new WebSocket('ws://127.0.0.1:8001/ws/evaluate');
     wsRef.current = ws;
+
+    ws.onopen = () => {
+      const curR = currentRoundRef.current;
+      if (curR) {
+        ws.send(JSON.stringify({
+          action: 'start_diagnostic',
+          stageId: curR.answer,
+          activityType: 'puzzle_sign'
+        }));
+      }
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -394,6 +601,16 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             }, 1000);
           }
         } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          if (data.action === 'landmarks') {
+            landmarksRef.current = data;
+            setDiagData({ scores: data.scores, frames: data.frames });
+          }
+          // Update wrist trail
+          if (data.hand && data.hand[0] && data.hand[0].x !== 0) {
+            trailRef.current.push({ x: data.hand[0].x, y: data.hand[0].y, a: 1.0 });
+            if (trailRef.current.length > 40) trailRef.current.shift();
+          }
+
           // Automatic hand detection engine identical to Lesson Proper
           const isHandDetected = Boolean(
             data.hand_detected ||
@@ -593,6 +810,14 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
           >
             {"\u2753"} Guide
           </button>
+          <button 
+            className={`eval-diag-toggle ${diagOn ? 'active' : ''}`} 
+            type="button" 
+            title="Toggle Diagnostics (Dev Mode)"
+            onClick={toggleDiagnostic}
+          >
+            {"\uD83D\uDD2C"}
+          </button>
           <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { sessionStorage.setItem('scrollToBug', 'true'); onNavigate('settings'); }}>{"\u2699\uFE0F"}</button>
         </div>
       </header>
@@ -688,6 +913,39 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                         <span>⚠️ {baselineError}</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Diagnostic Skeleton Canvas Overlay */}
+                <canvas ref={overlayRef} className="eval-overlay-canvas" />
+
+                {diagOn && diagData && (
+                  <div className="eval-diag-panel">
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.handshape >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.handshape}</span>
+                      <span className="diag-stat-label">Hand</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.palmOrientation >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.palmOrientation}</span>
+                      <span className="diag-stat-label">Palm</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.location >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.location}</span>
+                      <span className="diag-stat-label">Loc</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className="diag-stat-value" style={{ color: '#F59E0B' }}>{diagData.frames}</span>
+                      <span className="diag-stat-label">Frames</span>
+                    </div>
+                    <button
+                      className="eval-dev-btn"
+                      type="button"
+                      onClick={triggerDevEvaluation}
+                      disabled={isEvaluating}
+                      style={{ margin: 0, padding: '4px 10px', background: '#334155', color: '#fff', border: '1px solid #64748b', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      🔬 Dev Grade
+                    </button>
                   </div>
                 )}
               </div>
@@ -818,30 +1076,6 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                     <div className="puzzle-underscore"></div>
                   </div>
                 </div>
-
-                {currentRound?.referenceVideoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setShowDemoVideo(true)}
-                    style={{
-                      marginTop: '12px',
-                      background: 'linear-gradient(135deg, #2EABFF 0%, #0084FF 100%)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '20px',
-                      padding: '6px 16px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(0,132,255,0.3)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    ▶ Watch Demo
-                  </button>
-                )}
               </>
             )}
           </div>

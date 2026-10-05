@@ -19,6 +19,39 @@ const backButtonImg = '/images/Back Button.png';
 const cloud1Img = '/images/Cloud 1.png';
 const confettiImg = '/images/Confetti.png';
 
+interface ScoreSet {
+  handshape: number;
+  palmOrientation: number;
+  location: number;
+  movement: number;
+}
+
+interface Point3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface LandmarksData {
+  hand: Point3D[];
+  pose: {
+    nose: Point3D;
+    leftShoulder: Point3D;
+    rightShoulder: Point3D;
+  };
+  scores: ScoreSet;
+  frames: number;
+}
+
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17]
+];
+
 interface WordLetter {
   char: string;
   visible: boolean;
@@ -31,9 +64,7 @@ interface MissingTarget {
   videoUrl?: string | null;
 }
 
-interface MagicActivity {
-  id: number;
-  name: string;
+interface MagicRound {
   image: string;
   wordText: string;
   word: WordLetter[];
@@ -42,52 +73,58 @@ interface MagicActivity {
   referenceVideoUrl2?: string | null;
 }
 
+interface MagicActivityGroup {
+  id: number;
+  title: string;
+  rounds: MagicRound[];
+}
+
 // Fallback activities for fingerspelling
-const DEFAULT_ACTIVITIES: MagicActivity[] = [
-  { 
-    id: 1, 
-    name: 'FSL Vocabulary: FSL', 
-    image: '/images/1.png', 
-    wordText: 'FSL',
-    word: [
-      { char: 'F', visible: true },
-      { char: 'S', visible: false },
-      { char: 'L', visible: true }
-    ],
-    missingTargets: [
-      { charIndex: 1, char: 'S', stageId: 19 }
-    ]
-  },
-  { 
-    id: 2, 
-    name: 'DHH Community: DEAF', 
-    image: '/images/2.png', 
-    wordText: 'DEAF',
-    word: [
-      { char: 'D', visible: true },
-      { char: 'E', visible: false },
-      { char: 'A', visible: true },
-      { char: 'F', visible: true }
-    ],
-    missingTargets: [
-      { charIndex: 1, char: 'E', stageId: 5 }
-    ]
-  },
-  { 
-    id: 3, 
-    name: 'Everyday Objects: WATCH (2 Missing Letters)', 
-    image: '/images/watch.png', 
-    wordText: 'WATCH',
-    word: [
-      { char: 'W', visible: true },
-      { char: 'A', visible: false },
-      { char: 'T', visible: false },
-      { char: 'C', visible: true },
-      { char: 'H', visible: true }
-    ],
-    missingTargets: [
-      { charIndex: 1, char: 'A', stageId: 1 },
-      { charIndex: 2, char: 'T', stageId: 20 }
+const DEFAULT_ACTIVITY_GROUPS: MagicActivityGroup[] = [
+  {
+    id: 1,
+    title: 'FSL Vocabulary: Practice Words',
+    rounds: [
+      { 
+        image: '/images/1.png', 
+        wordText: 'FSL',
+        word: [
+          { char: 'F', visible: true },
+          { char: 'S', visible: false },
+          { char: 'L', visible: true }
+        ],
+        missingTargets: [
+          { charIndex: 1, char: 'S', stageId: 19 }
+        ]
+      },
+      { 
+        image: '/images/2.png', 
+        wordText: 'DEAF',
+        word: [
+          { char: 'D', visible: true },
+          { char: 'E', visible: false },
+          { char: 'A', visible: true },
+          { char: 'F', visible: true }
+        ],
+        missingTargets: [
+          { charIndex: 1, char: 'E', stageId: 5 }
+        ]
+      },
+      { 
+        image: '/images/watch.png', 
+        wordText: 'WATCH',
+        word: [
+          { char: 'W', visible: true },
+          { char: 'A', visible: false },
+          { char: 'T', visible: false },
+          { char: 'C', visible: true },
+          { char: 'H', visible: true }
+        ],
+        missingTargets: [
+          { charIndex: 1, char: 'A', stageId: 1 },
+          { charIndex: 2, char: 'T', stageId: 20 }
+        ]
+      }
     ]
   }
 ];
@@ -96,9 +133,17 @@ const PASS_THRESHOLD = 60;
 
 export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
-  const [activities, setActivities] = useState<MagicActivity[]>(DEFAULT_ACTIVITIES);
-  const [activeActivity, setActiveActivity] = useState<number | null>(null);
+  const [activityGroups, setActivityGroups] = useState<MagicActivityGroup[]>(DEFAULT_ACTIVITY_GROUPS);
+  const [activeGroupId, setActiveGroupId] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Diagnostic Mode State & Refs
+  const [diagOn, setDiagOn] = useState<boolean>(false);
+  const [diagData, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
+  const diagRef = useRef(diagOn);
+  const landmarksRef = useRef<LandmarksData | null>(null);
+  const trailRef = useRef<{ x: number, y: number, a: number }[]>([]);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
 
   // Game state
   const [roundIndex, setRoundIndex] = useState(0);
@@ -134,7 +179,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const autoNextTimerRef = useRef<number | null>(null);
   const currentStepIndexRef = useRef(0);
   const solvedIndicesRef = useRef<number[]>([]);
-  const currentActivityRef = useRef<MagicActivity>(DEFAULT_ACTIVITIES[0]);
+  const currentRoundRef = useRef<MagicRound>(DEFAULT_ACTIVITY_GROUPS[0].rounds[0]);
 
   // Fetch dynamic game configurations and items from backend
   useEffect(() => {
@@ -142,16 +187,15 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
       // 1. Try relational activities with items first
       const remoteActivities = await fetchMiniGameActivities('magic_fingers');
       if (remoteActivities && remoteActivities.length > 0) {
-        const flatItems: MagicActivity[] = [];
-        remoteActivities.forEach((act) => {
+        const groups: MagicActivityGroup[] = [];
+        remoteActivities.forEach((act, actIdx) => {
           if (act.magic_fingers_items && act.magic_fingers_items.length > 0) {
-            act.magic_fingers_items.forEach((item, itemIdx) => {
+            const rounds: MagicRound[] = act.magic_fingers_items.map((item, itemIdx) => {
               const rawWord = item.word.toUpperCase();
               let hiddenPositions = (item.hidden_positions || []).filter(pos => pos >= 0 && pos < rawWord.length);
               if (hiddenPositions.length === 0) {
                 hiddenPositions = [rawWord.length > 2 ? 1 : 0];
               }
-              // Sort positions sequentially from left to right
               hiddenPositions.sort((a, b) => a - b);
               const hiddenSet = new Set(hiddenPositions);
 
@@ -167,7 +211,6 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                 const char = rawWord[pos] || 'A';
                 const code = char.charCodeAt(0);
                 const letterStage = (code >= 65 && code <= 90) ? (code - 64) : 1;
-                // Use dedicated video for targetIdx if present, else fallback to primary video
                 const dedicatedVideo = targetIdx === 1 ? (resolvedVideo2 || resolvedVideo1) : resolvedVideo1;
                 return {
                   charIndex: pos,
@@ -179,22 +222,27 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
 
               const resolvedImage = resolveMediaUrl(item.objective_image_url) || `/images/${itemIdx + 1}.png`;
 
-              flatItems.push({
-                id: flatItems.length + 1,
-                name: `${act.title} - Round ${itemIdx + 1}`,
+              return {
                 image: resolvedImage,
                 wordText: rawWord,
                 word: wordSlots,
                 missingTargets,
                 referenceVideoUrl: resolvedVideo1,
                 referenceVideoUrl2: resolvedVideo2,
-              });
+              };
+            });
+
+            groups.push({
+              id: actIdx + 1,
+              title: act.title,
+              rounds
             });
           }
         });
 
-        if (flatItems.length > 0) {
-          setActivities(flatItems);
+        if (groups.length > 0) {
+          setActivityGroups(groups);
+          setActiveGroupId(groups[0].id);
           return;
         }
       }
@@ -202,7 +250,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
       // 2. Fallback to basic configs
       const remoteConfigs = await fetchMiniGameConfigs('magic_fingers');
       if (remoteConfigs && remoteConfigs.length > 0) {
-        const mapped: MagicActivity[] = remoteConfigs.map((cfg: MiniGameConfigItem, idx: number) => {
+        const fallbackRounds: MagicRound[] = remoteConfigs.map((cfg: MiniGameConfigItem, idx: number) => {
           const rawWord = (cfg.target_sign || 'CAT').toUpperCase();
           const hideIdx = rawWord.length > 2 ? 1 : 0;
           const wordSlots: WordLetter[] = rawWord.split('').map((char, cIdx) => ({
@@ -215,8 +263,6 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           const letterStage = (code >= 65 && code <= 90) ? (code - 64) : 1;
 
           return {
-            id: idx + 1,
-            name: cfg.title,
             image: cfg.prompt_image || `/images/${idx + 1}.png`,
             wordText: rawWord,
             word: wordSlots,
@@ -224,26 +270,33 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             referenceVideoUrl: null,
           };
         });
-        setActivities(mapped);
+
+        setActivityGroups([{
+          id: 1,
+          title: 'FSL Vocabulary',
+          rounds: fallbackRounds
+        }]);
+        setActiveGroupId(1);
       }
     }
     loadConfigs();
   }, []);
 
-  const totalRounds = activities.length > 0 ? activities.length : DEFAULT_ACTIVITIES.length;
-  const currentActivity = activities.find(a => a.id === activeActivity) || activities[0] || DEFAULT_ACTIVITIES[0];
+  const currentGroup = activityGroups.find(g => g.id === activeGroupId) || activityGroups[0] || DEFAULT_ACTIVITY_GROUPS[0];
+  const rounds = currentGroup.rounds || [];
+  const totalRounds = rounds.length;
+  const currentRound = rounds[roundIndex] || rounds[0] || DEFAULT_ACTIVITY_GROUPS[0].rounds[0];
 
-  // Filter activities for menu
-  const filteredActivities = activities.filter(act => {
-    return act.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           `activity ${act.id}`.includes(searchQuery.toLowerCase());
+  // Filter activity groups for menu
+  const filteredGroups = activityGroups.filter(grp => {
+    return grp.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           `activity ${grp.id}`.includes(searchQuery.toLowerCase());
   });
 
   // Handle start activity
-  const handleStartActivity = (id: number) => {
-    setActiveActivity(id);
-    const foundIdx = activities.findIndex(a => a.id === id);
-    setRoundIndex(foundIdx >= 0 ? foundIdx : 0);
+  const handleStartActivity = (groupId: number) => {
+    setActiveGroupId(groupId);
+    setRoundIndex(0);
     setCurrentStepIndex(0);
     currentStepIndexRef.current = 0;
     setSolvedIndices([]);
@@ -264,7 +317,175 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
   useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
   useEffect(() => { solvedIndicesRef.current = solvedIndices; }, [solvedIndices]);
-  useEffect(() => { currentActivityRef.current = currentActivity; }, [currentActivity]);
+  useEffect(() => { currentRoundRef.current = currentRound; }, [currentRound]);
+
+  useEffect(() => {
+    diagRef.current = diagOn;
+    if (diagOn && wsRef.current?.readyState === WebSocket.OPEN) {
+      const targets = currentRound?.missingTargets || [];
+      const tgt = targets[currentStepIndex] || targets[0];
+      if (tgt) {
+        wsRef.current.send(JSON.stringify({ 
+          action: 'start_diagnostic', 
+          stageId: tgt.stageId,
+          activityType: 'magic_fingers'
+        }));
+      }
+    }
+  }, [currentRound, currentStepIndex, diagOn]);
+
+  const toggleDiagnostic = () => {
+    const next = !diagOn;
+    setDiagOn(next);
+    diagRef.current = next;
+    if (next) {
+      trailRef.current = [];
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        const targets = currentRound?.missingTargets || [];
+        const tgt = targets[currentStepIndex] || targets[0];
+        if (tgt) {
+          wsRef.current.send(JSON.stringify({ 
+            action: 'start_diagnostic', 
+            stageId: tgt.stageId,
+            activityType: 'magic_fingers'
+          }));
+        }
+      }
+    } else {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ action: 'stop_diagnostic' }));
+      }
+      setDiagData(null);
+    }
+  };
+
+  const triggerDevEvaluation = () => {
+    setIsEvaluating(true);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const targets = currentRound?.missingTargets || [];
+      const tgt = targets[currentStepIndex] || targets[0];
+      if (tgt) {
+        wsRef.current.send(JSON.stringify({ 
+          action: 'evaluate', 
+          stageId: tgt.stageId,
+          stageName: tgt.char || 'A',
+          activityType: 'magic_fingers'
+        }));
+      }
+    }
+  };
+
+  // Diagnostic Canvas Render Loop
+  useEffect(() => {
+    let raf: number;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      const canvas = overlayRef.current;
+      const video = videoRef.current;
+      if (!canvas || !video) return;
+
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+
+      if (!diagRef.current) return;
+
+      const lm = landmarksRef.current;
+      if (!lm || !lm.pose || !lm.hand) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.font = 'bold 16px Quicksand';
+        ctx.fillText('Waiting for skeleton...', 10, 24);
+        return;
+      }
+
+      const X = (x: number) => x * w;
+      const Y = (y: number) => y * h;
+
+      // Draw Pose (Shoulders & Nose)
+      const locOk = lm.scores.location >= 60;
+      const bodyLineColor = locOk ? '#E02EE0' : '#E5484D';
+      const bodyDotColor = locOk ? '#4A90E2' : '#8B0000';
+      const nose = lm.pose.nose;
+      const ls = lm.pose.leftShoulder;
+      const rs = lm.pose.rightShoulder;
+
+      ctx.strokeStyle = bodyLineColor;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (ls && rs && ls.x !== 0 && rs.x !== 0) {
+        ctx.beginPath();
+        ctx.moveTo(X(ls.x), Y(ls.y));
+        ctx.lineTo(X(rs.x), Y(rs.y));
+        ctx.stroke();
+
+        if (nose && nose.x !== 0) {
+          ctx.beginPath();
+          ctx.moveTo(X(nose.x), Y(nose.y));
+          ctx.lineTo(X(ls.x), Y(ls.y));
+          ctx.moveTo(X(nose.x), Y(nose.y));
+          ctx.lineTo(X(rs.x), Y(rs.y));
+          ctx.stroke();
+
+          ctx.fillStyle = bodyDotColor;
+          for (const p of [nose, ls, rs]) {
+            ctx.beginPath();
+            ctx.arc(X(p.x), Y(p.y), 6, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      }
+
+      // Draw Wrist Trail
+      if (trailRef.current.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(X(trailRef.current[0].x), Y(trailRef.current[0].y));
+        for (let i = 1; i < trailRef.current.length; i++) {
+          const pt = trailRef.current[i];
+          ctx.lineTo(X(pt.x), Y(pt.y));
+          pt.a *= 0.95;
+        }
+        ctx.strokeStyle = `rgba(245, 158, 11, 0.8)`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Draw Hand
+      if (lm.hand[0] && lm.hand[0].x !== 0) {
+        const handOk = Math.min(lm.scores.handshape, lm.scores.palmOrientation) >= 60;
+        const handLineColor = handOk ? '#39FF14' : '#E5484D';
+        const handDotColor = handOk ? '#FF0000' : '#8B0000';
+
+        ctx.strokeStyle = handLineColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (const [a, b] of HAND_CONNECTIONS) {
+          const p1 = lm.hand[a];
+          const p2 = lm.hand[b];
+          ctx.moveTo(X(p1.x), Y(p1.y));
+          ctx.lineTo(X(p2.x), Y(p2.y));
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = handDotColor;
+        for (const p of lm.hand) {
+          ctx.beginPath();
+          ctx.arc(X(p.x), Y(p.y), 4, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     if (view === 'game') {
@@ -300,6 +521,18 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     const ws = new WebSocket('ws://127.0.0.1:8001/ws/evaluate');
     wsRef.current = ws;
 
+    ws.onopen = () => {
+      const targets = currentRoundRef.current?.missingTargets || [];
+      const tgt = targets[currentStepIndexRef.current] || targets[0];
+      if (tgt) {
+        ws.send(JSON.stringify({
+          action: 'start_diagnostic',
+          stageId: tgt.stageId,
+          activityType: 'magic_fingers'
+        }));
+      }
+    };
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -324,8 +557,8 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             scores.location >= PASS_THRESHOLD &&
             scores.movement >= PASS_THRESHOLD;
 
-          const act = currentActivityRef.current;
-          const targets = act.missingTargets || [];
+          const roundData = currentRoundRef.current;
+          const targets = roundData.missingTargets || [];
           const step = currentStepIndexRef.current;
           const currentTarget = targets[step];
 
@@ -395,8 +628,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           } else {
             hasPassedRef.current = false;
             setAttempts(prev => prev + 1);
-            setStreak(0); // V4.1 rule: Reset streak on incorrect answer
-            setFeedbackError(currentTarget ? `Check your sign for '${currentTarget.char}' and try again!` : "Check your finger shape and try again!");
+            setFeedbackError("Check your fingerspelling and try again!");
             setAutoState('cooldown');
             autoStateRef.current = 'cooldown';
             setHoldProgress(0);
@@ -418,6 +650,16 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
             }, 1000);
           }
         } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          if (data.action === 'landmarks') {
+            landmarksRef.current = data;
+            setDiagData({ scores: data.scores, frames: data.frames });
+          }
+          // Update wrist trail
+          if (data.hand && data.hand[0] && data.hand[0].x !== 0) {
+            trailRef.current.push({ x: data.hand[0].x, y: data.hand[0].y, a: 1.0 });
+            if (trailRef.current.length > 40) trailRef.current.shift();
+          }
+
           // Automatic hand detection engine identical to Lesson Proper
           const isHandDetected = Boolean(
             data.hand_detected ||
@@ -463,8 +705,8 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                 setIsEvaluating(true);
                 holdStartRef.current = null;
 
-                const act = currentActivityRef.current;
-                const targets = act.missingTargets || [];
+                const roundData = currentRoundRef.current;
+                const targets = roundData.missingTargets || [];
                 const currentTarget = targets[currentStepIndexRef.current] || targets[0];
                 const stageNum = currentTarget?.stageId || 1;
 
@@ -535,6 +777,61 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     };
   }, [view]);
 
+  const handleShowAnswerAndAdvance = () => {
+    const roundData = currentRoundRef.current;
+    const targets = roundData.missingTargets || [];
+    const step = currentStepIndexRef.current;
+    const currentTarget = targets[step];
+
+    // 1. Reveal/give the missing letter on the screen
+    const targetCharIdx = currentTarget ? currentTarget.charIndex : -1;
+    const newSolved = targetCharIdx >= 0 && !solvedIndicesRef.current.includes(targetCharIdx)
+      ? [...solvedIndicesRef.current, targetCharIdx]
+      : solvedIndicesRef.current;
+
+    setSolvedIndices(newSolved);
+    solvedIndicesRef.current = newSolved;
+    setShowDemoVideo(true);
+    setFeedbackError(null);
+
+    // 2. Clear any pending auto-next timers
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+
+    // 3. After giving the letter and showing the answer/demo, proceed automatically
+    if (step + 1 < targets.length) {
+      // More letters exist in this word: proceed to next letter after brief viewing (3.5s)
+      autoNextTimerRef.current = window.setTimeout(() => {
+        const nextStep = step + 1;
+        setCurrentStepIndex(nextStep);
+        currentStepIndexRef.current = nextStep;
+        setAttempts(0);
+        setShowDemoVideo(false);
+
+        setAutoState('cooldown');
+        autoStateRef.current = 'cooldown';
+        setHoldProgress(0);
+        holdStartRef.current = null;
+        setCooldownRemaining(1);
+        if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = window.setInterval(() => {
+          if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+          setAutoState('idle');
+          autoStateRef.current = 'idle';
+        }, 1000);
+      }, 3500);
+    } else {
+      // No more letters in this word: mark word complete and proceed to next round after celebration (3.5s)
+      hasPassedRef.current = true;
+      setRoundPassed(true);
+      setAutoState('passed');
+      autoStateRef.current = 'passed';
+
+      autoNextTimerRef.current = window.setTimeout(() => {
+        handleNextRound();
+      }, 3500);
+    }
+  };
+
   const handleNextRound = () => {
     if (autoNextTimerRef.current) {
       clearTimeout(autoNextTimerRef.current);
@@ -551,7 +848,6 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     if (roundIndex < totalRounds - 1) {
       const nextIdx = roundIndex + 1;
       setRoundIndex(nextIdx);
-      setActiveActivity(activities[nextIdx]?.id || nextIdx + 1);
       setCurrentStepIndex(0);
       currentStepIndexRef.current = 0;
       setSolvedIndices([]);
@@ -592,25 +888,30 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               <span className="search-icon">🔍</span>
               <input
                 type="text"
-                placeholder="Search"
+                placeholder="Search activities"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
             <div className="mf-activities">
-              {filteredActivities.map((act) => (
+              {filteredGroups.map((group) => (
                 <button
-                  key={act.id}
+                  key={group.id}
                   className="mf-activity-btn"
-                  onClick={() => handleStartActivity(act.id)}
+                  onClick={() => handleStartActivity(group.id)}
                 >
-                  <div className="mf-activity-number">{act.id}</div>
-                  <span className="mf-activity-text">{act.name}</span>
+                  <div className="mf-activity-number">{group.id}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, paddingLeft: '8px' }}>
+                    <span className="mf-activity-text">{group.title}</span>
+                    <span style={{ fontSize: '0.85rem', color: '#6B7280', fontWeight: 'bold' }}>
+                      {group.rounds.length} {group.rounds.length === 1 ? 'Round' : 'Rounds'}
+                    </span>
+                  </div>
                   <span className="mf-activity-arrow">→</span>
                 </button>
               ))}
-              {filteredActivities.length === 0 && (
+              {filteredGroups.length === 0 && (
                 <div className="mf-no-results">No activities found</div>
               )}
             </div>
@@ -626,9 +927,9 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
 
   // Game Render
   const renderGame = () => {
-    const itemImage = currentActivity.image;
-    const wordData = currentActivity.word;
-    const targets = currentActivity.missingTargets || [];
+    const itemImage = currentRound.image;
+    const wordData = currentRound.word;
+    const targets = currentRound.missingTargets || [];
     const currentTarget = targets[currentStepIndex] || targets[0];
     const totalMissing = targets.length;
 
@@ -645,7 +946,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           
           <div className="eval-title-block">
             <div className="eval-main-title">
-              Activity {activeActivity} - {currentActivity.name}
+              Activity {activeGroupId} - {currentGroup.title} - Round {roundIndex + 1}
             </div>
             <div className="eval-progress-track">
               {Array.from({ length: totalRounds }).map((_, index) => (
@@ -663,6 +964,14 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               onClick={() => startMagicFingersTour()}
             >
               {"\u2753"} Guide
+            </button>
+            <button 
+              className={`eval-diag-toggle ${diagOn ? 'active' : ''}`} 
+              type="button" 
+              title="Toggle Diagnostics (Dev Mode)"
+              onClick={toggleDiagnostic}
+            >
+              {"\uD83D\uDD2C"}
             </button>
             <button className="eval-settings-btn" type="button" aria-label="Settings" onClick={() => { 
               sessionStorage.setItem('scrollToBug', 'true'); 
@@ -700,21 +1009,12 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                 })}
               </div>
 
-              {/* Sub-progress pills if 2 missing letters */}
-              {totalMissing > 1 && (
-                <div className="mf-sub-progress">
-                  {targets.map((tgt, sIdx) => {
-                    const isDone = solvedIndices.includes(tgt.charIndex) || roundPassed;
-                    const isCurrent = currentStepIndex === sIdx && !roundPassed;
-                    return (
-                      <span 
-                        key={sIdx} 
-                        className={`mf-sub-pill ${isDone ? 'done' : isCurrent ? 'current' : ''}`}
-                      >
-                        Letter {sIdx + 1}: {tgt.char} {isDone ? '✓' : ''}
-                      </span>
-                    );
-                  })}
+              {/* Clean step indicator if multiple missing letters */}
+              {totalMissing > 1 && !roundPassed && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#374151', background: '#F3F4F6', padding: '3px 12px', borderRadius: '12px' }}>
+                    Missing Letter {currentStepIndex + 1} of {totalMissing}
+                  </span>
                 </div>
               )}
             </div>
@@ -771,11 +1071,11 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                         </div>
                         <div className="hud-text-group">
                           <span className="hud-main-text">
-                            🎬 Sign letter: {currentTarget?.char}!
+                            🎬 Sign the missing letter!
                           </span>
                           <span className="hud-sub-text">
                             {totalMissing > 1
-                              ? `Letter ${currentStepIndex + 1} of ${totalMissing}`
+                              ? `Missing letter ${currentStepIndex + 1} of ${totalMissing}`
                               : 'Move your fingers clearly in frame... ✨'}
                           </span>
                         </div>
@@ -786,7 +1086,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                       <div className="hud-badge hud-grading-badge">
                         <span className="hud-icon rotating-star">✨</span>
                         <div className="hud-text-group">
-                          <span className="hud-main-text">Checking letter {currentTarget?.char}!</span>
+                          <span className="hud-main-text">Checking your sign!</span>
                           <span className="hud-sub-text">Looking at your fingers and palm... 🔍</span>
                         </div>
                       </div>
@@ -807,6 +1107,39 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                         <span>⚠️ {feedbackError}</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Diagnostic Skeleton Canvas Overlay */}
+                <canvas ref={overlayRef} className="eval-overlay-canvas" />
+
+                {diagOn && diagData && (
+                  <div className="eval-diag-panel">
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.handshape >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.handshape}</span>
+                      <span className="diag-stat-label">Hand</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.palmOrientation >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.palmOrientation}</span>
+                      <span className="diag-stat-label">Palm</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className={`diag-stat-value ${diagData.scores.location >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.location}</span>
+                      <span className="diag-stat-label">Loc</span>
+                    </div>
+                    <div className="diag-stat">
+                      <span className="diag-stat-value" style={{ color: '#F59E0B' }}>{diagData.frames}</span>
+                      <span className="diag-stat-label">Frames</span>
+                    </div>
+                    <button
+                      className="eval-dev-btn"
+                      type="button"
+                      onClick={triggerDevEvaluation}
+                      disabled={isEvaluating}
+                      style={{ margin: 0, padding: '4px 10px', background: '#334155', color: '#fff', border: '1px solid #64748b', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      🔬 Dev Grade
+                    </button>
                   </div>
                 )}
               </div>
@@ -832,7 +1165,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               {/* Floating Bottom Action Bar */}
               {attempts >= 3 && !roundPassed && (
                 <div className="mg-bottom-actions">
-                  <button className="ps-give-up-btn" type="button" onClick={() => setShowDemoVideo(true)}>
+                  <button className="ps-give-up-btn" type="button" onClick={handleShowAnswerAndAdvance}>
                     💡 Show Answer
                   </button>
                 </div>
@@ -844,8 +1177,8 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           <section className="eval-right-col-container sisi-right-col">
             <div className="mf-puzzle-card sisi-image-card-container">
               {(() => {
-                const activeVideo = currentTarget?.videoUrl || currentActivity.referenceVideoUrl;
-                const activeLetter = currentTarget?.char || currentActivity.missingTargets?.[0]?.char || '';
+                const activeVideo = currentTarget?.videoUrl || currentRound.referenceVideoUrl;
+                const activeLetter = currentTarget?.char || currentRound.missingTargets?.[0]?.char || '';
                 return showDemoVideo && activeVideo ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1E293B', marginBottom: '6px' }}>
@@ -884,32 +1217,6 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
                         (e.target as HTMLElement).style.display = 'none';
                         e.currentTarget.parentElement!.innerHTML = '<span class="sisi-fallback-emoji">🔤</span>';
                     }}/>
-                    {activeVideo && (
-                      <button
-                        type="button"
-                        onClick={() => setShowDemoVideo(true)}
-                        style={{
-                          position: 'absolute',
-                          bottom: '12px',
-                          right: '12px',
-                          background: 'linear-gradient(135deg, #2EABFF 0%, #0084FF 100%)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '20px',
-                          padding: '8px 16px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          boxShadow: '0 4px 12px rgba(0,132,255,0.3)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '0.9rem',
-                          zIndex: 10,
-                        }}
-                      >
-                        ▶ {totalMissing > 1 ? `Watch Demo (${activeLetter})` : 'Watch Demo'}
-                      </button>
-                    )}
                   </div>
                 );
               })()}
@@ -937,8 +1244,8 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
 
   // Results Render
   const renderResults = () => {
-    const playedRounds = activities.slice(0, totalRounds).map(a => ({
-      answerText: a.wordText
+    const playedRounds = rounds.map(r => ({
+      answerText: r.wordText
     }));
 
     return (

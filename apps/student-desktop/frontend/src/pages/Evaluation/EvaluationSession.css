@@ -809,7 +809,7 @@
   font-family: 'Quicksand', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .diag-stat {

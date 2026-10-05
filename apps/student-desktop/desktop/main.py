@@ -84,16 +84,32 @@ def resolve_baseline_file(stage_id, activity_type="evaluation"):
     alt_ids = [str(stage_id)]
     try:
         num = int(stage_id)
+        if 1 <= num <= 26:
+            # Map 1 -> A, 2 -> B etc.
+            alt_ids.append(chr(64 + num))
         if 1 <= num <= 10:
             alt_ids.append(str(100 + num))
         elif 101 <= num <= 110:
             alt_ids.append(str(num - 100))
     except (ValueError, TypeError):
-        pass
+        # stage_id might already be a letter string like 'A'
+        if isinstance(stage_id, str) and len(stage_id) == 1 and stage_id.isalpha():
+            letter_num = ord(stage_id.upper()) - 64
+            alt_ids.append(str(letter_num))
+            alt_ids.append(stage_id.upper())
 
     # Build prioritized candidate relative paths
     candidate_paths = []
-    if activity_type in ["puzzle_sign", "see_it_sign_it", "magic_fingers"]:
+    if activity_type == "magic_fingers":
+        # Alphabet game: prioritize letter representations (e.g. baseline_A.json, baseline_1.json inside magic_fingers)
+        # 1. Exact game folder
+        for sid in alt_ids:
+            candidate_paths.append(os.path.join("minigames", activity_type, f"baseline_{sid}.json"))
+        # 2. General minigames folder
+        for sid in alt_ids:
+            candidate_paths.append(os.path.join("minigames", f"baseline_{sid}.json"))
+        # Never fall back to lessons or root numeric signs for magic_fingers
+    elif activity_type in ["puzzle_sign", "see_it_sign_it"]:
         # 1. Exact game folder
         for sid in alt_ids:
             candidate_paths.append(os.path.join("minigames", activity_type, f"baseline_{sid}.json"))
@@ -103,14 +119,14 @@ def resolve_baseline_file(stage_id, activity_type="evaluation"):
         # 3. Lessons fallback
         for sid in alt_ids:
             candidate_paths.append(os.path.join("lessons", f"baseline_{sid}.json"))
+        for sid in alt_ids:
+            candidate_paths.append(f"baseline_{sid}.json")
     else:
         # Lesson proper
         for sid in alt_ids:
             candidate_paths.append(os.path.join("lessons", f"baseline_{sid}.json"))
-
-    # Also include flat root fallback
-    for sid in alt_ids:
-        candidate_paths.append(f"baseline_{sid}.json")
+        for sid in alt_ids:
+            candidate_paths.append(f"baseline_{sid}.json")
 
     # Search candidates across desktop baselines and backend storage baselines
     for bdir in base_dirs:
@@ -150,7 +166,8 @@ async def evaluate_endpoint(websocket: WebSocket):
 
             if payload.get('action') == 'start_diagnostic':
                 stage_id = payload.get('stageId', 1)
-                baseline_file = resolve_baseline_file(stage_id, "evaluation")
+                activity_type = payload.get('activityType', "evaluation")
+                baseline_file = resolve_baseline_file(stage_id, activity_type)
                 if baseline_file and os.path.exists(baseline_file):
                     with open(baseline_file, 'r', encoding='utf-8') as f:
                         b_seq = json.load(f)
