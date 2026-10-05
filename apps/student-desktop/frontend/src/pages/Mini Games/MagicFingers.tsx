@@ -4,6 +4,7 @@ import CameraSetup from '../Setup/CameraSetup';
 import MiniGameComplete from '../MiniGameComplete/MiniGameComplete';
 import { fetchMiniGameConfigs, fetchMiniGameActivities, saveMiniGameScore, resolveMediaUrl, type MiniGameConfigItem } from '../../utils/api';
 import './MagicFingers.css';
+import './Puzzle Sign.css';
 import '../../pages/Evaluation/EvaluationSession.css';
 import { startMagicFingersTour, stopCurrentTour } from '../../utils/activityTours';
 
@@ -92,7 +93,6 @@ const DEFAULT_ACTIVITIES: MagicActivity[] = [
 ];
 
 const PASS_THRESHOLD = 60;
-const NOT_CONNECTED_MSG = "Not connected to the scoring server. Is the desktop app running?";
 
 export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
@@ -105,21 +105,33 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(300);
   const [streak, setStreak] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [roundPassed, setRoundPassed] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showDemoVideo, setShowDemoVideo] = useState(false);
+  const [attempts, setAttempts] = useState(0);
 
   // Multi-missing letters sequential progression state
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [solvedIndices, setSolvedIndices] = useState<number[]>([]);
+
+  // Auto-evaluation engine state matching EvaluationSession
+  type AutoState = 'idle' | 'ready' | 'signing' | 'grading' | 'cooldown' | 'passed';
+  const [autoState, setAutoState] = useState<AutoState>('idle');
+  const autoStateRef = useRef<AutoState>('idle');
+  const holdStartRef = useRef<number | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const cooldownTimerRef = useRef<number | null>(null);
+  const consecutiveMissRef = useRef(0);
+  const hasPassedRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const isEvaluatingRef = useRef(false);
   const recordingTimerRef = useRef<number | null>(null);
+  const autoNextTimerRef = useRef<number | null>(null);
   const currentStepIndexRef = useRef(0);
   const solvedIndicesRef = useRef<number[]>([]);
   const currentActivityRef = useRef<MagicActivity>(DEFAULT_ACTIVITIES[0]);
@@ -291,6 +303,16 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.action === 'error' || data.error) {
+          setIsEvaluating(false);
+          setAutoState('idle');
+          autoStateRef.current = 'idle';
+          setHoldProgress(0);
+          holdStartRef.current = null;
+          setFeedbackError(data.error || "Sign baseline reference not found for this round.");
+          return;
+        }
+
         if (data.action === 'result') {
           setIsEvaluating(false);
           const scores = data.scores;
@@ -323,10 +345,28 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               const nextStep = step + 1;
               setCurrentStepIndex(nextStep);
               currentStepIndexRef.current = nextStep;
+              setAttempts(0);
+              setShowDemoVideo(false);
               // Give partial score reward for completing a letter
               setScore(prev => prev + 50);
+
+              // Quick 1s pause before allowing next letter
+              setAutoState('cooldown');
+              autoStateRef.current = 'cooldown';
+              setHoldProgress(0);
+              holdStartRef.current = null;
+              setCooldownRemaining(1);
+              if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+              cooldownTimerRef.current = window.setInterval(() => {
+                if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+                setAutoState('idle');
+                autoStateRef.current = 'idle';
+              }, 1200);
             } else {
               // All missing letters completed for this word!
+              hasPassedRef.current = true;
+              setAutoState('passed');
+              autoStateRef.current = 'passed';
               setRoundPassed(true);
               const currentStreak = streakRef.current;
               const currentScore = scoreRef.current;
@@ -345,15 +385,110 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               } catch (err) {
                 console.warn('Failed to save magic fingers game stats:', err);
               }
+
+              // Automatically advance to the next round after celebration (2.5s)
+              if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+              autoNextTimerRef.current = window.setTimeout(() => {
+                handleNextRound();
+              }, 2500);
             }
           } else {
+            hasPassedRef.current = false;
+            setAttempts(prev => prev + 1);
             setStreak(0); // V4.1 rule: Reset streak on incorrect answer
             setFeedbackError(currentTarget ? `Check your sign for '${currentTarget.char}' and try again!` : "Check your finger shape and try again!");
+            setAutoState('cooldown');
+            autoStateRef.current = 'cooldown';
+            setHoldProgress(0);
+            holdStartRef.current = null;
+            setCooldownRemaining(2);
+
+            if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+            let rem = 2;
+            cooldownTimerRef.current = window.setInterval(() => {
+              rem -= 1;
+              setCooldownRemaining(rem);
+              if (rem <= 0) {
+                if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+                if (!hasPassedRef.current) {
+                  setAutoState('idle');
+                  autoStateRef.current = 'idle';
+                }
+              }
+            }, 1000);
           }
-        } else if (data.error) {
-          setIsEvaluating(false);
-          setIsRecording(false);
-          setFeedbackError("Sign baseline reference not found for this round.");
+        } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          // Automatic hand detection engine identical to Lesson Proper
+          const isHandDetected = Boolean(
+            data.hand_detected ||
+            (data.hand && data.hand[0] && data.hand[0].x !== 0)
+          );
+
+          if (hasPassedRef.current || autoStateRef.current === 'grading' || autoStateRef.current === 'cooldown' || autoStateRef.current === 'passed') {
+            return;
+          }
+
+          if (isHandDetected) {
+            consecutiveMissRef.current = 0;
+            if (autoStateRef.current === 'idle') {
+              setAutoState('ready');
+              autoStateRef.current = 'ready';
+              holdStartRef.current = Date.now();
+              setHoldProgress(0);
+            } else if (autoStateRef.current === 'ready') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const READY_DURATION = 1000; // 1s ready countdown
+              const progress = Math.min(100, Math.round((elapsed / READY_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= READY_DURATION) {
+                // Transition into active dynamic signing window!
+                setAutoState('signing');
+                autoStateRef.current = 'signing';
+                holdStartRef.current = Date.now();
+                setHoldProgress(0);
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ action: 'clear' }));
+                }
+              }
+            } else if (autoStateRef.current === 'signing') {
+              const elapsed = Date.now() - (holdStartRef.current || Date.now());
+              const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
+              const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
+              setHoldProgress(progress);
+
+              if (elapsed >= SIGN_DURATION) {
+                setAutoState('grading');
+                autoStateRef.current = 'grading';
+                setIsEvaluating(true);
+                holdStartRef.current = null;
+
+                const act = currentActivityRef.current;
+                const targets = act.missingTargets || [];
+                const currentTarget = targets[currentStepIndexRef.current] || targets[0];
+                const stageNum = currentTarget?.stageId || 1;
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ 
+                    action: 'evaluate', 
+                    stageId: stageNum,
+                    stageName: currentTarget?.char || 'A',
+                    activityType: 'magic_fingers'
+                  }));
+                }
+              }
+            }
+          } else {
+            if (autoStateRef.current === 'ready') {
+              consecutiveMissRef.current += 1;
+              if (consecutiveMissRef.current >= 3) {
+                setAutoState('idle');
+                autoStateRef.current = 'idle';
+                setHoldProgress(0);
+                holdStartRef.current = null;
+              }
+            }
+          }
         }
       } catch (err) {
         console.error('WebSocket parse error:', err);
@@ -388,40 +523,31 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
         clearTimeout(recordingTimerRef.current);
         recordingTimerRef.current = null;
       }
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+        autoNextTimerRef.current = null;
+      }
       if (stream) stream.getTracks().forEach(t => t.stop());
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
-      setIsRecording(false);
       setIsEvaluating(false);
     };
   }, [view]);
 
-  const triggerEvaluation = () => {
-    setFeedbackError(null);
-    setIsRecording(true);
-
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ action: 'clear' }));
-    }
-
-    // 3 seconds window to capture student sign
-    recordingTimerRef.current = window.setTimeout(() => {
-      setIsRecording(false);
-      setIsEvaluating(true);
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        const targets = currentActivity.missingTargets || [];
-        const currentTarget = targets[currentStepIndexRef.current] || targets[0];
-        const stageNum = currentTarget?.stageId || 1;
-        wsRef.current.send(JSON.stringify({ action: 'evaluate', stageId: stageNum }));
-      } else {
-        setIsEvaluating(false);
-        setFeedbackError(NOT_CONNECTED_MSG);
-      }
-    }, 3000);
-  };
-
   const handleNextRound = () => {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    hasPassedRef.current = false;
+    setAutoState('idle');
+    autoStateRef.current = 'idle';
+    setHoldProgress(0);
+    holdStartRef.current = null;
+    setAttempts(0);
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+
     if (roundIndex < totalRounds - 1) {
       const nextIdx = roundIndex + 1;
       setRoundIndex(nextIdx);
@@ -545,14 +671,14 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
           </div>
         </header>
 
-        <main className="eval-main-row sisi-game-main">
-          <img src={cloud1Img} alt="Cloud" className="mf-cloud-overlay" />
+        <main className="eval-main-row" style={{ backgroundImage: `url('/images/Grass.png')`, backgroundPosition: 'bottom', backgroundRepeat: 'no-repeat', backgroundSize: '100% 20%' }}>
+          <img src={cloud1Img} alt="Cloud" style={{ position: 'absolute', top: 50, left: '10%', opacity: 0.8, width: 150 }} />
           
           {/* Left Column */}
           <section className="eval-left-col">
             
             {/* The Specific "Magic Fingers" Missing Letters UI */}
-            <div className="eval-instruction-card sisi-instruction-card">
+            <div className="eval-instruction-card">
               <div className="mf-word-container">
                 {wordData.map((letter, idx) => {
                   const isMissing = !letter.visible;
@@ -593,66 +719,124 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               )}
             </div>
 
-            <div className="eval-camera-wrapper sisi-camera-wrapper">
-              <div className="eval-camera-card sisi-camera-card">
+            <div className="eval-camera-wrapper">
+              <div className={`eval-camera-card eval-camera-card--${autoState}`} style={{ position: 'relative' }}>
                 <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
                 <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
 
-                <div className="mf-crosshair">
-                  <div className="mf-ch-line sisi-ch-h"></div>
-                  <div className="mf-ch-line sisi-ch-v"></div>
-                  <div className="mf-ch-circle"></div>
+                <div className="ps-crosshair">
+                  <div className="ch-line ch-h"></div>
+                  <div className="ch-line ch-v"></div>
+                  <div className="ch-circle"></div>
                 </div>
 
-                {isRecording && (
-                  <div className="ps-recording-badge">
-                    <span className="ps-recording-dot" />
-                    {totalMissing > 1
-                      ? `Sign letter ${currentStepIndex + 1} of ${totalMissing}: ${currentTarget?.char}!`
-                      : `Sign the missing letter: ${currentTarget?.char}!`}
-                  </div>
-                )}
+                {/* Real-time automatic grading HUD - Child-friendly, identical to Lesson Proper */}
+                {!roundPassed && (
+                  <div className={`eval-grading-hud hud-${autoState}`}>
+                    {autoState === 'idle' && (
+                      <div className="hud-badge hud-idle-badge">
+                        <span className="hud-icon pulse-hand">✋</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Show your hand to begin!</span>
+                          <span className="hud-sub-text">Hold it up high so the camera can see!</span>
+                        </div>
+                      </div>
+                    )}
 
-                {feedbackError && (
-                  <div className="ps-baseline-error">⚠ {feedbackError}</div>
+                    {autoState === 'ready' && (
+                      <div className="hud-badge hud-ready-badge">
+                        <span className="hud-icon pulse-target">🎯</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Get Ready!</span>
+                          <span className="hud-sub-text">Starting in 1... 🎬</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'signing' && (
+                      <div className="hud-badge hud-signing-badge">
+                        <div className="hud-countdown-ring">
+                          <svg viewBox="0 0 36 36" className="circular-chart">
+                            <path className="circle-bg"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                            <path className="circle circle-signing"
+                              strokeDasharray={`${holdProgress}, 100`}
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                          </svg>
+                          <span className="countdown-number">
+                            {Math.max(1, Math.ceil((100 - holdProgress) / 35))}
+                          </span>
+                        </div>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">
+                            🎬 Sign letter: {currentTarget?.char}!
+                          </span>
+                          <span className="hud-sub-text">
+                            {totalMissing > 1
+                              ? `Letter ${currentStepIndex + 1} of ${totalMissing}`
+                              : 'Move your fingers clearly in frame... ✨'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'grading' && (
+                      <div className="hud-badge hud-grading-badge">
+                        <span className="hud-icon rotating-star">✨</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Checking letter {currentTarget?.char}!</span>
+                          <span className="hud-sub-text">Looking at your fingers and palm... 🔍</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {autoState === 'cooldown' && (
+                      <div className="hud-badge hud-cooldown-badge">
+                        <span className="hud-icon">⏱️</span>
+                        <div className="hud-text-group">
+                          <span className="hud-main-text">Try again in {cooldownRemaining}s!</span>
+                          <span className="hud-sub-text">Shake your hands and get ready!</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {feedbackError && (
+                      <div className="hud-error-banner">
+                        <span>⚠️ {feedbackError}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {roundPassed && (
+              {/* Large Friendly Mascot sitting at bottom-left */}
+              {!(roundPassed || showDemoVideo) && (
+                <div className="mg-mascot-wrap">
+                  <img 
+                    src={wonderMascot} 
+                    alt="Mascot" 
+                    className="mg-mascot-img"
+                  />
+                </div>
+              )}
+
+              {/* Celebration Mascot on passing */}
+              {(roundPassed || showDemoVideo) && (
                 <div className="correct-mascot-container">
                   <img src={amazingMascot} alt="Amazing!" className="correct-mascot-img" />
                 </div>
               )}
-            </div>
 
-            <div className="ps-bottom-controls">
-              <div className="mf-mascot-area">
-                {!roundPassed && (
-                  <img 
-                    src={wonderMascot} 
-                    alt="Mascot" 
-                    className="mf-mascot-img"
-                  />
-                )}
-              </div>
-
-              <div className="ps-button-area">
-                {roundPassed ? (
-                  <button className="eval-next-btn ps-action-btn" type="button" onClick={handleNextRound}>
-                    Next Round
+              {/* Floating Bottom Action Bar */}
+              {attempts >= 3 && !roundPassed && (
+                <div className="mg-bottom-actions">
+                  <button className="ps-give-up-btn" type="button" onClick={() => setShowDemoVideo(true)}>
+                    💡 Show Answer
                   </button>
-                ) : (
-                  <button
-                    className="eval-next-btn ps-action-btn"
-                    style={{ backgroundColor: '#2EABFF' }}
-                    type="button"
-                    onClick={triggerEvaluation}
-                    disabled={isEvaluating || isRecording}
-                  >
-                    {isRecording ? 'Recording...' : isEvaluating ? 'Grading...' : (totalMissing > 1 ? `Check Letter ${currentStepIndex + 1} (${currentTarget?.char})` : 'Check My Sign')}
-                  </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </section>
 

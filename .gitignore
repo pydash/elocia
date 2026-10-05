@@ -54,9 +54,16 @@ build/
 apps/student-desktop/desktop/logs/
 *.csv
 
+# SQLite Databases
+*.db
+*.sqlite
+*.sqlite3
+
 # Baselines (calibration landmarks)
-apps/student-desktop/desktop/baselines/*.json
-backend/storage/baselines/*.json
+apps/student-desktop/desktop/baselines/**/*.json
+apps/student-desktop/desktop/baselines/lessons/
+apps/student-desktop/desktop/baselines/minigames/
+backend/storage/baselines/
 
 # Video media uploads
 *.mp4
