@@ -15,7 +15,7 @@ import '../../pages/Evaluation/EvaluationSession.css';
 import { startSeeItSignItTour, stopCurrentTour } from '../../utils/activityTours';
 
 interface SeeItSignItProps {
-  onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it') => void;
+  onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers') => void;
 }
 
 const seeItSignItLogo = '/images/See it, Sign it!.png';
@@ -71,26 +71,11 @@ interface SeeItSignItGroup {
   rounds: SeeItSignItRound[];
 }
 
-// Fallback activities if backend is unreachable
-const DEFAULT_ACTIVITY_GROUPS: SeeItSignItGroup[] = [
-  {
-    id: 1,
-    title: 'FSL Numbers Practice',
-    rounds: [
-      { image: '/images/1.png', item: 'Number 1', targetSign: 1 },
-      { image: '/images/2.png', item: 'Number 2', targetSign: 2 },
-      { image: '/images/3.png', item: 'Number 3', targetSign: 3 },
-      { image: '/images/4.png', item: 'Number 4', targetSign: 4 },
-      { image: '/images/5.png', item: 'Number 5', targetSign: 5 },
-    ]
-  }
-];
-
 const PASS_THRESHOLD = 60;
 
 export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
-  const [activityGroups, setActivityGroups] = useState<SeeItSignItGroup[]>(DEFAULT_ACTIVITY_GROUPS);
+  const [activityGroups, setActivityGroups] = useState<SeeItSignItGroup[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -188,7 +173,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
     loadConfigs();
   }, []);
 
-  const currentGroup = activityGroups.find(g => g.id === activeGroupId) || activityGroups[0] || DEFAULT_ACTIVITY_GROUPS[0];
+  const currentGroup = activityGroups.find(g => g.id === activeGroupId) || activityGroups[0] || { id: 0, title: 'No Activity', rounds: [] };
   const rounds = currentGroup.rounds || [];
   const totalRounds = rounds.length;
   const currentActivity = rounds[roundIndex] || rounds[0];
@@ -213,11 +198,15 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const streakRef = useRef(streak);
   const scoreRef = useRef(score);
   const currentActivityRef = useRef(currentActivity);
+  const roundIndexRef = useRef(roundIndex);
+  const totalRoundsRef = useRef(totalRounds);
 
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { currentActivityRef.current = currentActivity; }, [currentActivity]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
+  useEffect(() => { roundIndexRef.current = roundIndex; }, [roundIndex]);
+  useEffect(() => { totalRoundsRef.current = totalRounds; }, [totalRounds]);
 
   useEffect(() => {
     diagRef.current = diagOn;
@@ -476,7 +465,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
             // Automatically advance to the next round after celebration (2.5s)
             if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
             autoNextTimerRef.current = window.setTimeout(() => {
-              handleNextRound();
+              handleNextRoundRef.current();
             }, 2500);
           } else {
             hasPassedRef.current = false;
@@ -643,33 +632,42 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
     setShowDemoVideo(false);
     if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
 
-    if (roundIndex < totalRounds - 1) {
+    const currentIdx = roundIndexRef.current;
+    const totalCount = totalRoundsRef.current;
+
+    if (currentIdx < totalCount - 1) {
       setRoundIndex(prev => prev + 1);
       setRoundPassed(false);
       setFeedbackError(null);
     } else {
       // Game Complete - save score to backend (capped at 500 XP max for mini-games)
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+      const latestScore = scoreRef.current;
+      const latestStreak = streakRef.current;
+
       if (student.id) {
-        const finalXp = Math.min(500, score);
+        const finalXp = Math.min(500, latestScore);
         saveMiniGameScore({
           student_id: student.id,
           game_type: 'see_it_sign_it',
           score: finalXp,
-          streak: streak,
-          rounds_completed: totalRounds
+          streak: latestStreak,
+          rounds_completed: totalCount
         });
       }
       setView('results');
     }
   };
 
+  const handleNextRoundRef = useRef(handleNextRound);
+  useEffect(() => { handleNextRoundRef.current = handleNextRound; }, [handleNextRound]);
+
   const giveUpReveal = () => {
     setShowDemoVideo(true);
     setFeedbackError(null);
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     autoNextTimerRef.current = window.setTimeout(() => {
-      handleNextRound();
+      handleNextRoundRef.current();
     }, 3500);
   };
 

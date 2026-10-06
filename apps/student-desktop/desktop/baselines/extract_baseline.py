@@ -47,15 +47,25 @@ def extract_landmarks(video_path, output_json_path, stage_id=None):
 
         frame_data = {
             "hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
+            "right_hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
+            "left_hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
+            "has_right": False,
+            "has_left": False,
             "pose": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(33)]
         }
 
-        active_hand = None
         if results.right_hand_landmarks:
-            active_hand = results.right_hand_landmarks
-        elif results.left_hand_landmarks:
-            active_hand = results.left_hand_landmarks
+            frame_data["has_right"] = True
+            for j, lm in enumerate(results.right_hand_landmarks.landmark):
+                frame_data["right_hand"][j] = {"x": float(lm.x), "y": float(lm.y), "z": float(lm.z)}
 
+        if results.left_hand_landmarks:
+            frame_data["has_left"] = True
+            for j, lm in enumerate(results.left_hand_landmarks.landmark):
+                frame_data["left_hand"][j] = {"x": float(lm.x), "y": float(lm.y), "z": float(lm.z)}
+
+        # Dominant/primary hand for backwards-compatibility with 1-hand algorithms
+        active_hand = results.right_hand_landmarks or results.left_hand_landmarks
         if active_hand:
             hands_detected_count += 1
             for j, lm in enumerate(active_hand.landmark):
@@ -95,7 +105,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract MediaPipe Holistic landmarks from FSL video")
     parser.add_argument("--video", required=True, help="Path to input video file")
     parser.add_argument("--output", required=True, help="Path to save output JSON")
-    parser.add_argument("--stage", type=int, default=1, help="Stage ID for the sign")
+    parser.add_argument("--stage", type=str, default="1", help="Stage ID or word identifier for the sign")
 
     args = parser.parse_args()
     extract_landmarks(args.video, args.output, args.stage)

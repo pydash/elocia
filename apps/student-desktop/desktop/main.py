@@ -82,6 +82,9 @@ def resolve_baseline_file(stage_id, activity_type="evaluation"):
 
     # Map raw numbers (1-10) to sign IDs (101-110) if needed
     alt_ids = [str(stage_id)]
+    if isinstance(stage_id, str):
+        cleaned = stage_id.strip()
+        alt_ids.extend([cleaned, cleaned.lower(), cleaned.upper(), cleaned.capitalize()])
     try:
         num = int(stage_id)
         if 1 <= num <= 26:
@@ -97,6 +100,9 @@ def resolve_baseline_file(stage_id, activity_type="evaluation"):
             letter_num = ord(stage_id.upper()) - 64
             alt_ids.append(str(letter_num))
             alt_ids.append(stage_id.upper())
+
+    # Remove duplicates preserving order
+    alt_ids = list(dict.fromkeys(alt_ids))
 
     # Build prioritized candidate relative paths
     candidate_paths = []
@@ -291,21 +297,40 @@ async def evaluate_endpoint(websocket: WebSocket):
             max_x = max(ls.x, rs.x) + 0.35
             min_y = min(ls.y, rs.y) - 0.55
 
-            # Extract the dominant active hand belonging to the foreground student
-            active_hand = None
-            for candidate_hand in [results.right_hand_landmarks, results.left_hand_landmarks]:
-                if candidate_hand:
-                    wrist = candidate_hand.landmark[0]
-                    # Check if candidate hand is within foreground student's signing boundary
-                    if min_x <= wrist.x <= max_x and wrist.y >= min_y:
-                        active_hand = candidate_hand
-                        break
+            # Check candidate hands within foreground student's signing boundary
+            rh_valid = None
+            if results.right_hand_landmarks:
+                wrist = results.right_hand_landmarks.landmark[0]
+                if min_x <= wrist.x <= max_x and wrist.y >= min_y:
+                    rh_valid = results.right_hand_landmarks
+
+            lh_valid = None
+            if results.left_hand_landmarks:
+                wrist = results.left_hand_landmarks.landmark[0]
+                if min_x <= wrist.x <= max_x and wrist.y >= min_y:
+                    lh_valid = results.left_hand_landmarks
+
+            active_hand = rh_valid or lh_valid
 
             frame_data = {
-                "hand": [{"x": 0, "y": 0, "z": 0} for _ in range(21)],
-                "pose": [{"x": 0, "y": 0, "z": 0} for _ in range(33)]
+                "hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
+                "right_hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
+                "left_hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
+                "has_right": False,
+                "has_left": False,
+                "pose": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(33)]
             }
-                
+
+            if rh_valid:
+                frame_data["has_right"] = True
+                for i, lm in enumerate(rh_valid.landmark):
+                    frame_data["right_hand"][i] = {"x": lm.x, "y": lm.y, "z": lm.z}
+
+            if lh_valid:
+                frame_data["has_left"] = True
+                for i, lm in enumerate(lh_valid.landmark):
+                    frame_data["left_hand"][i] = {"x": lm.x, "y": lm.y, "z": lm.z}
+
             if active_hand:
                 for i, lm in enumerate(active_hand.landmark):
                     frame_data["hand"][i] = {"x": lm.x, "y": lm.y, "z": lm.z}
@@ -316,13 +341,15 @@ async def evaluate_endpoint(websocket: WebSocket):
             student_sequence.append(frame_data)
             
             # Streaming presence / landmarks to frontend
-            hand_detected = (active_hand is not None)
+            hand_detected = (rh_valid is not None or lh_valid is not None)
             if diag_state["on"] and diag_state["mid"] is not None:
                 scores = diagnostic_frame_scores(frame_data, diag_state["mid"])
                 await websocket.send_json({
                     "action": "landmarks",
                     "hand_detected": hand_detected,
                     "hand": frame_data["hand"],
+                    "right_hand": frame_data["right_hand"] if frame_data["has_right"] else None,
+                    "left_hand": frame_data["left_hand"] if frame_data["has_left"] else None,
                     "pose": {
                         "nose": frame_data["pose"][0],
                         "leftShoulder": frame_data["pose"][11],
@@ -335,7 +362,9 @@ async def evaluate_endpoint(websocket: WebSocket):
                 await websocket.send_json({
                     "action": "hand_status",
                     "hand_detected": hand_detected,
-                    "hand": frame_data["hand"]
+                    "hand": frame_data["hand"],
+                    "right_hand": frame_data["right_hand"] if frame_data["has_right"] else None,
+                    "left_hand": frame_data["left_hand"] if frame_data["has_left"] else None,
                 })
 
     except WebSocketDisconnect:

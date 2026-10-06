@@ -79,61 +79,20 @@ interface MagicActivityGroup {
   rounds: MagicRound[];
 }
 
-// Fallback activities for fingerspelling
-const DEFAULT_ACTIVITY_GROUPS: MagicActivityGroup[] = [
-  {
-    id: 1,
-    title: 'FSL Vocabulary: Practice Words',
-    rounds: [
-      { 
-        image: '/images/1.png', 
-        wordText: 'FSL',
-        word: [
-          { char: 'F', visible: true },
-          { char: 'S', visible: false },
-          { char: 'L', visible: true }
-        ],
-        missingTargets: [
-          { charIndex: 1, char: 'S', stageId: 19 }
-        ]
-      },
-      { 
-        image: '/images/2.png', 
-        wordText: 'DEAF',
-        word: [
-          { char: 'D', visible: true },
-          { char: 'E', visible: false },
-          { char: 'A', visible: true },
-          { char: 'F', visible: true }
-        ],
-        missingTargets: [
-          { charIndex: 1, char: 'E', stageId: 5 }
-        ]
-      },
-      { 
-        image: '/images/watch.png', 
-        wordText: 'WATCH',
-        word: [
-          { char: 'W', visible: true },
-          { char: 'A', visible: false },
-          { char: 'T', visible: false },
-          { char: 'C', visible: true },
-          { char: 'H', visible: true }
-        ],
-        missingTargets: [
-          { charIndex: 1, char: 'A', stageId: 1 },
-          { charIndex: 2, char: 'T', stageId: 20 }
-        ]
-      }
-    ]
-  }
-];
-
 const PASS_THRESHOLD = 60;
+
+const EMPTY_ROUND: MagicRound = {
+  image: '',
+  wordText: '',
+  word: [],
+  missingTargets: [],
+  referenceVideoUrl: null,
+  referenceVideoUrl2: null,
+};
 
 export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const [view, setView] = useState<'menu' | 'camera-check' | 'game' | 'results'>('menu');
-  const [activityGroups, setActivityGroups] = useState<MagicActivityGroup[]>(DEFAULT_ACTIVITY_GROUPS);
+  const [activityGroups, setActivityGroups] = useState<MagicActivityGroup[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -179,7 +138,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
   const autoNextTimerRef = useRef<number | null>(null);
   const currentStepIndexRef = useRef(0);
   const solvedIndicesRef = useRef<number[]>([]);
-  const currentRoundRef = useRef<MagicRound>(DEFAULT_ACTIVITY_GROUPS[0].rounds[0]);
+  const currentRoundRef = useRef<MagicRound>(EMPTY_ROUND);
 
   // Fetch dynamic game configurations and items from backend
   useEffect(() => {
@@ -282,10 +241,10 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     loadConfigs();
   }, []);
 
-  const currentGroup = activityGroups.find(g => g.id === activeGroupId) || activityGroups[0] || DEFAULT_ACTIVITY_GROUPS[0];
+  const currentGroup = activityGroups.find(g => g.id === activeGroupId) || activityGroups[0] || { id: 0, title: 'No Activity', rounds: [] };
   const rounds = currentGroup.rounds || [];
   const totalRounds = rounds.length;
-  const currentRound = rounds[roundIndex] || rounds[0] || DEFAULT_ACTIVITY_GROUPS[0].rounds[0];
+  const currentRound = rounds[roundIndex] || rounds[0] || EMPTY_ROUND;
 
   // Filter activity groups for menu
   const filteredGroups = activityGroups.filter(grp => {
@@ -311,9 +270,13 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
 
   const streakRef = useRef(streak);
   const scoreRef = useRef(score);
+  const roundIndexRef = useRef(roundIndex);
+  const totalRoundsRef = useRef(totalRounds);
 
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { roundIndexRef.current = roundIndex; }, [roundIndex]);
+  useEffect(() => { totalRoundsRef.current = totalRounds; }, [totalRounds]);
   useEffect(() => { isEvaluatingRef.current = isEvaluating; }, [isEvaluating]);
   useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
   useEffect(() => { solvedIndicesRef.current = solvedIndices; }, [solvedIndices]);
@@ -622,7 +585,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
               // Automatically advance to the next round after celebration (2.5s)
               if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
               autoNextTimerRef.current = window.setTimeout(() => {
-                handleNextRound();
+                handleNextRoundRef.current();
               }, 2500);
             }
           } else {
@@ -827,7 +790,7 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
       autoStateRef.current = 'passed';
 
       autoNextTimerRef.current = window.setTimeout(() => {
-        handleNextRound();
+        handleNextRoundRef.current();
       }, 3500);
     }
   };
@@ -845,8 +808,11 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     setAttempts(0);
     if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
 
-    if (roundIndex < totalRounds - 1) {
-      const nextIdx = roundIndex + 1;
+    const currentIdx = roundIndexRef.current;
+    const totalCount = totalRoundsRef.current;
+
+    if (currentIdx < totalCount - 1) {
+      const nextIdx = currentIdx + 1;
       setRoundIndex(nextIdx);
       setCurrentStepIndex(0);
       currentStepIndexRef.current = 0;
@@ -858,19 +824,25 @@ export default function MagicFingers({ onNavigate }: MagicFingersProps) {
     } else {
       // Game Complete - save score to backend (capped at 500 XP max for mini-games)
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+      const latestScore = scoreRef.current;
+      const latestStreak = streakRef.current;
+
       if (student.id) {
-        const finalXp = Math.min(500, score);
+        const finalXp = Math.min(500, latestScore);
         saveMiniGameScore({
           student_id: student.id,
           game_type: 'magic_fingers',
           score: finalXp,
-          streak: streak,
-          rounds_completed: totalRounds
+          streak: latestStreak,
+          rounds_completed: totalCount
         });
       }
       setView('results');
     }
   };
+
+  const handleNextRoundRef = useRef(handleNextRound);
+  useEffect(() => { handleNextRoundRef.current = handleNextRound; }, [handleNextRound]);
 
   // Menu Render
   const renderMenu = () => (
