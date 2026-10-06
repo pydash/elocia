@@ -8,7 +8,7 @@ import '../../pages/Evaluation/EvaluationSession.css';
 import { startPuzzleSignTour, stopCurrentTour } from '../../utils/activityTours';
 
 interface PuzzleSignProps {
-  onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign') => void;
+  onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers') => void;
 }
 
 const puzzleSignLogo = '/images/Puzzle Sign.png';
@@ -26,64 +26,14 @@ const confettiImg = '/images/Confetti.png';
 // `answer` maps to baselines/baseline_<answer>.json on the CV engine.
 // ============================================================
 export interface PuzzleRound {
-  image1: string;      // left item
-  answer: number;     // the missing number -> stageId for baseline lookup
+  image1: string;      // left item (word 1 or result depending on equation)
+  answer: number;     // stageId for baseline lookup
   image3: string;      // result item
   instruction: string; // shown in the instruction card
   answerText?: string; // Optional manual override for the text string displayed
   referenceVideoUrl?: string | null;
+  missingPosition?: 1 | 2; // 1 = [ ? ] + Word 2 = Result, 2 = Word 1 + [ ? ] = Result
 }
-
-const PUZZLE_ACTIVITIES: Record<number, PuzzleRound[]> = {
-  1: [
-    { image1: "☀️", answer: 1, image3: "🌤", instruction: "Sun + ? = Sun behind a cloud" },
-    { image1: "1️⃣", answer: 1, image3: "2️⃣", instruction: "One + ? = Two" },
-    { image1: "🐟", answer: 1, image3: "🐟🐟", instruction: "Fish + ? = Two fish" },
-    { image1: "⭐", answer: 1, image3: "⭐⭐", instruction: "Star + ? = Two stars" },
-    { image1: "🍎", answer: 1, image3: "🍎🍎", instruction: "Apple + ? = Two apples" },
-    { image1: "☁️", answer: 1, image3: "🌤", instruction: "Cloud + ? = Sun behind a cloud" },
-    { image1: "1️⃣", answer: 1, image3: "1️⃣", instruction: "One + ? = One" },
-    { image1: "🍪", answer: 1, image3: "🍪🍪", instruction: "Cookie + ? = Two cookies" },
-    { image1: "🎈", answer: 1, image3: "🎈🎈", instruction: "Balloon + ? = Two balloons" },
-    { image1: "🌙", answer: 1, image3: "🌙🌙", instruction: "Moon + ? = Two moons" },
-  ],
-  2: [
-    { image1: "🍎", answer: 2, image3: "🍎🍎🍎", instruction: "Apple + ? = Three apples" },
-    { image1: "1️⃣", answer: 2, image3: "3️⃣", instruction: "One + ? = Three" },
-    { image1: "🐟", answer: 2, image3: "🐟🐟🐟", instruction: "Fish + ? = Three fish" },
-    { image1: "⭐", answer: 2, image3: "⭐⭐⭐", instruction: "Star + ? = Three stars" },
-    { image1: "🎈", answer: 2, image3: "🎈🎈🎈", instruction: "Balloon + ? = Three balloons" },
-    { image1: "☁️", answer: 2, image3: "☁️☁️☁️", instruction: "Cloud + ? = Three clouds" },
-    { image1: "🌙", answer: 2, image3: "🌙🌙🌙", instruction: "Moon + ? = Three moons" },
-    { image1: "🍪", answer: 2, image3: "🍪🍪🍪", instruction: "Cookie + ? = Three cookies" },
-    { image1: "☀️", answer: 2, image3: "☀️☀️☀️", instruction: "Sun + ? = Three suns" },
-    { image1: "2️⃣", answer: 2, image3: "2️⃣", instruction: "Two + ? = Two" },
-  ],
-  3: [
-    { image1: "🍎", answer: 3, image3: "🍎🍎🍎🍎", instruction: "Apple + ? = Four apples" },
-    { image1: "1️⃣", answer: 3, image3: "4️⃣", instruction: "One + ? = Four" },
-    { image1: "🐟", answer: 3, image3: "🐟🐟🐟🐟", instruction: "Fish + ? = Four fish" },
-    { image1: "⭐", answer: 3, image3: "⭐⭐⭐⭐", instruction: "Star + ? = Four stars" },
-    { image1: "🎈", answer: 3, image3: "🎈🎈🎈🎈", instruction: "Balloon + ? = Four balloons" },
-    { image1: "☁️", answer: 3, image3: "☁️☁️☁️☁️", instruction: "Cloud + ? = Four clouds" },
-    { image1: "🌙", answer: 3, image3: "🌙🌙🌙🌙", instruction: "Moon + ? = Four moons" },
-    { image1: "3️⃣", answer: 3, image3: "3️⃣", instruction: "Three + ? = Three" },
-    { image1: "🍪", answer: 3, image3: "🍪🍪🍪🍪", instruction: "Cookie + ? = Four cookies" },
-    { image1: "☀️", answer: 3, image3: "☀️☀️☀️☀️", instruction: "Sun + ? = Four suns" },
-  ],
-  4: [
-    { image1: "🍎", answer: 4, image3: "🍎🍎🍎🍎🍎", instruction: "Apple + ? = Five apples" },
-    { image1: "1️⃣", answer: 4, image3: "5️⃣", instruction: "One + ? = Five" },
-    { image1: "🐟", answer: 4, image3: "🐟🐟🐟🐟🐟", instruction: "Fish + ? = Five fish" },
-    { image1: "⭐", answer: 4, image3: "⭐⭐⭐⭐⭐", instruction: "Star + ? = Five stars" },
-    { image1: "🎈", answer: 4, image3: "🎈🎈🎈🎈🎈", instruction: "Balloon + ? = Five balloons" },
-    { image1: "☁️", answer: 4, image3: "☁️☁️☁️☁️☁️", instruction: "Cloud + ? = Five clouds" },
-    { image1: "🌙", answer: 4, image3: "🌙🌙🌙🌙🌙", instruction: "Moon + ? = Five moons" },
-    { image1: "4️⃣", answer: 4, image3: "4️⃣", instruction: "Four + ? = Four" },
-    { image1: "🍪", answer: 4, image3: "🍪🍪🍪🍪🍪", instruction: "Cookie + ? = Five cookies" },
-    { image1: "☀️", answer: 4, image3: "☀️☀️☀️☀️☀️", instruction: "Sun + ? = Five suns" },
-  ],
-};
 
 const HIGHEST_SCORE = 300;
 
@@ -169,7 +119,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   const recordingTimerRef = useRef<number | null>(null);
   const autoNextTimerRef = useRef<number | null>(null);
 
-  const [puzzleActivities, setPuzzleActivities] = useState<Record<number, PuzzleRound[]>>(PUZZLE_ACTIVITIES);
+  const [puzzleActivities, setPuzzleActivities] = useState<Record<number, PuzzleRound[]>>({});
   const [activityTitles, setActivityTitles] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -185,13 +135,24 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
           if (act.puzzle_sign_items && act.puzzle_sign_items.length > 0) {
             mappedDict[actNumber] = act.puzzle_sign_items.map((item) => {
               const numAnswer = parseInt(item.hidden_word, 10);
+              const isPos1 = item.missing_position === 1 || item.word_one === '+' || (!item.word_one && Boolean(item.word_two));
+              const knownWord = isPos1 ? (item.word_two && item.word_two !== '+' ? item.word_two : item.word_one) : item.word_one;
+              const knownImage = isPos1
+                ? (resolveMediaUrl(item.word_two_image_url) || resolveMediaUrl(item.word_one_image_url) || knownWord)
+                : (resolveMediaUrl(item.word_one_image_url) || knownWord);
+
+              const instructionText = isPos1
+                ? `? + ${knownWord} = ${item.word_form}`
+                : `${knownWord} + ? = ${item.word_form}`;
+
               return {
-                image1: resolveMediaUrl(item.word_one_image_url) || item.word_one,
+                image1: knownImage,
                 answer: !isNaN(numAnswer) ? numAnswer : 1,
                 image3: resolveMediaUrl(item.word_form_image_url) || item.word_form,
-                instruction: `${item.word_one} + ? = ${item.word_form}`,
+                instruction: instructionText,
                 answerText: item.hidden_word,
                 referenceVideoUrl: resolveMediaUrl(item.reference_video_url),
+                missingPosition: (isPos1 ? 1 : 2) as 1 | 2,
               };
             });
           }
@@ -206,7 +167,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     loadDynamicPuzzleActivities();
   }, []);
 
-  const rounds = activeActivity != null ? (puzzleActivities[activeActivity] ?? PUZZLE_ACTIVITIES[activeActivity] ?? []) : [];
+  const rounds = activeActivity != null ? (puzzleActivities[activeActivity] ?? []) : [];
   const currentRound = rounds[roundIndex];
   const currentAnswer = currentRound?.answer ?? 1;
 
@@ -233,6 +194,9 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   const currentRoundRef = useRef(currentRound);
   useEffect(() => { currentRoundRef.current = currentRound; }, [currentRound]);
 
+  const roundsRef = useRef(rounds);
+  useEffect(() => { roundsRef.current = rounds; }, [rounds]);
+
   const handleNextRound = () => {
     if (autoNextTimerRef.current) {
       clearTimeout(autoNextTimerRef.current);
@@ -245,7 +209,10 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     holdStartRef.current = null;
     if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
 
-    if (roundIndex < rounds.length - 1) {
+    const activeRounds = roundsRef.current;
+    const currentIdx = roundIndexRef.current;
+
+    if (currentIdx < activeRounds.length - 1) {
       setRoundIndex(prev => prev + 1);
       setAttempts(0);
       setLastResult(null);
@@ -254,20 +221,26 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
       setShowDemoVideo(false);
     } else {
       const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+      const latestScore = scoreRef.current;
+      const latestStreak = streakRef.current;
+
       if (student.id) {
         // Capped at 500 XP max for mini games
-        const finalXp = Math.min(500, score);
+        const finalXp = Math.min(500, latestScore);
         saveMiniGameScore({
           student_id: student.id,
           game_type: 'puzzle_sign',
           score: finalXp,
-          streak: streak,
-          rounds_completed: rounds.length
+          streak: latestStreak,
+          rounds_completed: activeRounds.length
         });
       }
       setView('results');
     }
   };
+
+  const handleNextRoundRef = useRef(handleNextRound);
+  useEffect(() => { handleNextRoundRef.current = handleNextRound; }, [handleNextRound]);
 
   const giveUpReveal = () => {
     // After 3 failed attempts the student can reveal the answer
@@ -278,7 +251,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     // After showing the answer and demo, automatically advance to next round
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     autoNextTimerRef.current = window.setTimeout(() => {
-      handleNextRound();
+      handleNextRoundRef.current();
     }, 3500);
   };
 
@@ -311,7 +284,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     if (diagOn && wsRef.current?.readyState === WebSocket.OPEN && currentRound) {
       wsRef.current.send(JSON.stringify({ 
         action: 'start_diagnostic', 
-        stageId: currentRound.answer,
+        stageId: currentRound.answerText || currentRound.answer,
         activityType: 'puzzle_sign'
       }));
     }
@@ -326,7 +299,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
       if (wsRef.current?.readyState === WebSocket.OPEN && currentRound) {
         wsRef.current.send(JSON.stringify({ 
           action: 'start_diagnostic', 
-          stageId: currentRound.answer,
+          stageId: currentRound.answerText || currentRound.answer,
           activityType: 'puzzle_sign'
         }));
       }
@@ -343,7 +316,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentRound) {
       wsRef.current.send(JSON.stringify({ 
         action: 'evaluate', 
-        stageId: currentRound.answer,
+        stageId: currentRound.answerText || currentRound.answer,
         stageName: currentRound.answerText || `Number ${currentRound.answer}`,
         activityType: 'puzzle_sign'
       }));
@@ -504,7 +477,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
       if (curR) {
         ws.send(JSON.stringify({
           action: 'start_diagnostic',
-          stageId: curR.answer,
+          stageId: curR.answerText || curR.answer,
           activityType: 'puzzle_sign'
         }));
       }
@@ -575,7 +548,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             // Automatically advance to the next round after celebration (2.5s)
             if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
             autoNextTimerRef.current = window.setTimeout(() => {
-              handleNextRound();
+              handleNextRoundRef.current();
             }, 2500);
           } else {
             hasPassedRef.current = false;
@@ -660,7 +633,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                 if (ws.readyState === WebSocket.OPEN && curR) {
                   ws.send(JSON.stringify({ 
                     action: 'evaluate', 
-                    stageId: curR.answer,
+                    stageId: curR.answerText || curR.answer,
                     stageName: curR.answerText || `Number ${curR.answer}`,
                     activityType: 'puzzle_sign'
                   }));
@@ -729,9 +702,11 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   // ============================================================
   const renderMenu = () => {
     const query = searchQuery.trim().toLowerCase();
-    const filteredActivities = [1, 2, 3, 4].filter(num =>
-      `activity ${num}`.includes(query)
-    );
+    const activityNumbers = Object.keys(puzzleActivities).map(Number).sort((a, b) => a - b);
+    const filteredActivities = activityNumbers.filter(num => {
+      const title = activityTitles[num] || `Activity ${num}`;
+      return title.toLowerCase().includes(query) || `activity ${num}`.includes(query);
+    });
 
     return (
       <div className="ps-layout">
@@ -761,7 +736,12 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                     onClick={() => handleStartActivity(num)}
                   >
                     <div className="activity-number">{num}</div>
-                    <span className="activity-text">{activityTitles[num] || `Activity ${num}`}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, paddingLeft: '8px' }}>
+                      <span className="activity-text">{activityTitles[num] || `Activity ${num}`}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#6B7280', fontWeight: 'bold' }}>
+                        {puzzleActivities[num]?.length || 0} {(puzzleActivities[num]?.length || 0) === 1 ? 'Round' : 'Rounds'}
+                      </span>
+                    </div>
                     <span className="activity-arrow">➔</span>
                   </button>
                 ))}
@@ -882,7 +862,7 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
                           </span>
                         </div>
                         <div className="hud-text-group">
-                          <span className="hud-main-text">🎬 Sign the number {currentAnswer}!</span>
+                          <span className="hud-main-text">🎬 Sign: {currentRound?.answerText || currentAnswer}!</span>
                           <span className="hud-sub-text">Move your hand clearly in frame... ✨</span>
                         </div>
                       </div>
@@ -1026,55 +1006,121 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
             ) : (
               <>
                 <div className="puzzle-equation">
-                  <div className="puzzle-item">
-                    {currentRound?.image1?.startsWith('http') || currentRound?.image1?.startsWith('/') ? (
-                      <img
-                        src={currentRound.image1}
-                        alt="Word 1"
-                        className="puzzle-emoji-img"
-                        style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">☀️</span>';
-                        }}
-                      />
-                    ) : (
-                      <span className="puzzle-emoji">{currentRound?.image1 ?? '☀️'}</span>
-                    )}
-                    <div className="puzzle-underscore"></div>
-                  </div>
-                  <div className="puzzle-operator">+</div>
-                  <div className="puzzle-item unknown">
-                    {answerShown ? (
-                      <span className="puzzle-emoji ps-revealed">{currentRound?.answerText ?? currentAnswer}</span>
-                    ) : (
-                      <span className="puzzle-qmark">?</span>
-                    )}
-                    <div className="puzzle-underscore"></div>
-                  </div>
-                  <div className="puzzle-operator">=</div>
-                  <div className="puzzle-item">
-                    {currentRound?.image3?.startsWith('http') || currentRound?.image3?.startsWith('/') ? (
-                      <img
-                        src={currentRound.image3}
-                        alt="Result"
-                        className="puzzle-emoji-img"
-                        style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">🌤</span>';
-                        }}
-                      />
-                    ) : (
-                      <span
-                        className="puzzle-emoji"
-                        style={currentRound && currentRound.image3.length > 2 ? { fontSize: '3.5rem' } : undefined}
-                      >
-                        {currentRound?.image3 ?? '🌻'}
-                      </span>
-                    )}
-                    <div className="puzzle-underscore"></div>
-                  </div>
+                  {currentRound?.missingPosition === 1 ? (
+                    <>
+                      {/* Slot 1 is Missing: [ ? ] + Known = Result */}
+                      <div className="puzzle-item unknown">
+                        {answerShown ? (
+                          <span className="puzzle-emoji ps-revealed">{currentRound?.answerText ?? currentAnswer}</span>
+                        ) : (
+                          <span className="puzzle-qmark">?</span>
+                        )}
+                        <div className="puzzle-underscore"></div>
+                      </div>
+
+                      <div className="puzzle-operator">+</div>
+
+                      <div className="puzzle-item">
+                        {currentRound?.image1?.startsWith('http') || currentRound?.image1?.startsWith('/') ? (
+                          <img
+                            src={currentRound.image1}
+                            alt="Word 2"
+                            className="puzzle-emoji-img"
+                            style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">💍</span>';
+                            }}
+                          />
+                        ) : (
+                          <span className="puzzle-emoji">{currentRound?.image1 ?? '💍'}</span>
+                        )}
+                        <div className="puzzle-underscore"></div>
+                      </div>
+
+                      <div className="puzzle-operator">=</div>
+
+                      <div className="puzzle-item">
+                        {currentRound?.image3?.startsWith('http') || currentRound?.image3?.startsWith('/') ? (
+                          <img
+                            src={currentRound.image3}
+                            alt="Result"
+                            className="puzzle-emoji-img"
+                            style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">✨</span>';
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className="puzzle-emoji"
+                            style={currentRound && currentRound.image3.length > 2 ? { fontSize: '3.5rem' } : undefined}
+                          >
+                            {currentRound?.image3 ?? '✨'}
+                          </span>
+                        )}
+                        <div className="puzzle-underscore"></div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Slot 2 is Missing: Known + [ ? ] = Result */}
+                      <div className="puzzle-item">
+                        {currentRound?.image1?.startsWith('http') || currentRound?.image1?.startsWith('/') ? (
+                          <img
+                            src={currentRound.image1}
+                            alt="Word 1"
+                            className="puzzle-emoji-img"
+                            style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">☀️</span>';
+                            }}
+                          />
+                        ) : (
+                          <span className="puzzle-emoji">{currentRound?.image1 ?? '☀️'}</span>
+                        )}
+                        <div className="puzzle-underscore"></div>
+                      </div>
+
+                      <div className="puzzle-operator">+</div>
+
+                      <div className="puzzle-item unknown">
+                        {answerShown ? (
+                          <span className="puzzle-emoji ps-revealed">{currentRound?.answerText ?? currentAnswer}</span>
+                        ) : (
+                          <span className="puzzle-qmark">?</span>
+                        )}
+                        <div className="puzzle-underscore"></div>
+                      </div>
+
+                      <div className="puzzle-operator">=</div>
+
+                      <div className="puzzle-item">
+                        {currentRound?.image3?.startsWith('http') || currentRound?.image3?.startsWith('/') ? (
+                          <img
+                            src={currentRound.image3}
+                            alt="Result"
+                            className="puzzle-emoji-img"
+                            style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }}
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = '<span class="puzzle-emoji">🌤</span>';
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className="puzzle-emoji"
+                            style={currentRound && currentRound.image3.length > 2 ? { fontSize: '3.5rem' } : undefined}
+                          >
+                            {currentRound?.image3 ?? '🌻'}
+                          </span>
+                        )}
+                        <div className="puzzle-underscore"></div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -1100,10 +1146,8 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
   );
 
   const renderResults = () => {
-    // Determine the rounds they actually played/solved
-    // (If they quit early, roundIndex tells us how many they did. If they finished, it's rounds.length)
-    const playedCount = Math.min(roundIndex, rounds.length);
-    const playedRounds = rounds.slice(0, playedCount).map(r => ({
+    // Show all rounds practiced in this activity
+    const playedRounds = rounds.map(r => ({
       answerText: r.answerText ?? String(r.answer)
     }));
 

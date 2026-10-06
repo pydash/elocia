@@ -14,7 +14,7 @@ interface MiniGameCompleteProps {
   score: number;
   playedRounds: { answerText: string }[];
   onBackToPractice: () => void;
-  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign') => void;
+  onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'stageComplete' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers') => void;
 }
 
 const TrophyIcon = () => (

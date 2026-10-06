@@ -6,6 +6,12 @@ from typing import List, Optional
 import uuid
 import os
 import shutil
+import subprocess
+import sys
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.database.connection import get_db
 from app.models.user import User, StudentProfile
@@ -39,14 +45,95 @@ router = APIRouter(prefix="/minigames", tags=["Mini-Games (Modules 7, 8, 9)"])
 
 # Define storage directories for uploaded minigame assets
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+DESKTOP_PYTHON = sys.executable
+EXTRACTOR_SCRIPT = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines", "extract_baseline.py")
+
 MINIGAME_IMAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "minigames", "images"))
 MINIGAME_VIDEOS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "minigames", "videos"))
+
+# Storage and desktop baseline directories
+STORAGE_BASELINES_MINIGAMES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "baselines", "minigames"))
+DESKTOP_BASELINES_MINIGAMES_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines", "minigames")
 
 # Also keep student desktop frontend public assets synchronized for direct offline access if present
 DESKTOP_PUBLIC_VIDEOS = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "videos")
 
-for d in [MINIGAME_IMAGES_DIR, MINIGAME_VIDEOS_DIR]:
+for d in [
+    MINIGAME_IMAGES_DIR,
+    MINIGAME_VIDEOS_DIR,
+    STORAGE_BASELINES_MINIGAMES_DIR,
+    DESKTOP_BASELINES_MINIGAMES_DIR,
+    os.path.join(STORAGE_BASELINES_MINIGAMES_DIR, "puzzle_sign"),
+    os.path.join(STORAGE_BASELINES_MINIGAMES_DIR, "see_it_sign_it"),
+    os.path.join(STORAGE_BASELINES_MINIGAMES_DIR, "magic_fingers"),
+    os.path.join(DESKTOP_BASELINES_MINIGAMES_DIR, "puzzle_sign"),
+    os.path.join(DESKTOP_BASELINES_MINIGAMES_DIR, "see_it_sign_it"),
+    os.path.join(DESKTOP_BASELINES_MINIGAMES_DIR, "magic_fingers"),
+]:
     os.makedirs(d, exist_ok=True)
+
+
+def extract_minigame_baseline(video_url: Optional[str], game_type: str, word_identifier: Optional[str]):
+    """
+    Given a video URL (e.g. /minigames/videos/vid_xyz.mp4 or http://localhost:8000/minigames/videos/vid_xyz.mp4)
+    and a word identifier (e.g. 'Ear' or 'Rain' or 'A'), executes MediaPipe Holistic 3D landmark extraction
+    and saves the baseline JSON in both backend storage and student-desktop baselines.
+    """
+    if not video_url or not word_identifier:
+        return
+
+    clean_word = str(word_identifier).strip()
+    if not clean_word or clean_word in ["+", "?", ""]:
+        return
+
+    # Extract filename from URL
+    video_filename = os.path.basename(video_url.split("?")[0])
+    video_path = os.path.join(MINIGAME_VIDEOS_DIR, video_filename)
+
+    # Check alternative locations if not directly in MINIGAME_VIDEOS_DIR
+    if not os.path.exists(video_path):
+        candidate_desktop = os.path.join(DESKTOP_PUBLIC_VIDEOS, video_filename)
+        if os.path.exists(candidate_desktop):
+            video_path = candidate_desktop
+        else:
+            logger.warning(f"Video file not found for extraction: {video_path}")
+            return
+
+    # Target JSON filenames: baseline_<Word>.json, baseline_<word>.json, baseline_<WORD>.json
+    backend_game_dir = os.path.join(STORAGE_BASELINES_MINIGAMES_DIR, game_type)
+    desktop_game_dir = os.path.join(DESKTOP_BASELINES_MINIGAMES_DIR, game_type)
+    os.makedirs(backend_game_dir, exist_ok=True)
+    os.makedirs(desktop_game_dir, exist_ok=True)
+
+    target_json_filename = f"baseline_{clean_word}.json"
+    backend_json_path = os.path.join(backend_game_dir, target_json_filename)
+    desktop_json_path = os.path.join(desktop_game_dir, target_json_filename)
+
+    cmd = [
+        DESKTOP_PYTHON,
+        EXTRACTOR_SCRIPT,
+        "--video", video_path,
+        "--output", backend_json_path,
+        "--stage", clean_word
+    ]
+
+    try:
+        logger.info(f"Extracting baseline for {game_type} word '{clean_word}' from {video_path}...")
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if proc.returncode == 0:
+            if os.path.exists(backend_json_path):
+                # Copy to student desktop baselines directory as well
+                try:
+                    if os.path.normcase(os.path.abspath(backend_json_path)) != os.path.normcase(os.path.abspath(desktop_json_path)):
+                        shutil.copyfile(backend_json_path, desktop_json_path)
+                except Exception as ce:
+                    logger.debug(f"Desktop baseline copy note: {ce}")
+
+                logger.info(f"Successfully generated baseline for {game_type} '{clean_word}'")
+        else:
+            logger.error(f"Failed to extract baseline for {game_type} '{clean_word}': {proc.stderr or proc.stdout}")
+    except Exception as e:
+        logger.error(f"Error during baseline extraction for {game_type} '{clean_word}': {e}")
 
 
 # ── Media Upload Endpoint ───────────────────────────────────────────────────
@@ -126,6 +213,8 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             )
             db.add(item)
+            if item_data.reference_video_url and item_data.objective_answer:
+                extract_minigame_baseline(item_data.reference_video_url, "see_it_sign_it", item_data.objective_answer)
 
     elif data.game_type == "puzzle_sign" and data.puzzle_sign_items:
         for idx, item_data in enumerate(data.puzzle_sign_items):
@@ -143,6 +232,8 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             )
             db.add(item)
+            if item_data.reference_video_url and item_data.hidden_word:
+                extract_minigame_baseline(item_data.reference_video_url, "puzzle_sign", item_data.hidden_word)
 
     elif data.game_type == "magic_fingers" and data.magic_fingers_items:
         for idx, item_data in enumerate(data.magic_fingers_items):
@@ -157,6 +248,12 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             )
             db.add(item)
+            # For magic fingers, baseline targets are the individual letters
+            if item_data.reference_video_url and item_data.word and item_data.hidden_positions:
+                for pos in item_data.hidden_positions:
+                    if 0 <= pos < len(item_data.word):
+                        letter = item_data.word[pos]
+                        extract_minigame_baseline(item_data.reference_video_url, "magic_fingers", letter)
 
     await db.commit()
 
@@ -352,6 +449,8 @@ async def update_minigame_config(
                 reference_video_url=item_data.reference_video_url,
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             ))
+            if item_data.reference_video_url and item_data.objective_answer:
+                extract_minigame_baseline(item_data.reference_video_url, "see_it_sign_it", item_data.objective_answer)
 
     elif data.puzzle_sign_items is not None and config.game_type == "puzzle_sign":
         for old_item in list(config.puzzle_sign_items):
@@ -370,6 +469,8 @@ async def update_minigame_config(
                 reference_video_url=item_data.reference_video_url,
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             ))
+            if item_data.reference_video_url and item_data.hidden_word:
+                extract_minigame_baseline(item_data.reference_video_url, "puzzle_sign", item_data.hidden_word)
 
     elif data.magic_fingers_items is not None and config.game_type == "magic_fingers":
         for old_item in list(config.magic_fingers_items):
@@ -385,6 +486,11 @@ async def update_minigame_config(
                 reference_video_url_2=item_data.reference_video_url_2,
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             ))
+            if item_data.reference_video_url and item_data.word and item_data.hidden_positions:
+                for pos in item_data.hidden_positions:
+                    if 0 <= pos < len(item_data.word):
+                        letter = item_data.word[pos]
+                        extract_minigame_baseline(item_data.reference_video_url, "magic_fingers", letter)
 
     await db.commit()
 
