@@ -1,10 +1,16 @@
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../../../components/Button";
 import {
+  ArrowDown,
+  ArrowLeftRight,
+  ArrowUp,
   ChevronLeft,
   ChevronRight,
+  Clipboard,
+  Copy,
   Flag,
   ImagePlus,
+  Layers,
   Plus,
   Upload,
   X,
@@ -160,6 +166,81 @@ export function PuzzleSignCreateActivityStepTwoPage() {
     }));
   };
 
+  const duplicateRound = (index: number) => {
+    setGame((prev) => {
+      const source = prev.items[index];
+      const cloned: PuzzleSignItem = {
+        ...source,
+        id: undefined,
+        index_order: index + 1,
+      };
+      const updated = [...prev.items];
+      updated.splice(index + 1, 0, cloned);
+      return {
+        ...prev,
+        items: updated.map((item, idx) => ({ ...item, index_order: idx })),
+      };
+    });
+  };
+
+  const moveRound = (index: number, direction: "up" | "down") => {
+    setGame((prev) => {
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.items.length) return prev;
+      const updated = [...prev.items];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return {
+        ...prev,
+        items: updated.map((item, idx) => ({ ...item, index_order: idx })),
+      };
+    });
+  };
+
+  const swapImagesInRound = (index: number) => {
+    setGame((prev) => {
+      const current = prev.items[index];
+      if (!current) return prev;
+      const isSlot1 = (current.missing_position || 2) === 1;
+
+      if (isSlot1) {
+        const knownImg = current.word_two_image_url || current.word_one_image_url || "";
+        const resultImg = current.word_form_image_url || "";
+        return {
+          ...prev,
+          items: prev.items.map((it, i) =>
+            i === index
+              ? {
+                  ...it,
+                  word_two_image_url: resultImg,
+                  word_one_image_url: resultImg,
+                  word_form_image_url: knownImg,
+                }
+              : it,
+          ),
+        };
+      } else {
+        const knownImg = current.word_one_image_url || "";
+        const resultImg = current.word_form_image_url || "";
+        return {
+          ...prev,
+          items: prev.items.map((it, i) =>
+            i === index
+              ? {
+                  ...it,
+                  word_one_image_url: resultImg,
+                  word_form_image_url: knownImg,
+                }
+              : it,
+          ),
+        };
+      }
+    });
+  };
+
+
+
   const handleMediaFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
     index: number,
@@ -182,6 +263,119 @@ export function PuzzleSignCreateActivityStepTwoPage() {
     }
   };
 
+
+
+  // ── QoL 2: Card Multi-Drop (Drop 2 images + 1 video onto a single card at once) ─
+  const handleCardMultiDrop = async (index: number, files: File[]) => {
+    if (files.length === 0) return;
+    setIsUploading(true);
+    setUploadError("");
+    try {
+      const updates: Partial<PuzzleSignItem> = {};
+      const currentItem = game.items[index];
+      const isSlot1 = (currentItem.missing_position || 2) === 1;
+
+      for (const file of files) {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "";
+        const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
+        const capitalized = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
+        if (["mp4", "webm", "mov", "mkv"].includes(ext)) {
+          const res = await uploadMiniGameMedia(file);
+          updates.reference_video_url = `${API_BASE_URL}${res.url}`;
+          if (!currentItem.hidden_word) {
+            updates.hidden_word = capitalized;
+          }
+        } else if (["png", "jpg", "jpeg", "webp", "svg"].includes(ext)) {
+          const res = await uploadMiniGameMedia(file);
+          const imgUrl = `${API_BASE_URL}${res.url}`;
+          // First image goes to known item, second goes to result form
+          if (isSlot1) {
+            if (!updates.word_two_image_url && !currentItem.word_two_image_url) {
+              updates.word_two_image_url = imgUrl;
+              updates.word_one_image_url = imgUrl;
+              if (!currentItem.word_two && !currentItem.word_one) updates.word_two = capitalized;
+            } else if (!updates.word_form_image_url) {
+              updates.word_form_image_url = imgUrl;
+              if (!currentItem.word_form) updates.word_form = capitalized;
+            }
+          } else {
+            if (!updates.word_one_image_url && !currentItem.word_one_image_url) {
+              updates.word_one_image_url = imgUrl;
+              if (!currentItem.word_one) updates.word_one = capitalized;
+            } else if (!updates.word_form_image_url) {
+              updates.word_form_image_url = imgUrl;
+              if (!currentItem.word_form) updates.word_form = capitalized;
+            }
+          }
+        }
+      }
+
+      updateItem(index, updates);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Card file drop failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ── QoL 3: Ctrl+V Paste from Clipboard ───────────────────────────────────────
+  const handlePasteImageOnCard = async (
+    e: React.ClipboardEvent<HTMLElement>,
+    index: number,
+    targetSlot?: "known" | "result",
+  ) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const blob = items[i].getAsFile();
+        if (!blob) continue;
+
+        e.preventDefault();
+        setIsUploading(true);
+        setUploadError("");
+        try {
+          const file = new File([blob], `pasted_img_${Date.now()}.png`, { type: blob.type });
+          const res = await uploadMiniGameMedia(file);
+          const imgUrl = `${API_BASE_URL}${res.url}`;
+
+          const isSlot1 = (game.items[index]?.missing_position || 2) === 1;
+          if (targetSlot === "known") {
+            if (isSlot1) {
+              updateItem(index, { word_two_image_url: imgUrl, word_one_image_url: imgUrl });
+            } else {
+              updateItem(index, { word_one_image_url: imgUrl });
+            }
+          } else if (targetSlot === "result") {
+            updateItem(index, { word_form_image_url: imgUrl });
+          } else {
+            // Auto slot: if known has no image, place in known; else place in result
+            const hasKnown = isSlot1
+              ? Boolean(game.items[index]?.word_two_image_url || game.items[index]?.word_one_image_url)
+              : Boolean(game.items[index]?.word_one_image_url);
+
+            if (!hasKnown) {
+              if (isSlot1) {
+                updateItem(index, { word_two_image_url: imgUrl, word_one_image_url: imgUrl });
+              } else {
+                updateItem(index, { word_one_image_url: imgUrl });
+              }
+            } else {
+              updateItem(index, { word_form_image_url: imgUrl });
+            }
+          }
+        } catch (err) {
+          setUploadError(err instanceof Error ? err.message : "Failed to paste image");
+        } finally {
+          setIsUploading(false);
+        }
+        break;
+      }
+    }
+  };
+
   const addRound = () =>
     setGame((prev) => ({
       ...prev,
@@ -192,6 +386,7 @@ export function PuzzleSignCreateActivityStepTwoPage() {
           word_two: "",
           hidden_word: "",
           word_form: "",
+          missing_position: 1,
           word_one_image_url: "",
           word_two_image_url: "",
           word_form_image_url: "",
@@ -222,100 +417,331 @@ export function PuzzleSignCreateActivityStepTwoPage() {
       {game.items.map((item, index) => (
         <article
           key={item.index_order ?? index}
-          className="flex flex-col gap-6 p-6 bg-(--white) rounded-4xl shadow-lg/5"
+          onPaste={(e) => handlePasteImageOnCard(e, index)}
+          tabIndex={0}
+          className="flex flex-col gap-6 p-6 bg-(--white) rounded-4xl shadow-lg/5 focus:ring-2 focus:ring-(--primary)/20 outline-none transition-all relative"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <span className="flex size-7 items-center justify-center rounded-full bg-(--primary) text-xs font-bold text-white">
+                {index + 1}
+              </span>
               <Flag className="size-5" />
               <h1 className="heading-3">Round {index + 1}</h1>
             </div>
-            {game.items.length > 1 && (
-              <Button variant="destructive" onClick={() => deleteRound(index)}>
-                <X className="size-4" />
+
+            <div className="flex items-center gap-1.5">
+              {/* Swap Images in this Round */}
+              <Button
+                type="button"
+                variant="outline"
+                className="px-2.5 py-1 text-xs text-amber-700 hover:text-amber-800 hover:bg-amber-50 border-amber-200"
+                onClick={() => swapImagesInRound(index)}
+                title="Swap images between the given item and result item"
+              >
+                <ArrowLeftRight className="size-4 mr-1 text-amber-600" />
+                Swap Images
               </Button>
-            )}
+
+              {/* Move Up */}
+              <Button
+                type="button"
+                variant="outline"
+                className="px-2.5 py-1 text-xs"
+                disabled={index === 0}
+                onClick={() => moveRound(index, "up")}
+                title="Move round up"
+              >
+                <ArrowUp className="size-4" />
+              </Button>
+
+              {/* Move Down */}
+              <Button
+                type="button"
+                variant="outline"
+                className="px-2.5 py-1 text-xs"
+                disabled={index === game.items.length - 1}
+                onClick={() => moveRound(index, "down")}
+                title="Move round down"
+              >
+                <ArrowDown className="size-4" />
+              </Button>
+
+              {/* Duplicate Round */}
+              <Button
+                type="button"
+                variant="outline"
+                className="px-2.5 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                onClick={() => duplicateRound(index)}
+                title="Duplicate round"
+              >
+                <Copy className="size-4" />
+              </Button>
+
+              {/* Remove */}
+              {game.items.length > 1 && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="px-2.5 py-1 text-xs"
+                  onClick={() => deleteRound(index)}
+                  title="Delete round"
+                >
+                  <X className="size-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* Left Word / Item */}
-            <div className="space-y-3">
-              <span className="paragraph-2 font-semibold">Word 1 (Left Item)</span>
-              <Input
-                type="text"
-                placeholder="e.g. 1 or Sun"
-                value={item.word_one}
-                onChange={(e) => updateItem(index, { word_one: e.target.value })}
-                required
-              />
-              <label className="flex flex-col min-h-40 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-4 text-center hover:border-(--primary) hover:bg-(--primary-light)">
-                {item.word_one_image_url ? (
-                  <img
-                    src={item.word_one_image_url}
-                    alt="Word 1"
-                    className="max-h-28 max-w-full rounded-xl object-contain"
-                  />
-                ) : (
-                  <>
-                    <ImagePlus className="size-8 text-(--primary)" />
-                    <span className="caption font-semibold">Upload Image 1</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => handleMediaFileChange(e, index, "word_one_image_url")}
-                  className="sr-only"
-                />
-              </label>
+          {/* ── QoL 2 & 3: Round Multi-Drop Bar & Clipboard Paste Hint ── */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-blue-50/60 border border-blue-200">
+            <div className="flex items-center gap-2 text-xs text-blue-900">
+              <Clipboard className="size-4 text-blue-600 shrink-0" />
+              <span>
+                <strong className="font-semibold">Quick Media:</strong> Drop files below or click here & press <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-white border rounded shadow-xs">Ctrl+V</kbd> to paste any copied image!
+              </span>
             </div>
 
-            {/* Hidden Target Sign (Answer) */}
-            <div className="space-y-3">
-              <span className="paragraph-2 font-semibold text-(--primary)">Target Sign Answer (Missing)</span>
-              <Input
-                type="text"
-                placeholder="e.g. 1 or Cloud"
-                value={item.hidden_word}
-                onChange={(e) => updateItem(index, { hidden_word: e.target.value })}
-                required
+            {/* In-Card Multi-Drop button/zone */}
+            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 shrink-0 shadow-xs">
+              <Layers className="size-3.5" />
+              Drop Media for this Round
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                className="sr-only"
+                disabled={isUploading}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  handleCardMultiDrop(index, files);
+                  e.target.value = "";
+                }}
               />
-              <div className="p-3 bg-(--primary-light) rounded-xl text-xs text-(--primary) font-medium">
-                This is what the student must sign to complete: "{item.word_one || 'Word 1'} + [Target Sign] = {item.word_form || 'Result'}"
+            </label>
+          </div>
+
+          {/* Missing Position Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+              <div>
+                <span className="paragraph-2 font-bold text-amber-900 block">
+                  Which item is missing in this equation?
+                </span>
+                <span className="caption text-amber-700">
+                  Select which piece of the puzzle the student must sign.
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateItem(index, { missing_position: 1 })}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    (item.missing_position || 2) === 1
+                      ? "bg-(--primary) text-white border-(--primary) shadow-sm"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  Slot 1: [ ? ] + Word 2 = Result
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateItem(index, { missing_position: 2 })}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    (item.missing_position || 2) === 2
+                      ? "bg-(--primary) text-white border-(--primary) shadow-sm"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  Slot 2: Word 1 + [ ? ] = Result
+                </button>
               </div>
             </div>
 
-            {/* Result Word / Item */}
-            <div className="space-y-3">
-              <span className="paragraph-2 font-semibold">Result (Combined Form)</span>
-              <Input
-                type="text"
-                placeholder="e.g. 2 or Sun behind cloud"
-                value={item.word_form}
-                onChange={(e) => updateItem(index, { word_form: e.target.value })}
-                required
-              />
-              <label className="flex flex-col min-h-40 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-4 text-center hover:border-(--primary) hover:bg-(--primary-light)">
-                {item.word_form_image_url ? (
-                  <img
-                    src={item.word_form_image_url}
-                    alt="Result"
-                    className="max-h-28 max-w-full rounded-xl object-contain"
-                  />
-                ) : (
-                  <>
-                    <ImagePlus className="size-8 text-(--primary)" />
-                    <span className="caption font-semibold">Upload Result Image</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => handleMediaFileChange(e, index, "word_form_image_url")}
-                  className="sr-only"
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+              {/* If Slot 1 is missing, show Target Sign first. If Slot 2 is missing, show Word 1 first. */}
+              {(item.missing_position || 2) === 1 ? (
+                <>
+                  {/* Slot 1: Target Sign Answer (Missing) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex size-5 items-center justify-center rounded-full bg-(--primary) text-[11px] font-bold text-white">1</span>
+                      <span className="paragraph-2 font-semibold text-(--primary)">Target Sign Answer [ ? ] (Missing)</span>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Ear"
+                      value={item.hidden_word}
+                      onChange={(e) => updateItem(index, { hidden_word: e.target.value })}
+                      required
+                    />
+                    <div className="p-3 bg-(--primary-light) rounded-xl text-xs text-(--primary) font-medium">
+                      Student must sign: <span className="font-bold underline">[{item.hidden_word || 'Target'}]</span> + {item.word_two || item.word_one || 'Word 2'} = {item.word_form || 'Result'}
+                    </div>
+                  </div>
+
+                  {/* Slot 2: Word 2 (Known Given) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex size-5 items-center justify-center rounded-full bg-gray-600 text-[11px] font-bold text-white">2</span>
+                        <span className="paragraph-2 font-semibold">Word 2 (Known Item)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => swapImagesInRound(index)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition-colors"
+                        title="Swap image with Result image"
+                      >
+                        <ArrowLeftRight className="size-3 text-amber-600" />
+                        Swap Image
+                      </button>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Ring"
+                      value={item.word_two || item.word_one}
+                      onChange={(e) => updateItem(index, { word_two: e.target.value, word_one: e.target.value })}
+                      required
+                    />
+                    <label className="flex flex-col min-h-40 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-4 text-center hover:border-(--primary) hover:bg-(--primary-light)">
+                      {(item.word_two_image_url || item.word_one_image_url) ? (
+                        <img
+                          src={item.word_two_image_url || item.word_one_image_url}
+                          alt="Word 2"
+                          className="max-h-28 max-w-full rounded-xl object-contain"
+                        />
+                      ) : (
+                        <>
+                          <ImagePlus className="size-8 text-(--primary)" />
+                          <span className="caption font-semibold">Upload Image 2 (Ring)</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => {
+                          handleMediaFileChange(e, index, "word_two_image_url");
+                          handleMediaFileChange(e, index, "word_one_image_url");
+                        }}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Slot 1: Word 1 (Known Item) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex size-5 items-center justify-center rounded-full bg-gray-600 text-[11px] font-bold text-white">1</span>
+                        <span className="paragraph-2 font-semibold">Word 1 (Known Item)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => swapImagesInRound(index)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition-colors"
+                        title="Swap image with Result image"
+                      >
+                        <ArrowLeftRight className="size-3 text-amber-600" />
+                        Swap Image
+                      </button>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="e.g. 1 or Sun or Rain"
+                      value={item.word_one}
+                      onChange={(e) => updateItem(index, { word_one: e.target.value })}
+                      required
+                    />
+                    <label className="flex flex-col min-h-40 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-4 text-center hover:border-(--primary) hover:bg-(--primary-light)">
+                      {item.word_one_image_url ? (
+                        <img
+                          src={item.word_one_image_url}
+                          alt="Word 1"
+                          className="max-h-28 max-w-full rounded-xl object-contain"
+                        />
+                      ) : (
+                        <>
+                          <ImagePlus className="size-8 text-(--primary)" />
+                          <span className="caption font-semibold">Upload Image 1</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => handleMediaFileChange(e, index, "word_one_image_url")}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Slot 2: Target Sign Answer (Missing) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex size-5 items-center justify-center rounded-full bg-(--primary) text-[11px] font-bold text-white">2</span>
+                      <span className="paragraph-2 font-semibold text-(--primary)">Target Sign Answer [ ? ] (Missing)</span>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="e.g. 1 or Cloud or Bow"
+                      value={item.hidden_word}
+                      onChange={(e) => updateItem(index, { hidden_word: e.target.value })}
+                      required
+                    />
+                    <div className="p-3 bg-(--primary-light) rounded-xl text-xs text-(--primary) font-medium">
+                      Student must sign: {item.word_one || 'Word 1'} + <span className="font-bold underline">[{item.hidden_word || 'Target'}]</span> = {item.word_form || 'Result'}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Slot 3: Result Word / Item (Combined Form) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex size-5 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">=</span>
+                    <span className="paragraph-2 font-semibold">Result (Combined Form)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => swapImagesInRound(index)}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition-colors"
+                    title="Swap image with Given Word image"
+                  >
+                    <ArrowLeftRight className="size-3 text-amber-600" />
+                    Swap Image
+                  </button>
+                </div>
+                <Input
+                  type="text"
+                  placeholder="e.g. Earring, Rainbow"
+                  value={item.word_form}
+                  onChange={(e) => updateItem(index, { word_form: e.target.value })}
+                  required
                 />
-              </label>
+                <label className="flex flex-col min-h-40 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--border) bg-(--gray-50) p-4 text-center hover:border-(--primary) hover:bg-(--primary-light)">
+                  {item.word_form_image_url ? (
+                    <img
+                      src={item.word_form_image_url}
+                      alt="Result"
+                      className="max-h-28 max-w-full rounded-xl object-contain"
+                    />
+                  ) : (
+                    <>
+                      <ImagePlus className="size-8 text-(--primary)" />
+                      <span className="caption font-semibold">Upload Result Image</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => handleMediaFileChange(e, index, "word_form_image_url")}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
             </div>
-          </div>
 
           {/* Reference Video Upload */}
           <div className="space-y-3 pt-2">
@@ -406,17 +832,22 @@ export function PuzzleSignCreateActivityStepThreePage() {
         title: game.title || "Puzzle Sign Activity",
         description: game.description,
         difficulty: game.difficulty,
-        items: game.items.map((item, idx) => ({
-          word_one: item.word_one,
-          word_two: item.word_two || "+",
-          hidden_word: item.hidden_word,
-          word_form: item.word_form,
-          word_one_image_url: item.word_one_image_url || undefined,
-          word_two_image_url: item.word_two_image_url || undefined,
-          word_form_image_url: item.word_form_image_url || undefined,
-          reference_video_url: item.reference_video_url || undefined,
-          index_order: idx,
-        })),
+        items: game.items.map((item, idx) => {
+          const isSlot1 = (item.missing_position || 2) === 1;
+          return {
+            word_one: isSlot1 ? "+" : item.word_one,
+            word_two: isSlot1 ? (item.word_two || item.word_one) : (item.word_two || "+"),
+            hidden_word: item.hidden_word,
+            word_form: item.word_form,
+            word_one_image_url: isSlot1 ? undefined : (item.word_one_image_url || undefined),
+            word_two_image_url: isSlot1
+              ? (item.word_two_image_url || item.word_one_image_url || undefined)
+              : (item.word_two_image_url || undefined),
+            word_form_image_url: item.word_form_image_url || undefined,
+            reference_video_url: item.reference_video_url || undefined,
+            index_order: idx,
+          };
+        }),
       });
 
       sessionStorage.removeItem(DRAFT_KEY);
@@ -488,15 +919,23 @@ export function PuzzleSignCreateActivityStepThreePage() {
                     <div>
                       <p className="caption text-(--black)/50">Equation</p>
                       <p className="paragraph-1 font-bold text-(--black)">
-                        {item.word_one || "?"} + <span className="text-(--primary)">[{item.hidden_word || "?"}]</span> = {item.word_form || "?"}
+                        {(item.missing_position || 2) === 1 ? (
+                          <>
+                            <span className="text-(--primary)">[{item.hidden_word || "?"}]</span> + {item.word_two || item.word_one || "?"} = {item.word_form || "?"}
+                          </>
+                        ) : (
+                          <>
+                            {item.word_one || "?"} + <span className="text-(--primary)">[{item.hidden_word || "?"}]</span> = {item.word_form || "?"}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    {item.word_one_image_url && (
+                    {((item.missing_position || 2) === 1 ? (item.word_two_image_url || item.word_one_image_url) : item.word_one_image_url) && (
                       <img
-                        src={item.word_one_image_url}
-                        alt="Word 1"
+                        src={(item.missing_position || 2) === 1 ? (item.word_two_image_url || item.word_one_image_url) : item.word_one_image_url}
+                        alt="Known Item"
                         className="size-20 rounded-xl object-contain bg-white p-1 border"
                       />
                     )}

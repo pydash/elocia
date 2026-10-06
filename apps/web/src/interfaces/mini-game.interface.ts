@@ -14,6 +14,7 @@ export interface PuzzleSignItem {
   word_two: string;
   hidden_word: string;
   word_form: string;
+  missing_position?: 1 | 2;
   word_one_image_url?: string;
   word_two_image_url?: string;
   word_form_image_url?: string;
