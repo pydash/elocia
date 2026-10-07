@@ -16,8 +16,8 @@
   height: 100dvh;
   background-color: #69DCFF;
   position: relative;
-  overflow-y: auto; 
-  overflow-x: hidden; 
+  overflow-y: hidden; 
+  overflow-x: auto; 
 }
 
 
@@ -87,29 +87,33 @@
   position: relative;
   z-index: 10; 
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  padding-top: clamp(60px, 10vh, 120px); 
-  padding-bottom: clamp(60px, 10vh, 120px);
-  gap: clamp(40px, 6vh, 70px); 
-  width: 100%;
+  min-height: 100vh;
+  height: 100%;
+  padding-left: clamp(40px, 4vw, 80px);
+  padding-right: clamp(60px, 6vw, 120px);
+  gap: clamp(40px, 5vw, 80px); 
+  width: max-content;
+  box-sizing: border-box;
 }
 
 .section-group {
-  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(35px, 5vh, 60px);
+  gap: clamp(24px, 3vh, 36px);
+  flex-shrink: 0;
 }
 
 .section-banner {
   background-color: #FF9800; 
   color: #ffffff;
-  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
   font-weight: 800;
-  width: clamp(320px, 55vw, 760px);
-  height: clamp(56px, 8vh, 76px);
+  width: 100%;
+  min-width: clamp(240px, 20vw, 360px);
+  height: clamp(52px, 7vh, 68px);
   border-radius: 18px; 
   display: flex;
   align-items: center;
@@ -117,24 +121,26 @@
   box-shadow: 0 5px 0 #E65100; 
   text-transform: uppercase;
   letter-spacing: 1.5px;
+  padding: 0 24px;
+  box-sizing: border-box;
 }
 
 .stages-path {
   display: flex;
   flex-direction: row; 
-  gap: clamp(24px, 3vw, 48px); 
+  gap: clamp(24px, 2.5vw, 48px); 
   align-items: center;
   justify-content: center;
   position: relative; 
   z-index: 1; 
-  max-width: 95%;
+  flex-shrink: 0;
 }
 
 .path-line {
   position: absolute;
   top: 50%;
-  left: 60px;  
-  right: 60px; 
+  left: 50px;  
+  right: 50px; 
   height: 12px;
   background-color: #bdc3c7; 
   transform: translateY(-50%); 
@@ -218,12 +224,16 @@
 
 
 .stage-details-wrapper {
-  margin-top: 0px; 
-  position: relative;
+  position: fixed;
+  bottom: 24px;
+  left: calc(clamp(180px, 16vw, 240px) + (100% - clamp(180px, 16vw, 240px)) / 2);
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
+  z-index: 50;
+  width: max-content;
+  max-width: 90vw;
 }
 
 .details-rectangle {
