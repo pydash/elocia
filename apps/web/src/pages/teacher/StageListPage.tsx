@@ -46,12 +46,7 @@ export default function TeacherStageListPage() {
           onClick={() =>
             navigate("new", {
               state: {
-                stageNumber:
-                  stages.reduce(
-                    (highest, stage) =>
-                      Math.max(highest, stage.stage_number || 0),
-                    0,
-                  ) + 1,
+                stageNumber: stages.length + 1,
               },
             })
           }
@@ -77,16 +72,32 @@ function StageContent({ stages, onRefresh }: { stages: Stage[]; onRefresh: () =>
     );
   }
 
+  // Sort stages by stage_number to ensure consistent progression order matching desktop
+  const sortedStages = [...stages].sort((a, b) => (a.stage_number || 0) - (b.stage_number || 0));
+
   return (
     <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {stages.map((stage) => (
-        <StageCard key={stage.id} stage={stage} onRefresh={onRefresh} />
+      {sortedStages.map((stage, index) => (
+        <StageCard 
+          key={stage.id} 
+          stage={stage} 
+          displayStageNumber={index + 1}
+          onRefresh={onRefresh} 
+        />
       ))}
     </div>
   );
 }
 
-function StageCard({ stage, onRefresh }: { stage: Stage; onRefresh: () => void }) {
+function StageCard({ 
+  stage, 
+  displayStageNumber,
+  onRefresh 
+}: { 
+  stage: Stage; 
+  displayStageNumber: number;
+  onRefresh: () => void;
+}) {
   return (
     <article
       className={`flex min-h-52 flex-col overflow-hidden rounded-2xl border p-4 shadow-sm transition hover:border-(--primary) hover:shadow-lg ${
@@ -100,7 +111,7 @@ function StageCard({ stage, onRefresh }: { stage: Stage; onRefresh: () => void }
           <span className="h-8 w-1 rounded-full bg-(--primary)" />
           <div>
             <p className="caption uppercase text-(--ghost)">
-              Stage {stage.stage_number}
+              Stage {displayStageNumber}
             </p>
             <h2 className="heading-3 text-(--black)">{stage.title}</h2>
           </div>

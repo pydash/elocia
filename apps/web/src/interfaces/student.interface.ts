@@ -13,5 +13,6 @@ export interface Student {
   signs_mastered: number;
   stages_complete: number;
   total_xp: number;
+  has_tier4_flag?: boolean;
   created_at: string;
 }

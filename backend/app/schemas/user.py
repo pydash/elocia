@@ -49,6 +49,7 @@ class UserResponse(BaseModel):
     signs_mastered: Optional[int] = None
     stages_complete: Optional[int] = None
     total_xp: Optional[int] = None
+    has_tier4_flag: Optional[bool] = False
     created_at: Optional[datetime] = None
 
     class Config:

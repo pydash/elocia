@@ -37,6 +37,7 @@ export interface EvaluationAttemptItem {
   score_location: number;
   score_movement: number;
   passed: boolean;
+  tier_level?: number | null;
   created_at: string;
 }
 
