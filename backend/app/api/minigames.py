@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import selectinload
@@ -187,9 +187,14 @@ async def upload_minigame_media(file: UploadFile = File(...)):
 
 # ── MiniGame Config CRUD ────────────────────────────────────────────────────
 @router.post("/config", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
-async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = Depends(get_db)):
+async def create_minigame_config(
+    data: MiniGameConfigCreate, 
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
     """
     Create a mini-game activity and optionally its initial rounds/items.
+    Baseline AI extraction is dispatched via BackgroundTasks for sub-second responses.
     """
     config = MiniGameConfig(
         id=uuid.uuid4(),
@@ -214,7 +219,12 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
             )
             db.add(item)
             if item_data.reference_video_url and item_data.objective_answer:
-                extract_minigame_baseline(item_data.reference_video_url, "see_it_sign_it", item_data.objective_answer)
+                background_tasks.add_task(
+                    extract_minigame_baseline, 
+                    item_data.reference_video_url, 
+                    "see_it_sign_it", 
+                    item_data.objective_answer
+                )
 
     elif data.game_type == "puzzle_sign" and data.puzzle_sign_items:
         for idx, item_data in enumerate(data.puzzle_sign_items):
@@ -233,7 +243,12 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
             )
             db.add(item)
             if item_data.reference_video_url and item_data.hidden_word:
-                extract_minigame_baseline(item_data.reference_video_url, "puzzle_sign", item_data.hidden_word)
+                background_tasks.add_task(
+                    extract_minigame_baseline, 
+                    item_data.reference_video_url, 
+                    "puzzle_sign", 
+                    item_data.hidden_word
+                )
 
     elif data.game_type == "magic_fingers" and data.magic_fingers_items:
         for idx, item_data in enumerate(data.magic_fingers_items):
@@ -253,7 +268,12 @@ async def create_minigame_config(data: MiniGameConfigCreate, db: AsyncSession = 
                 for pos in item_data.hidden_positions:
                     if 0 <= pos < len(item_data.word):
                         letter = item_data.word[pos]
-                        extract_minigame_baseline(item_data.reference_video_url, "magic_fingers", letter)
+                        background_tasks.add_task(
+                            extract_minigame_baseline, 
+                            item_data.reference_video_url, 
+                            "magic_fingers", 
+                            letter
+                        )
 
     await db.commit()
 
@@ -409,10 +429,12 @@ async def create_magic_fingers_activity(data: MagicFingersActivityCreate, db: As
 async def update_minigame_config(
     config_id: uuid.UUID,
     data: MiniGameConfigUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Update a mini-game configuration and its rounds/items.
+    Baseline AI extraction is dispatched via BackgroundTasks for sub-second responses.
     """
     result = await db.execute(
         select(MiniGameConfig)
@@ -450,7 +472,12 @@ async def update_minigame_config(
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             ))
             if item_data.reference_video_url and item_data.objective_answer:
-                extract_minigame_baseline(item_data.reference_video_url, "see_it_sign_it", item_data.objective_answer)
+                background_tasks.add_task(
+                    extract_minigame_baseline, 
+                    item_data.reference_video_url, 
+                    "see_it_sign_it", 
+                    item_data.objective_answer
+                )
 
     elif data.puzzle_sign_items is not None and config.game_type == "puzzle_sign":
         for old_item in list(config.puzzle_sign_items):
@@ -470,7 +497,12 @@ async def update_minigame_config(
                 index_order=item_data.index_order if item_data.index_order is not None else idx
             ))
             if item_data.reference_video_url and item_data.hidden_word:
-                extract_minigame_baseline(item_data.reference_video_url, "puzzle_sign", item_data.hidden_word)
+                background_tasks.add_task(
+                    extract_minigame_baseline, 
+                    item_data.reference_video_url, 
+                    "puzzle_sign", 
+                    item_data.hidden_word
+                )
 
     elif data.magic_fingers_items is not None and config.game_type == "magic_fingers":
         for old_item in list(config.magic_fingers_items):
@@ -490,7 +522,12 @@ async def update_minigame_config(
                 for pos in item_data.hidden_positions:
                     if 0 <= pos < len(item_data.word):
                         letter = item_data.word[pos]
-                        extract_minigame_baseline(item_data.reference_video_url, "magic_fingers", letter)
+                        background_tasks.add_task(
+                            extract_minigame_baseline, 
+                            item_data.reference_video_url, 
+                            "magic_fingers", 
+                            letter
+                        )
 
     await db.commit()
 
