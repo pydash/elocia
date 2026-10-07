@@ -14,6 +14,15 @@ from app.models.user import User, StudentProfile
 router = APIRouter(prefix="/classes", tags=["Classes & Rosters"])
 videos_router = APIRouter(prefix="/educational-videos", tags=["Educational Videos"])
 
+# In-memory TTL cache for educational videos
+import time
+_edu_videos_cache = {}
+EDU_VIDEOS_CACHE_TTL = 60  # seconds
+
+def invalidate_educational_videos_cache():
+    global _edu_videos_cache
+    _edu_videos_cache.clear()
+
 # ── Schemas ──────────────────────────────────────────────────────────────────
 class ClassCreate(BaseModel):
     teacher_id: uuid.UUID
@@ -172,6 +181,13 @@ async def list_educational_videos(
     subject: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
+    cache_key = f"{grade_level}_{subject}"
+    now = time.time()
+    if cache_key in _edu_videos_cache:
+        entry = _edu_videos_cache[cache_key]
+        if now - entry["timestamp"] < EDU_VIDEOS_CACHE_TTL:
+            return entry["data"]
+
     # Only show actual educational videos, exclude auto-created stage demonstration copies
     query = select(EducationalVideo).where(EducationalVideo.subject != "FSL Demonstration")
     if grade_level:
@@ -180,7 +196,7 @@ async def list_educational_videos(
         query = query.where(EducationalVideo.subject == subject)
     res = await db.execute(query)
     videos = res.scalars().all()
-    return [
+    data = [
         {
             "id": str(v.id),
             "title": v.title,
@@ -194,6 +210,8 @@ async def list_educational_videos(
         }
         for v in videos
     ]
+    _edu_videos_cache[cache_key] = {"data": data, "timestamp": now}
+    return data
 
 @videos_router.post("", include_in_schema=False)
 @videos_router.post("/")
@@ -211,6 +229,7 @@ async def upload_educational_video(payload: EducationalVideoCreate, db: AsyncSes
     db.add(video)
     await db.commit()
     await db.refresh(video)
+    invalidate_educational_videos_cache()
     return {"status": "created", "video_id": str(video.id), "title": video.title}
 
 @videos_router.post("/upload-file")
@@ -265,19 +284,39 @@ async def upload_educational_video_file(
         shutil.copyfileobj(video.file, f_pub)
     shutil.copyfile(pub_path, stor_path)
 
-    # Transcode to universal web-standard H.264 (AVC) so HEVC/MOV videos play in all browsers
+    # Fast web optimization: check if file is already H.264/AVC web-standard
     try:
         import imageio_ffmpeg, subprocess
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         h264_filename = f"edu_{uuid.uuid4().hex[:8]}_{clean_title}_web.mp4"
         h264_pub_path = os.path.join(public_dir, h264_filename)
-        cmd = [
-            ffmpeg_exe, "-y", "-i", pub_path,
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-preset", "veryfast", "-crf", "23",
-            "-c:a", "aac", "-movflags", "+faststart",
-            h264_pub_path
-        ]
+
+        # Detect codec quickly using OpenCV VideoCapture
+        import cv2
+        cap = cv2.VideoCapture(pub_path)
+        fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+        fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)]).lower()
+        cap.release()
+
+        is_already_h264 = ("h264" in fourcc_str or "avc1" in fourcc_str or ext == ".mp4")
+
+        if is_already_h264:
+            # FAST STREAM COPY: Instant container remux & faststart without re-encoding (< 1s)
+            cmd = [
+                ffmpeg_exe, "-y", "-i", pub_path,
+                "-c", "copy", "-movflags", "+faststart",
+                h264_pub_path
+            ]
+        else:
+            # Re-encode only non-H.264 formats (e.g. ProRes MOV, HEVC) using ultrafast multithreading
+            cmd = [
+                ffmpeg_exe, "-y", "-i", pub_path,
+                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                "-preset", "ultrafast", "-threads", "0", "-crf", "23",
+                "-c:a", "aac", "-movflags", "+faststart",
+                h264_pub_path
+            ]
+
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if res.returncode == 0:
             if os.path.exists(pub_path):
@@ -289,6 +328,7 @@ async def upload_educational_video_file(
             video_filename = h264_filename
             stor_path = os.path.join(storage_dir, video_filename)
             shutil.copyfile(pub_path, stor_path)
+        invalidate_educational_videos_cache()
     except Exception as transcode_err:
         print(f"Web video transcode skipped: {transcode_err}")
 
@@ -319,5 +359,6 @@ async def delete_educational_video(video_id: uuid.UUID, db: AsyncSession = Depen
         raise HTTPException(status_code=404, detail="Educational video not found")
     await db.delete(video)
     await db.commit()
+    invalidate_educational_videos_cache()
     return {"status": "deleted", "video_id": str(video_id)}
 

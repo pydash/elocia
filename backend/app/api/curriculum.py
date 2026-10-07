@@ -46,12 +46,28 @@ def remove_baseline_disk_files(video_filename: Optional[str], stage_id: Optional
 
 router = APIRouter(tags=["Curriculum & Progression"])
 
+# In-memory TTL cache for curriculum structure
+import time
+_curriculum_cache: Dict[str, Dict[str, Any]] = {}
+CURRICULUM_CACHE_TTL = 60  # seconds
+
+def invalidate_curriculum_cache():
+    global _curriculum_cache
+    _curriculum_cache.clear()
+
 @router.get("/curriculum")
 async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSession = Depends(get_db)):
     """
     Returns curriculum structure built dynamically from curriculums -> sections -> units -> stages -> baselines.
     Includes backward-compatible fallback to flat curriculum_stages if normalized tables are not yet populated.
     """
+    cache_key = str(grade_level)
+    now = time.time()
+    if cache_key in _curriculum_cache:
+        entry = _curriculum_cache[cache_key]
+        if now - entry["timestamp"] < CURRICULUM_CACHE_TTL:
+            return entry["data"]
+
     try:
         # 1. Try querying normalized tables first
         curr_query = select(Curriculum).where(Curriculum.is_active == True)
@@ -134,15 +150,21 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
             # If a specific grade level was requested, do not fall back to flat/all stages!
             # Return the sections matching this grade level (empty if teacher hasn't created any yet)
             if grade_level is not None:
-                return {"sections": curriculum_sections}
+                res_data = {"sections": curriculum_sections}
+                _curriculum_cache[cache_key] = {"data": res_data, "timestamp": now}
+                return res_data
 
             if curriculum_sections:
-                return {"sections": curriculum_sections}
+                res_data = {"sections": curriculum_sections}
+                _curriculum_cache[cache_key] = {"data": res_data, "timestamp": now}
+                return res_data
 
         # If a specific grade level was requested and no normalized curriculum exists for it,
         # return empty sections so Grade 2 & Grade 3 students don't mistakenly see Grade 1 lessons!
         if grade_level is not None:
-            return {"sections": []}
+            res_data = {"sections": []}
+            _curriculum_cache[cache_key] = {"data": res_data, "timestamp": now}
+            return res_data
 
         # 2. Fallback to reading flat curriculum_stages if normalized tables are not yet populated
         stages_res = await db.execute(
@@ -215,7 +237,9 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
                 ]
             })
 
-        return {"sections": curriculum}
+        res_data = {"sections": curriculum}
+        _curriculum_cache[cache_key] = {"data": res_data, "timestamp": now}
+        return res_data
 
     except Exception as e:
         # Fallback in case of DB error
@@ -383,6 +407,7 @@ async def create_curriculum(payload: CurriculumCreate, db: AsyncSession = Depend
     db.add(new_curr)
     await db.commit()
     await db.refresh(new_curr)
+    invalidate_curriculum_cache()
     return new_curr
 
 @router.get("/curriculums/{curriculum_id}", response_model=CurriculumResponse)
@@ -426,6 +451,7 @@ async def update_curriculum(curriculum_id: uuid.UUID, payload: CurriculumUpdate,
         )
         .where(Curriculum.id == curriculum_id)
     )
+    invalidate_curriculum_cache()
     return updated_res.scalar_one()
 
 @router.delete("/curriculums/{curriculum_id}", status_code=status.HTTP_200_OK)
@@ -436,6 +462,7 @@ async def delete_curriculum(curriculum_id: uuid.UUID, db: AsyncSession = Depends
         raise HTTPException(status_code=404, detail="Curriculum not found")
     curr.is_active = False
     await db.commit()
+    invalidate_curriculum_cache()
     return {"status": "deactivated", "curriculum_id": str(curriculum_id)}
 
 
