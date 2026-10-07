@@ -119,6 +119,41 @@
   letter-spacing: 1.5px;
 }
 
+.stages-carousel-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  gap: 16px;
+}
+
+.carousel-arrow-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #FF9800;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #E65100, 0 8px 16px rgba(255, 152, 0, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 5;
+  flex-shrink: 0;
+}
+
+.carousel-arrow-btn:hover {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 7px 0 #E65100, 0 10px 20px rgba(255, 152, 0, 0.4);
+}
+
+.carousel-arrow-btn:active {
+  transform: translateY(3px) scale(0.97);
+  box-shadow: 0 2px 0 #E65100;
+}
+
 .stages-path {
   display: flex;
   flex-direction: row; 
