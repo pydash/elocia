@@ -36,7 +36,12 @@ def remove_baseline_disk_files(video_filename: Optional[str], stage_id: Optional
                     pass
     if stage_id is not None:
         json_name = f"baseline_{stage_id}.json"
-        for folder in [BASELINES_DIR, STORAGE_BASELINES_DIR]:
+        for folder in [
+            BASELINES_DIR,
+            os.path.join(BASELINES_DIR, "lessons"),
+            STORAGE_BASELINES_DIR,
+            os.path.join(STORAGE_BASELINES_DIR, "lessons")
+        ]:
             jpath = os.path.join(folder, json_name)
             if os.path.exists(jpath):
                 try:
