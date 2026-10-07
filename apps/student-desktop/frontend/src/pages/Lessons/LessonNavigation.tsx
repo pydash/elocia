@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
 import './LessonNavigation.css';
 import { CURRICULUM, getStageNumber } from '../../data/curriculum';
@@ -94,26 +94,11 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
     ? allStages.find(s => s.id === selectedStage) 
     : null;
 
-  const contentAreaRef = useRef<HTMLDivElement>(null);
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (contentAreaRef.current) {
-      // Allow mouse wheel to scroll horizontally smoothly
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        contentAreaRef.current.scrollLeft += e.deltaY;
-      }
-    }
-  };
-
   return (
     <div className="app-layout">
       <Navbar onNavigate={onNavigate} activeTab="learn" />
 
-      <div 
-        className="main-content-area"
-        ref={contentAreaRef}
-        onWheel={handleWheel}
-      >
+      <div className="main-content-area">
 
         <div className="clouds-wrapper">
           <img src={sunImg} alt="Sun" className="bg-decor sun" />
