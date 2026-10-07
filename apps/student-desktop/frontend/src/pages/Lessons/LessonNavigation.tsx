@@ -42,6 +42,13 @@ const ButtonPlayIcon = () => (
   </svg>
 );
 
+const CheckCircleIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" fill="#2ECC71"/>
+    <path d="M8 12.5L10.5 15L16 9.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 interface LessonNavigationProps {
   onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
   unlockedStages: number[];
@@ -84,7 +91,19 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
 
   const handleStageClick = (stageId: number, isLocked: boolean) => {
     if (isLocked) return;
-    setSelectedStage(prev => (prev === stageId ? null : stageId));
+    if (selectedStage === stageId) {
+      // If clicking already selected stage, start it immediately
+      onStartLesson(stageId);
+    } else {
+      setSelectedStage(stageId);
+      // Smooth scroll to the details card
+      setTimeout(() => {
+        const detailsEl = document.querySelector('.stage-details-wrapper');
+        if (detailsEl) {
+          detailsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    }
   };
 
   // Gather all stages across all sections and units dynamically created by the teacher
@@ -173,22 +192,52 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                       .sort((a, b) => a.id - b.id)
                       .map((stage, stageIdx) => {
                         const isLocked = !unlockedStages.includes(stage.id);
+                        const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
+                        const isCompleted = !!(stageInfo && stageInfo.passed);
+                        const cardStateClass = isLocked ? 'locked-card' : (isCompleted ? 'completed-card' : 'active-card');
+                        const xpPoints = (stage.items?.length || 1) * 10;
                     
                     return (
                       <div
                         key={stage.id}
-                        className={`stage-card ${isLocked ? 'locked-card' : 'active-card'} ${selectedStage === stage.id ? 'selected' : ''}`}
+                        className={`stage-card ${cardStateClass} ${selectedStage === stage.id ? 'selected' : ''}`}
                         onClick={() => handleStageClick(stage.id, isLocked)}
                         role="button"
                         tabIndex={isLocked ? -1 : 0}
                       >
-                        <div className="stage-text-group">
-                          <span className="stage-label">Stage</span>
-                          <span className="stage-number">{stageIdx + 1}</span>
-                        </div>
-                        <div className="icon-container">
-                          {isLocked ? <LockIcon /> : <PlayIcon />}
-                        </div>
+                        {isLocked ? (
+                          <>
+                            <div className="stage-text-group">
+                              <span className="stage-label">Stage</span>
+                              <span className="stage-number">{stageIdx + 1}</span>
+                            </div>
+                            <div className="icon-container">
+                              <LockIcon />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="card-top-badge-row">
+                              <span className={`status-pill ${isCompleted ? 'pill-completed' : 'pill-active'}`}>
+                                {isCompleted ? 'Completed' : 'Stage ' + (stageIdx + 1)}
+                              </span>
+                              <div className="card-mini-icon">
+                                {isCompleted ? <CheckCircleIcon /> : <PlayIcon />}
+                              </div>
+                            </div>
+
+                            <div className="card-body-text">
+                              <h4 className="card-stage-title">{stage.title}</h4>
+                              <p className="card-stage-subtitle">
+                                {stage.items?.length ? `${stage.items.length} signs to learn` : 'Fun sign activities'}
+                              </p>
+                            </div>
+
+                            <div className="card-footer-row">
+                              <span className="card-reward-pts">⭐ {xpPoints} pts</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   })}
@@ -198,13 +247,11 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
           )}
 
           {selectedStageData && (
-            <div className="stage-details-wrapper">
-              <div className="details-rectangle">
-
+            <div className="stage-modal-overlay" onClick={() => setSelectedStage(null)}>
+              <div className="stage-popover-card" onClick={(e) => e.stopPropagation()}>
                 <img src={mascotImg} alt="Stage Mascot" className="details-mascot" />
 
                 <div className="details-content">
-
                   <div className="details-header">
                     <span className="details-stage-name">Stage {getStageNumber(selectedStageData.id, curriculumData)}</span>
                     <h3 className="details-stage-title">{selectedStageData.title}</h3>
@@ -244,8 +291,16 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                       Start Learning
                     </button>
                   </div>
-
                 </div>
+
+                <button 
+                  className="close-popover-btn" 
+                  onClick={() => setSelectedStage(null)}
+                  title="Close"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
               </div>
             </div>
           )}
