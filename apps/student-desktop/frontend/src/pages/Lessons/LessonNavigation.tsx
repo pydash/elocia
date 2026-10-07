@@ -49,6 +49,12 @@ const CheckCircleIcon = () => (
   </svg>
 );
 
+const CarouselArrowIcon = ({ direction }: { direction: 'left' | 'right' }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: direction === 'left' ? 'rotate(180deg)' : 'none' }}>
+    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 interface LessonNavigationProps {
   onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
   unlockedStages: number[];
@@ -57,6 +63,7 @@ interface LessonNavigationProps {
 
 export default function LessonNavigation({ onNavigate, unlockedStages, onStartLesson }: LessonNavigationProps) {
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
+  const [sectionPages, setSectionPages] = useState<Record<string, number>>({});
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
 
@@ -178,72 +185,121 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
           ) : (
             curriculumData
               .filter(section => section.units && section.units.some(u => u.stages && u.stages.length > 0))
-              .map((section, idx) => (
-                <div key={`${section.id}-${idx}`} className="section-group">
-                  <div className="section-banner">
-                    {section.title}
-                  </div>
+              .map((section, idx) => {
+                const stages = section.units
+                  .flatMap(u => u.stages)
+                  .sort((a, b) => a.id - b.id);
+                
+                const sectionKey = `${section.id}-${idx}`;
+                const currentPage = sectionPages[sectionKey] || 0;
+                const itemsPerPage = 3;
+                const totalPages = Math.ceil(stages.length / itemsPerPage);
+                const startIndex = currentPage * itemsPerPage;
+                const visibleStages = stages.slice(startIndex, startIndex + itemsPerPage);
 
-                  <div className="stages-path">
-                    <div className="path-line"></div>
+                const handlePrevPage = () => {
+                  setSectionPages(prev => ({
+                    ...prev,
+                    [sectionKey]: Math.max(0, (prev[sectionKey] || 0) - 1)
+                  }));
+                };
 
-                    {section.units
-                      .flatMap(u => u.stages)
-                      .sort((a, b) => a.id - b.id)
-                      .map((stage, stageIdx) => {
-                        const isLocked = !unlockedStages.includes(stage.id);
-                        const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
-                        const isCompleted = !!(stageInfo && stageInfo.passed);
-                        const cardStateClass = isLocked ? 'locked-card' : (isCompleted ? 'completed-card' : 'active-card');
-                        const xpPoints = (stage.items?.length || 1) * 10;
-                    
-                    return (
-                      <div
-                        key={stage.id}
-                        className={`stage-card ${cardStateClass} ${selectedStage === stage.id ? 'selected' : ''}`}
-                        onClick={() => handleStageClick(stage.id, isLocked)}
-                        role="button"
-                        tabIndex={isLocked ? -1 : 0}
-                      >
-                        {isLocked ? (
-                          <>
-                            <div className="stage-text-group">
-                              <span className="stage-label">Stage</span>
-                              <span className="stage-number">{stageIdx + 1}</span>
-                            </div>
-                            <div className="icon-container">
-                              <LockIcon />
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="card-top-badge-row">
-                              <span className={`status-pill ${isCompleted ? 'pill-completed' : 'pill-active'}`}>
-                                {isCompleted ? 'Completed' : 'Stage ' + (stageIdx + 1)}
-                              </span>
-                              <div className="card-mini-icon">
-                                {isCompleted ? <CheckCircleIcon /> : <PlayIcon />}
-                              </div>
-                            </div>
+                const handleNextPage = () => {
+                  setSectionPages(prev => ({
+                    ...prev,
+                    [sectionKey]: Math.min(totalPages - 1, (prev[sectionKey] || 0) + 1)
+                  }));
+                };
 
-                            <div className="card-body-text">
-                              <h4 className="card-stage-title">{stage.title}</h4>
-                              <p className="card-stage-subtitle">
-                                {stage.items?.length ? `${stage.items.length} signs to learn` : 'Fun sign activities'}
-                              </p>
-                            </div>
+                return (
+                  <div key={sectionKey} className="section-group">
+                    <div className="section-banner">
+                      {section.title}
+                    </div>
 
-                            <div className="card-footer-row">
-                              <span className="card-reward-pts">⭐ {xpPoints} pts</span>
+                    <div className="stages-carousel-wrapper">
+                      {stages.length > itemsPerPage && currentPage > 0 && (
+                        <button
+                          className="carousel-arrow-btn arrow-prev"
+                          onClick={handlePrevPage}
+                          title="Previous Stages"
+                          aria-label="Previous Stages"
+                        >
+                          <CarouselArrowIcon direction="left" />
+                        </button>
+                      )}
+
+                      <div className="stages-path">
+                        <div className="path-line"></div>
+
+                        {visibleStages.map((stage) => {
+                          const originalStageIdx = stages.findIndex(s => s.id === stage.id);
+                          const isLocked = !unlockedStages.includes(stage.id);
+                          const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
+                          const isCompleted = !!(stageInfo && stageInfo.passed);
+                          const cardStateClass = isLocked ? 'locked-card' : (isCompleted ? 'completed-card' : 'active-card');
+                          const xpPoints = (stage.items?.length || 1) * 10;
+                      
+                          return (
+                            <div
+                              key={stage.id}
+                              className={`stage-card ${cardStateClass} ${selectedStage === stage.id ? 'selected' : ''}`}
+                              onClick={() => handleStageClick(stage.id, isLocked)}
+                              role="button"
+                              tabIndex={isLocked ? -1 : 0}
+                            >
+                              {isLocked ? (
+                                <>
+                                  <div className="stage-text-group">
+                                    <span className="stage-label">Stage</span>
+                                    <span className="stage-number">{originalStageIdx + 1}</span>
+                                  </div>
+                                  <div className="icon-container">
+                                    <LockIcon />
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="card-top-badge-row">
+                                    <span className={`status-pill ${isCompleted ? 'pill-completed' : 'pill-active'}`}>
+                                      {isCompleted ? 'Completed' : 'Stage ' + (originalStageIdx + 1)}
+                                    </span>
+                                    <div className="card-mini-icon">
+                                      {isCompleted ? <CheckCircleIcon /> : <PlayIcon />}
+                                    </div>
+                                  </div>
+
+                                  <div className="card-body-text">
+                                    <h4 className="card-stage-title">{stage.title}</h4>
+                                    <p className="card-stage-subtitle">
+                                      {stage.items?.length ? `${stage.items.length} signs to learn` : 'Fun sign activities'}
+                                    </p>
+                                  </div>
+
+                                  <div className="card-footer-row">
+                                    <span className="card-reward-pts">⭐ {xpPoints} pts</span>
+                                  </div>
+                                </>
+                              )}
                             </div>
-                          </>
-                        )}
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
+
+                      {stages.length > itemsPerPage && currentPage < totalPages - 1 && (
+                        <button
+                          className="carousel-arrow-btn arrow-next"
+                          onClick={handleNextPage}
+                          title="Next Stages"
+                          aria-label="Next Stages"
+                        >
+                          <CarouselArrowIcon direction="right" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
           )}
 
           {selectedStageData && (

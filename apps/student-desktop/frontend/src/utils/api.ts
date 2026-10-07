@@ -321,3 +321,33 @@ export async function fetchEducationalVideos(gradeLevel?: number): Promise<Educa
   }
 }
 
+export interface FocusDrillItem {
+  id: string;
+  student_id: string;
+  stage_id: number;
+  signs: string[];
+  notes?: string;
+  active: boolean;
+}
+
+export async function fetchActiveFocusDrill(studentId: string): Promise<FocusDrillItem | null> {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/drills/student/${studentId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.drill || null;
+  } catch (err) {
+    console.warn('Failed to fetch active focus drill:', err);
+    return null;
+  }
+}
+
+export async function completeFocusDrill(studentId: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/analytics/drills/student/${studentId}/complete`, { method: 'POST' });
+  } catch (err) {
+    console.warn('Failed to complete focus drill:', err);
+  }
+}
+
+
