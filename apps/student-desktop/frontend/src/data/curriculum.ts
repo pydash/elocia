@@ -38,3 +38,16 @@ export function getStageData(stageId: number, dynamicCurriculum?: Section[] | nu
   }
   return null;
 }
+
+export function getStageNumber(stageId: number, dynamicCurriculum?: Section[] | null): number {
+  const source = (dynamicCurriculum && dynamicCurriculum.length > 0) ? dynamicCurriculum : CURRICULUM;
+  for (const section of source) {
+    const sectionStages = section.units.flatMap(u => u.stages);
+    const index = sectionStages.findIndex(s => s.id === stageId);
+    if (index !== -1) {
+      return index + 1;
+    }
+  }
+  return stageId;
+}
+

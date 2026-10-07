@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
-import { getStageData } from '../../data/curriculum';
+import { getStageData, getStageNumber } from '../../data/curriculum';
 import { saveScore } from '../../utils/api';
 import { startEvaluationTour, stopCurrentTour } from '../../utils/activityTours';
 
@@ -676,7 +676,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
         <div className="eval-title-block">
           <div className="eval-main-title">
             {isPracticeMode && <span style={{ background: '#F59E0B', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', marginRight: '8px', verticalAlign: 'middle', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Practice Mode</span>}
-            Stage {currentStageId}: {stageData?.title}
+            Stage {getStageNumber(currentStageId, dynamicCurriculum)}: {stageData?.title}
           </div>
           <div className="eval-progress-track">
             {Array.from({ length: totalQuestions }, (_, index) => (
