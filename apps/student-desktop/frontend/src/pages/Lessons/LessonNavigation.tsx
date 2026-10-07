@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../../components/Sidebar/Sidebar';
 import './LessonNavigation.css';
-import { CURRICULUM } from '../../data/curriculum';
+import { CURRICULUM, getStageNumber } from '../../data/curriculum';
 import type { Section } from '../../data/curriculum';
 import { fetchCurriculum, fetchStudentProgress } from '../../utils/api';
 import type { StudentProgress } from '../../utils/api';
@@ -171,7 +171,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                     {section.units
                       .flatMap(u => u.stages)
                       .sort((a, b) => a.id - b.id)
-                      .map((stage) => {
+                      .map((stage, stageIdx) => {
                         const isLocked = !unlockedStages.includes(stage.id);
                     
                     return (
@@ -184,7 +184,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                       >
                         <div className="stage-text-group">
                           <span className="stage-label">Stage</span>
-                          <span className="stage-number">{stage.id}</span>
+                          <span className="stage-number">{stageIdx + 1}</span>
                         </div>
                         <div className="icon-container">
                           {isLocked ? <LockIcon /> : <PlayIcon />}
@@ -206,7 +206,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                 <div className="details-content">
 
                   <div className="details-header">
-                    <span className="details-stage-name">Stage {selectedStageData.id}</span>
+                    <span className="details-stage-name">Stage {getStageNumber(selectedStageData.id, curriculumData)}</span>
                     <h3 className="details-stage-title">{selectedStageData.title}</h3>
                     <p className="details-stage-description">
                       {selectedStageData.description}
