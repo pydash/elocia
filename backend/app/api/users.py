@@ -138,6 +138,14 @@ async def get_students(
     )
     result = await db.execute(query)
     rows = result.all()
+    # Query student IDs that have active Tier 4 or unpassed attempts
+    tier4_res = await db.execute(
+        select(EvaluationAttempt.student_id)
+        .where((EvaluationAttempt.tier_level == 4) | (EvaluationAttempt.passed == False))
+        .distinct()
+    )
+    flagged_student_ids = {str(sid) for (sid,) in tier4_res.all()}
+
     return [
         {
             "id": str(u.id),
@@ -150,7 +158,8 @@ async def get_students(
             "student_code": sp.student_code or f"G{sp.grade_level or 1}-01",
             "level": sp.level,
             "streak": get_effective_streak(sp),
-            "avg_score": float(avg)
+            "avg_score": float(avg),
+            "has_tier4_flag": str(u.id) in flagged_student_ids
         }
         for u, sp, avg in rows
     ]
@@ -438,6 +447,19 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
             parent_summary = ", ".join([p["name"] for p in parents_list])
             first_parent_id = parents_list[0]["id"]
 
+    # Check if student has active Tier 4 / unpassed flags
+    has_tier4_flag = False
+    if user.role == UserRole.student:
+        t4_check = await db.execute(
+            select(EvaluationAttempt.id)
+            .where(
+                EvaluationAttempt.student_id == user_id,
+                (EvaluationAttempt.tier_level == 4) | (EvaluationAttempt.passed == False)
+            )
+            .limit(1)
+        )
+        has_tier4_flag = t4_check.first() is not None
+
     return UserResponse(
         id=user.id,
         name=user.name,
@@ -458,6 +480,7 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         signs_mastered=signs_mastered,
         stages_complete=stages_complete,
         total_xp=profile.total_xp if profile else computed_xp,
+        has_tier4_flag=has_tier4_flag,
         created_at=user.created_at
     )
 
