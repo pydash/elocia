@@ -59,17 +59,7 @@ apps/student-desktop/desktop/logs/
 *.sqlite
 *.sqlite3
 
-# Baselines (calibration landmarks)
-**/baselines/**/*.json
-**/baselines/*.json
-apps/student-desktop/desktop/baselines/**/*.json
-apps/student-desktop/desktop/baselines/*.json
-apps/student-desktop/desktop/baselines/lessons/
-apps/student-desktop/desktop/baselines/minigames/
-backend/storage/baselines/
-backend/storage/minigames/
-
-# Video media uploads
+# Video media uploads & local storage media
 *.mp4
 *.webm
 *.mov
@@ -77,3 +67,6 @@ apps/student-desktop/frontend/public/videos/*.mp4
 backend/storage/videos/*.mp4
 backend/storage/minigames/videos/
 backend/storage/minigames/images/
+backend/storage/thumbnails/
+apps/student-desktop/frontend/public/thumbnails/
+

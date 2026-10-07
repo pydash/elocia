@@ -101,7 +101,7 @@ class MiniGameSession(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    game_type = Column(String, nullable=False, index=True)
+    game_type = Column(Enum(GameType, name="gametype"), nullable=False, index=True)
     score = Column(Float, default=0.0)
     highest_score = Column(Float, default=0.0)
     streak = Column(Integer, default=0)
