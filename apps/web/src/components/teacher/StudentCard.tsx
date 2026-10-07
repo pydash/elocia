@@ -11,6 +11,7 @@ type StudentCardProps = {
   student_number: number;
   student_code: string;
   is_active?: boolean;
+  has_tier4_flag?: boolean;
   onReactivate?: (id: string, name: string) => void;
 };
 
@@ -23,6 +24,7 @@ export default function StudentCard({
   student_number,
   student_code,
   is_active = true,
+  has_tier4_flag = false,
   onReactivate,
 }: StudentCardProps) {
   return (
@@ -37,7 +39,17 @@ export default function StudentCard({
         to={`/teacher/students/${encodeURIComponent(id)}`}
         className="flex w-full flex-col items-center"
       >
-        <Avatar emoji={emoji} color={color} isActive={is_active} />
+        <div className="relative">
+          <Avatar emoji={emoji} color={color} isActive={is_active} />
+          {has_tier4_flag && (
+            <span
+              className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 ring-4 ring-white"
+              title="Tier 4 Flag / Struggling with recent signs"
+            >
+              <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+            </span>
+          )}
+        </div>
         <div className="mt-5 flex w-full flex-col items-center">
           <h3 className={`heading-4 text-center ${is_active ? "text-(--black)" : "text-gray-500"}`}>
             {name}

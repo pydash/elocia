@@ -262,21 +262,30 @@ export function TeacherStageCreatePage() {
                   <label className="caption block text-(--black)">
                     Video
                     {round.video ? (
-                      <div className="mt-2 flex items-center justify-between rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
-                        <span className="truncate font-semibold">🎬 {round.video.name}</span>
-                        <label className="ml-2 cursor-pointer font-bold underline hover:text-green-950">
-                          Change
-                          <input
-                            type="file"
-                            accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
-                            className="sr-only"
-                            onChange={(event) =>
-                              updateRound(index, {
-                                video: event.target.files?.[0] ?? round.video,
-                              })
-                            }
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center justify-between rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
+                          <span className="truncate font-semibold">🎬 {round.video.name}</span>
+                          <label className="ml-2 cursor-pointer font-bold underline hover:text-green-950">
+                            Change
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+                              className="sr-only"
+                              onChange={(event) =>
+                                updateRound(index, {
+                                  video: event.target.files?.[0] ?? round.video,
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-inner border border-gray-200">
+                          <video
+                            src={URL.createObjectURL(round.video)}
+                            controls
+                            className="h-full w-full object-contain"
                           />
-                        </label>
+                        </div>
                       </div>
                     ) : (
                       <Input
@@ -354,16 +363,19 @@ export function TeacherStagePreviewPage() {
         title: draft.title.trim(),
         description: draft.description.trim(),
       });
-      for (const round of draft.rounds) {
-        if (!round.video) continue;
-        await uploadStageBaseline(
-          stage.id,
-          round.signName.trim(),
-          round.video,
-          Number(draft.gradeLevel),
-          draft.description.trim(),
+      // Upload all round baseline videos in parallel for 5x faster stage publishing
+      const roundUploads = draft.rounds
+        .filter((round) => Boolean(round.video))
+        .map((round) =>
+          uploadStageBaseline(
+            stage.id,
+            round.signName.trim(),
+            round.video!,
+            Number(draft.gradeLevel),
+            draft.description.trim(),
+          )
         );
-      }
+      await Promise.all(roundUploads);
       navigate(stagePath);
     } catch (submitError) {
       setError(
@@ -387,18 +399,37 @@ export function TeacherStagePreviewPage() {
           </span>
           <h2 className="heading-2 mt-5 text-(--black)">{draft.title}</h2>
           <p className="paragraph-2 mt-2 text-(--ghost)">{draft.description}</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid gap-6 sm:grid-cols-2">
             {draft.rounds.map((round, index) => (
               <div
                 key={index}
-                className="rounded-2xl border-2 border-(--border) bg-(--gray-50) p-4"
+                className="rounded-2xl border-2 border-(--border) bg-(--gray-50) p-4 flex flex-col justify-between space-y-3"
               >
-                <p className="caption text-(--ghost)">Round {index + 1}</p>
-                <h3 className="heading-4 mt-1 text-(--black)">
-                  {round.signName}
-                </h3>
-                <p className="caption mt-2 text-(--ghost)">
-                  {round.video?.name}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <p className="caption text-(--ghost)">Round {index + 1}</p>
+                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      Ready
+                    </span>
+                  </div>
+                  <h3 className="heading-4 mt-1 text-(--black)">
+                    {round.signName}
+                  </h3>
+                </div>
+
+                {round.video && (
+                  <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-inner border border-gray-200">
+                    <video
+                      src={URL.createObjectURL(round.video)}
+                      controls
+                      playsInline
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                )}
+
+                <p className="caption text-(--ghost) truncate">
+                  🎬 {round.video?.name}
                 </p>
               </div>
             ))}

@@ -149,6 +149,7 @@ export default function TeacherStudentsPage() {
               student_number={student.student_number}
               student_code={student.student_code}
               is_active={student.is_active !== false}
+              has_tier4_flag={student.has_tier4_flag}
               onReactivate={handleReactivate}
             />
           ))}

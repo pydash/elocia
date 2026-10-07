@@ -16,6 +16,7 @@ import StudentBanner from "@/components/teacher/StudentBanner";
 import StatCard from "@/components/StatCard";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
+import UnitAnalyticsModal from "@/components/teacher/UnitAnalyticsModal";
 
 export default function TeacherStudentProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,8 @@ export default function TeacherStudentProfilePage() {
   const [recentAttempts, setRecentAttempts] = useState<EvaluationAttemptItem[]>(
     [],
   );
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState<boolean>(false);
+  const [selectedStageId, setSelectedStageId] = useState<number>(1);
   const streakMessage = getStreakMessage(student?.streak || 0);
 
   useEffect(() => {
@@ -218,48 +221,79 @@ export default function TeacherStudentProfilePage() {
                     <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black)">
                       Score
                     </th>
+                    <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black) text-right">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {recentAttempts.map((assignment, index) => (
-                    <tr key={assignment.id || index}>
-                      <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--black)">
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex rounded-full bg-(--primary-light) px-3 py-1 font-semibold text-(--primary)">
-                            #{index + 1}
+                  {recentAttempts.map((assignment, index) => {
+                    const isFlagged = !assignment.passed || assignment.tier_level === 4;
+                    const stageNum = assignment.stage_id || assignment.stage_id_new || 1;
+
+                    return (
+                      <tr key={assignment.id || index} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--black)">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex rounded-full bg-(--primary-light) px-3 py-1 font-semibold text-(--primary)">
+                              #{index + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span>Stage {stageNum} Sign Practice</span>
+                              {isFlagged && (
+                                <span
+                                  className="flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 animate-pulse"
+                                  title="Flagged (Tier 4 / Needs Focus)"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--ghost)">
+                          {assignment.created_at
+                            ? new Date(assignment.created_at).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )
+                            : "Recent"}
+                        </td>
+                        <td className="paragraph-2 border-b border-(--border) px-4 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              assignment.passed
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-rose-100 text-rose-800"
+                            }`}
+                          >
+                            {!assignment.passed && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                            )}
+                            {assignment.passed ? "Passed" : "Needs Practice"}
                           </span>
-                          <span>Stage {assignment.stage_id} Sign Practice</span>
-                        </div>
-                      </td>
-                      <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--ghost)">
-                        {assignment.created_at
-                          ? new Date(assignment.created_at).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )
-                          : "Recent"}
-                      </td>
-                      <td className="paragraph-2 border-b border-(--border) px-4 py-4">
-                        <span
-                          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            assignment.passed
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {assignment.passed ? "Passed" : "Needs Practice"}
-                        </span>
-                      </td>
-                      <td className="paragraph-2 border-b border-(--border) px-4 py-4 font-semibold text-(--primary)">
-                        {Math.round(assignment.score_overall)}%
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 font-semibold text-(--primary)">
+                          {Math.round(assignment.score_overall)}%
+                        </td>
+                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedStageId(stageNum);
+                              setIsAnalyticsOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-xl bg-orange-50 px-3 py-1.5 text-xs font-bold text-[#FF8A00] border border-orange-200 hover:bg-[#FF8A00] hover:text-white transition-all shadow-2xs cursor-pointer"
+                          >
+                            <span>Analytics</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
@@ -271,6 +305,17 @@ export default function TeacherStudentProfilePage() {
           </div>
         </div>
       </section>
+
+      {/* Unit Analytics Modal */}
+      {id && (
+        <UnitAnalyticsModal
+          studentId={id}
+          studentName={student.name}
+          stageId={selectedStageId}
+          isOpen={isAnalyticsOpen}
+          onClose={() => setIsAnalyticsOpen(false)}
+        />
+      )}
     </div>
   );
 }
