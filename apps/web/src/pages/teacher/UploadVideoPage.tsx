@@ -280,6 +280,7 @@ export function TeacherUploadVideoStepThreePage() {
   const { video, videoFile, thumbnailFile } =
     useOutletContext<TeacherUploadVideoContext>();
   const [publishing, setPublishing] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
   const [validationError, setValidationError] = useState("");
@@ -303,19 +304,25 @@ export function TeacherUploadVideoStepThreePage() {
 
     setValidationError("");
     setPublishing(true);
+    setUploadProgress(0);
     setErrorMsg(null);
     try {
       if (videoFile) {
-        // Upload as Educational Video with local thumbnail file if provided
-        await uploadEducationalVideoFile({
-          title: video.title.trim(),
-          subject: video.subject.trim(),
-          grade_level: video.grade_level,
-          duration_minutes: video.duration_minutes,
-          description: video.description.trim(),
-          thumbnail: thumbnailFile,
-          video: videoFile,
-        });
+        // Upload as Educational Video with real-time percentage tracking
+        await uploadEducationalVideoFile(
+          {
+            title: video.title.trim(),
+            subject: video.subject.trim(),
+            grade_level: video.grade_level,
+            duration_minutes: video.duration_minutes,
+            description: video.description.trim(),
+            thumbnail: thumbnailFile,
+            video: videoFile,
+          },
+          (percent) => {
+            setUploadProgress(percent);
+          }
+        );
       } else if (video.video_url?.trim()) {
         await createEducationalVideo({
           ...video,
@@ -331,6 +338,7 @@ export function TeacherUploadVideoStepThreePage() {
       setErrorMsg(err?.message || "Failed to upload video");
     } finally {
       setPublishing(false);
+      setUploadProgress(0);
     }
   };
 
@@ -428,6 +436,21 @@ export function TeacherUploadVideoStepThreePage() {
             </Link>
           </div>
           <div className="flex gap-4 items-center">
+            {publishing && videoFile && (
+              <div className="flex flex-col items-end gap-1 mr-2 min-w-[140px]">
+                <span className="text-xs font-semibold text-(--primary)">
+                  {uploadProgress < 100
+                    ? `Uploading ${uploadProgress}%`
+                    : "Finalizing..."}
+                </span>
+                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-(--primary) h-full transition-all duration-200 rounded-full"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
             <form onSubmit={handlePublish}>
               <Button
                 className="gap-2"
@@ -435,7 +458,9 @@ export function TeacherUploadVideoStepThreePage() {
                 disabled={publishing || (!videoFile && !video.video_url)}
               >
                 {publishing
-                  ? "Uploading & Publishing..."
+                  ? uploadProgress < 100
+                    ? `Uploading (${uploadProgress}%)...`
+                    : "Publishing..."
                   : "Publish Lesson"}{" "}
                 <Upload className="size-4" />
               </Button>

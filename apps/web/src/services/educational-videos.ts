@@ -62,16 +62,19 @@ export async function fetchEducationalVideos(): Promise<EducationalVideo[]> {
   }));
 }
 
-export async function uploadEducationalVideoFile(payload: {
-  title: string;
-  subject: string;
-  grade_level: number;
-  duration_minutes?: number;
-  description?: string;
-  thumbnail_url?: string;
-  thumbnail?: File | null;
-  video: File;
-}): Promise<any> {
+export async function uploadEducationalVideoFile(
+  payload: {
+    title: string;
+    subject: string;
+    grade_level: number;
+    duration_minutes?: number;
+    description?: string;
+    thumbnail_url?: string;
+    thumbnail?: File | null;
+    video: File;
+  },
+  onProgress?: (percent: number) => void
+): Promise<any> {
   const formData = new FormData();
   formData.append("title", payload.title);
   formData.append("subject", payload.subject);
@@ -90,17 +93,39 @@ export async function uploadEducationalVideoFile(payload: {
   }
   formData.append("video", payload.video);
 
-  const response = await fetch(`${API_BASE_URL}/educational-videos/upload-file`, {
-    method: "POST",
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/educational-videos/upload-file`);
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          resolve({});
+        }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err?.detail ?? "Failed to upload educational video"));
+        } catch {
+          reject(new Error("Failed to upload educational video"));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during video upload"));
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to upload educational video");
-  }
-
-  return response.json();
 }
 
 export async function uploadBaselineVideo(payload: {
