@@ -3,8 +3,8 @@ import './Practice.css';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import { CURRICULUM } from '../../data/curriculum';
 import type { Section } from '../../data/curriculum';
-import { fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, fetchActiveFocusDrill, API_BASE } from '../../utils/api';
-import type { StudentProgress, EducationalVideoItem, FocusDrillItem } from '../../utils/api';
+import { fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, fetchActiveFocusDrill, fetchNeedsPractice, API_BASE } from '../../utils/api';
+import type { StudentProgress, EducationalVideoItem, FocusDrillItem, PracticeItem } from '../../utils/api';
 
 // Assuming images are in public/images
 const seeItSignItImg = '/images/See it, Sign it!.png';
@@ -21,10 +21,12 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
   const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<EducationalVideoItem | null>(null);
   const [showAllVideos, setShowAllVideos] = useState<boolean>(false);
+  const [showAllPractice, setShowAllPractice] = useState<boolean>(false);
   const [videoError, setVideoError] = useState<boolean>(false);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
   const [activeDrill, setActiveDrill] = useState<FocusDrillItem | null>(null);
+  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
 
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
@@ -65,7 +67,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
       }
     });
 
-    // 4. Load student progress & focus drill
+    // 4. Load student progress, needs practice items & focus drill
     if (studentId) {
       fetchStudentProgress(studentId).then((prog) => {
         if (prog) {
@@ -75,6 +77,11 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
       fetchActiveFocusDrill(studentId).then((drill) => {
         if (drill && drill.active) {
           setActiveDrill(drill);
+        }
+      });
+      fetchNeedsPractice(studentId).then((items) => {
+        if (items && items.length > 0) {
+          setPracticeItems(items);
         }
       });
     }
@@ -174,6 +181,56 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
               </div>
             </div>
           )}
+
+          {/* Section: Keep Practicing (Focus Drill Cards from user screenshot) */}
+          <section className="practice-section keep-practicing">
+            <div className="section-header kp-section-header">
+              <div className="section-title-group">
+                <h2>Keep Practicing</h2>
+                <p>Signs to help you build your skills</p>
+              </div>
+              <button 
+                className="view-all-pill-btn"
+                onClick={() => setShowAllPractice(true)}
+                title="View all practice signs"
+              >
+                <span>View all</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            <div className="kp-cards-row">
+              {practiceItems.length > 0 ? (
+                practiceItems.slice(0, 4).map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`kp-card ${item.color}`}
+                    onClick={() => {
+                      if (onStartLesson) {
+                        onStartLesson(item.stage_id, true, [item.sign]);
+                      } else {
+                        onNavigate('setup');
+                      }
+                    }}
+                    title={item.reason || `Practice sign: ${item.sign}`}
+                  >
+                    {/* Badge ribbon if flagged or low accuracy */}
+                    {item.score < 60 && (
+                      <div className="kp-card-badge" title="Flagged for practice">
+                        !
+                      </div>
+                    )}
+                    <div className="kp-number">{item.sign}</div>
+                    <div className="kp-stage">{item.section_label}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', width: '100%', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
+                  🎉 Great job! No signs currently flagged for extra practice. Keep up the good work!
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Section 1: Educational Videos */}
           <section className="practice-section educational-videos">
@@ -663,6 +720,163 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>No Videos Uploaded Yet</h3>
                 <p style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#64748b' }}>
                   Educational videos uploaded by teachers will appear here for practice!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* View All Keep Practicing Full Screen / Modal View */}
+      {showAllPractice && (
+        <div 
+          className="practice-layout"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: '#F8F9CC',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: "'Quicksand', sans-serif"
+          }}
+        >
+          {/* Top Navigation Bar with System Theme */}
+          <header style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1.2rem 2.5rem',
+            borderBottom: '3px solid rgba(0,0,0,0.06)',
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <button
+                onClick={() => setShowAllPractice(false)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  backgroundColor: '#ff922b',
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '10px 22px',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(255, 146, 43, 0.35)',
+                  transition: 'transform 0.15s, background-color 0.15s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f76707';
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff922b';
+                  e.currentTarget.style.transform = 'none';
+                }}
+              >
+                ← Back to Practice
+              </button>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 900, color: '#38b6ff', letterSpacing: '-0.5px' }}>
+                  Keep Practicing (All Signs)
+                </h1>
+                <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#4a4a4a' }}>
+                  Signs you struggled with or recommended for mastery drill ({practiceItems.length} signs)
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowAllPractice(false)}
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                border: '2px solid #e2e8f0',
+                background: '#ffffff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '22px',
+                fontWeight: 900,
+                color: '#475569',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+                transition: 'transform 0.15s, background-color 0.15s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#fee2e2';
+                e.currentTarget.style.color = '#dc2626';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.color = '#475569';
+              }}
+              title="Close Full Screen"
+            >
+              ✕
+            </button>
+          </header>
+
+          {/* Full Screen Scrollable Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '2.5rem 3.5rem 5rem 3.5rem' }}>
+            {practiceItems.length > 0 ? (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: '24px'
+              }}>
+                {practiceItems.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`kp-card ${item.color}`}
+                    onClick={() => {
+                      setShowAllPractice(false);
+                      if (onStartLesson) {
+                        onStartLesson(item.stage_id, true, [item.sign]);
+                      } else {
+                        onNavigate('setup');
+                      }
+                    }}
+                    style={{ height: '180px' }}
+                    title={item.reason || `Practice sign: ${item.sign}`}
+                  >
+                    {item.score < 60 && (
+                      <div className="kp-card-badge" title="Flagged for practice">
+                        !
+                      </div>
+                    )}
+                    <div className="kp-number">{item.sign}</div>
+                    <div className="kp-stage">{item.section_label}</div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, marginTop: '8px', opacity: 0.85 }}>
+                      Accuracy: {item.score}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                padding: '64px 32px',
+                textAlign: 'center',
+                color: '#64748b',
+                borderRadius: '24px',
+                background: '#ffffff',
+                border: '2px dashed #cbd5e1',
+                fontSize: '16px',
+                maxWidth: '600px',
+                margin: '40px auto',
+                boxShadow: '0 6px 15px rgba(0,0,0,0.04)'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎯</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>All Signs Mastered!</h3>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#64748b' }}>
+                  You have no low-scoring signs flagged for practice. Awesome job!
                 </p>
               </div>
             )}
