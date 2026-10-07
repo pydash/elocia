@@ -326,7 +326,10 @@
 
 .stage-modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: clamp(180px, 16vw, 240px);
+  right: 0;
   background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   display: flex;
