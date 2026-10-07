@@ -28,6 +28,7 @@ interface EvaluationSessionProps {
   stageId: number | null;
   dynamicCurriculum?: Section[] | null;
   isPracticeMode?: boolean;
+  focusDrillSigns?: string[] | null;
   onExit: () => void;
   onComplete: (stageId: number) => void;
   onNavigate?: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice') => void;
@@ -77,14 +78,20 @@ const HAND_CONNECTIONS = [
   [0, 17]
 ];
 
-export default function EvaluationSession({ stageId, dynamicCurriculum, isPracticeMode = false, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
+export default function EvaluationSession({ stageId, dynamicCurriculum, isPracticeMode = false, focusDrillSigns = null, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
   const currentStageId = stageId ?? 1;
   const stageData = getStageData(currentStageId, dynamicCurriculum);
-  const items = stageData?.items || [{ globalId: 1, name: "1" }];
-  const totalQuestions = items.length;
+  const rawItems = stageData?.items || [{ globalId: 1, name: "1" }];
+  
+  // If focus drill is active, filter items strictly to the requested signs!
+  const items = (focusDrillSigns && focusDrillSigns.length > 0)
+    ? rawItems.filter(it => focusDrillSigns.some(s => s.toLowerCase() === it.name.toLowerCase() || String(it.globalId) === s))
+    : rawItems;
+  const activeItems = items.length > 0 ? items : rawItems;
+  const totalQuestions = activeItems.length;
 
   const [questionIndex, setQuestionIndex] = useState(0);
-  const currentItem = items[questionIndex];
+  const currentItem = activeItems[questionIndex];
 
   const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
   const [failCount, setFailCount] = useState<number>(0);

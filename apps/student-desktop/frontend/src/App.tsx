@@ -33,6 +33,7 @@ function App() {
   });
 
   const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false);
+  const [focusDrillSigns, setFocusDrillSigns] = useState<string[] | null>(null);
 
   // Sync curriculum dynamically from database
   useEffect(() => {
@@ -83,9 +84,10 @@ function App() {
   }, [currentView]);
 
   // This function handles transitioning from Module 3 to Module 4
-  const handleStartLesson = (stageId: number, practiceMode: boolean = false) => {
+  const handleStartLesson = (stageId: number, practiceMode: boolean = false, drillSigns: string[] | null = null) => {
     setActiveStage(stageId);
     setIsPracticeMode(practiceMode);
+    setFocusDrillSigns(drillSigns);
     setCurrentView('setup'); // Goes to Camera Setup first
   };
 
@@ -159,8 +161,13 @@ function App() {
           stageId={activeStage}
           dynamicCurriculum={curriculumData}
           isPracticeMode={isPracticeMode}
-          onExit={() => setCurrentView(isPracticeMode ? 'practice' : 'navigation')}
+          focusDrillSigns={focusDrillSigns}
+          onExit={() => {
+            setFocusDrillSigns(null);
+            setCurrentView(isPracticeMode ? 'practice' : 'navigation');
+          }}
           onComplete={(completedStageId) => {
+            setFocusDrillSigns(null);
             if (isPracticeMode) {
               // In practice mode, return back to the Practice page smoothly
               setCurrentView('practice');
