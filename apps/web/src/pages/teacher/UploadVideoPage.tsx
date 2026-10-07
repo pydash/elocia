@@ -435,7 +435,7 @@ export function TeacherUploadVideoStepThreePage() {
                 disabled={publishing || (!videoFile && !video.video_url)}
               >
                 {publishing
-                  ? "Extracting 3D Landmarks & Publishing..."
+                  ? "Uploading & Publishing..."
                   : "Publish Lesson"}{" "}
                 <Upload className="size-4" />
               </Button>
