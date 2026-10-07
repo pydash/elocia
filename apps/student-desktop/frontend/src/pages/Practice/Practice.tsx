@@ -108,45 +108,63 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
 
             <div className="video-cards-row">
               {educationalVideos.length > 0 ? (
-                educationalVideos.slice(0, 4).map((video) => (
-                  <div 
-                    key={video.id} 
-                    className="video-card" 
-                    onClick={() => {
-                      setVideoError(false);
-                      setSelectedVideo(video);
-                    }}
-                    style={{ cursor: 'pointer' }}
-                    title={`Click to watch: ${video.title}`}
-                  >
-                    <div className="video-thumbnail">
-                      {video.thumbnail_url ? (
-                        <img 
-                          src={video.thumbnail_url.startsWith('http') ? video.thumbnail_url : `${API_BASE}${video.thumbnail_url}`} 
-                          alt={video.title} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        />
-                      ) : (
-                        <div className="science-placeholder-art">
-                          <div className="science-doodle dna"></div>
-                          <div className="science-doodle stars"></div>
-                          <div className="science-doodle molecules"></div>
-                          <div className="science-text-container">
-                            <span className="science-text">{video.subject.toUpperCase()}</span>
-                            <span className="science-sub">{video.title.toUpperCase()}</span>
+                <>
+                  {educationalVideos.slice(0, 4).map((video) => (
+                    <div 
+                      key={video.id} 
+                      className="video-card" 
+                      onClick={() => {
+                        setVideoError(false);
+                        setSelectedVideo(video);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                      title={`Click to watch: ${video.title}`}
+                    >
+                      <div className="video-thumbnail">
+                        {video.thumbnail_url ? (
+                          <img 
+                            src={video.thumbnail_url.startsWith('http') ? video.thumbnail_url : `${API_BASE}${video.thumbnail_url}`} 
+                            alt={video.title} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
+                        ) : (
+                          <div className="science-placeholder-art">
+                            <div className="science-doodle dna"></div>
+                            <div className="science-doodle stars"></div>
+                            <div className="science-doodle molecules"></div>
+                            <div className="science-text-container">
+                              <span className="science-text">{video.subject.toUpperCase()}</span>
+                              <span className="science-sub">{video.title.toUpperCase()}</span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                      <div className="video-info">
+                        <span className="grade-badge">Grade {video.grade_level}</span>
+                        <h3 className="video-title">{video.title}</h3>
+                        <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
+                      </div>
                     </div>
-                    <div className="video-info">
-                      <span className="grade-badge">Grade {video.grade_level}</span>
-                      <h3 className="video-title">{video.title}</h3>
-                      <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
+                  ))}
+                  {/* Fill out to 4 slots so layout never stretches single cards awkwardly */}
+                  {Array.from({ length: Math.max(0, 4 - Math.min(educationalVideos.length, 4)) }).map((_, idx) => (
+                    <div key={`slot-placeholder-${idx}`} className="video-card placeholder-card">
+                      <div className="video-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '32px' }}>
+                        🎬
+                      </div>
+                      <div className="video-info" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b' }}>
+                          Coming Soon
+                        </span>
+                        <p style={{ fontSize: '11px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                          More lesson videos will appear here
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </>
               ) : (
-                <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', width: '100%', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
+                <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', gridColumn: '1 / -1', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
                   📹 No educational videos uploaded yet. Videos uploaded by teachers will appear here!
                 </div>
               )}
@@ -294,7 +312,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             position: 'fixed',
             inset: 0,
             backgroundColor: 'rgba(15, 23, 42, 0.75)',
-            zIndex: 9999,
+            zIndex: 100000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -400,139 +418,169 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
         </div>
       )}
 
-      {/* View All Educational Videos Modal */}
+      {/* View All Educational Videos Full Screen View */}
       {showAllVideos && (
         <div 
+          className="practice-layout"
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(4px)',
+            backgroundColor: '#F8F9CC',
             zIndex: 9999,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px'
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: "'Quicksand', sans-serif"
           }}
-          onClick={() => setShowAllVideos(false)}
         >
-          <div 
-            style={{
-              background: '#ffffff',
-              borderRadius: '24px',
-              maxWidth: '920px',
-              width: '100%',
-              maxHeight: '85vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              overflow: 'hidden'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '20px 28px',
-              borderBottom: '1px solid #e2e8f0',
-              background: '#f8fafc'
-            }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>
-                  All Educational Videos 🎥
-                </h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                  Showing all {educationalVideos.length} educational videos for your grade
-                </p>
-              </div>
+          {/* Top Navigation Bar with System Theme */}
+          <header style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1.2rem 2.5rem',
+            borderBottom: '3px solid rgba(0,0,0,0.06)',
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
               <button
                 onClick={() => setShowAllVideos(false)}
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  background: '#e2e8f0',
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: '#475569',
-                  transition: 'background 0.2s'
+                  gap: '10px',
+                  backgroundColor: '#ff9f43',
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '10px 22px',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(255, 159, 67, 0.35)',
+                  transition: 'transform 0.15s, background-color 0.15s'
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#cbd5e1')}
-                onMouseOut={(e) => (e.currentTarget.style.background = '#e2e8f0')}
-                title="Close"
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f39c12';
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff9f43';
+                  e.currentTarget.style.transform = 'none';
+                }}
               >
-                ✕
+                ← Back to Practice
               </button>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 900, color: '#38b6ff', letterSpacing: '-0.5px' }}>
+                  Educational Videos
+                </h1>
+                <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#4a4a4a' }}>
+                  Showing all {educationalVideos.length} educational videos for your grade
+                </p>
+              </div>
             </div>
 
-            {/* Scrollable Video Grid */}
-            <div style={{ padding: '24px', overflowY: 'auto' }}>
-              {educationalVideos.length > 0 ? (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: '20px'
-                }}>
-                  {educationalVideos.map((video) => (
-                    <div 
-                      key={video.id} 
-                      className="video-card" 
-                      onClick={() => {
-                        setShowAllVideos(false);
-                        setVideoError(false);
-                        setSelectedVideo(video);
-                      }}
-                      style={{ cursor: 'pointer' }}
-                      title={`Click to watch: ${video.title}`}
-                    >
-                      <div className="video-thumbnail">
-                        {video.thumbnail_url ? (
-                          <img 
-                            src={video.thumbnail_url.startsWith('http') ? video.thumbnail_url : `${API_BASE}${video.thumbnail_url}`} 
-                            alt={video.title} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          />
-                        ) : (
-                          <div className="science-placeholder-art">
-                            <div className="science-doodle dna"></div>
-                            <div className="science-doodle stars"></div>
-                            <div className="science-doodle molecules"></div>
-                            <div className="science-text-container">
-                              <span className="science-text">{video.subject.toUpperCase()}</span>
-                              <span className="science-sub">{video.title.toUpperCase()}</span>
-                            </div>
+            <button
+              onClick={() => setShowAllVideos(false)}
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                border: '2px solid #e2e8f0',
+                background: '#ffffff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '22px',
+                fontWeight: 900,
+                color: '#475569',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+                transition: 'transform 0.15s, background-color 0.15s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#fee2e2';
+                e.currentTarget.style.color = '#dc2626';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.color = '#475569';
+              }}
+              title="Close Full Screen"
+            >
+              ✕
+            </button>
+          </header>
+
+          {/* Full Screen Scrollable Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '2.5rem 3.5rem 5rem 3.5rem' }}>
+            {educationalVideos.length > 0 ? (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '24px'
+              }}>
+                {educationalVideos.map((video) => (
+                  <div 
+                    key={video.id} 
+                    className="video-card" 
+                    onClick={() => {
+                      setVideoError(false);
+                      setSelectedVideo(video);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                    title={`Click to watch: ${video.title}`}
+                  >
+                    <div className="video-thumbnail">
+                      {video.thumbnail_url ? (
+                        <img 
+                          src={video.thumbnail_url.startsWith('http') ? video.thumbnail_url : `${API_BASE}${video.thumbnail_url}`} 
+                          alt={video.title} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      ) : (
+                        <div className="science-placeholder-art">
+                          <div className="science-doodle dna"></div>
+                          <div className="science-doodle stars"></div>
+                          <div className="science-doodle molecules"></div>
+                          <div className="science-text-container">
+                            <span className="science-text">{video.subject.toUpperCase()}</span>
+                            <span className="science-sub">{video.title.toUpperCase()}</span>
                           </div>
-                        )}
-                      </div>
-                      <div className="video-info">
-                        <span className="grade-badge">Grade {video.grade_level}</span>
-                        <h3 className="video-title">{video.title}</h3>
-                        <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  padding: '48px',
-                  textAlign: 'center',
-                  color: '#64748b',
-                  borderRadius: '16px',
-                  background: '#f8fafc',
-                  border: '2px dashed #cbd5e1',
-                  fontSize: '15px'
-                }}>
-                  📹 No educational videos uploaded yet. Videos uploaded by teachers will appear here!
-                </div>
-              )}
-            </div>
+                    <div className="video-info">
+                      <span className="grade-badge">Grade {video.grade_level}</span>
+                      <h3 className="video-title">{video.title}</h3>
+                      <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                padding: '64px 32px',
+                textAlign: 'center',
+                color: '#64748b',
+                borderRadius: '24px',
+                background: '#ffffff',
+                border: '2px dashed #cbd5e1',
+                fontSize: '16px',
+                maxWidth: '600px',
+                margin: '40px auto',
+                boxShadow: '0 6px 15px rgba(0,0,0,0.04)'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📹</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>No Videos Uploaded Yet</h3>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#64748b' }}>
+                  Educational videos uploaded by teachers will appear here for practice!
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

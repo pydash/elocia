@@ -112,22 +112,71 @@ def calculate_handshape_score(student_seq, baseline_seq):
         return max(scores) if scores else 0
 
 def _get_palm_normal_for_hand(frame, hand_key="hand"):
+    """
+    Computes true anatomical palmar normal vector pointing outwards from the palm.
+    - Right hand: cross(index - wrist, pinky - wrist) points outward from the palm.
+    - Left hand:  cross(pinky - wrist, index - wrist) points outward from the palm.
+    """
     hand = frame.get(hand_key, frame.get("hand", []))
     if not hand or len(hand) < 21:
-        return np.array([0, 0, 1])
+        return np.array([0.0, 0.0, 1.0])
     wrist = np.array([hand[0]['x'], hand[0]['y'], hand[0]['z']])
     index_mcp = np.array([hand[5]['x'], hand[5]['y'], hand[5]['z']])
     pinky_mcp = np.array([hand[17]['x'], hand[17]['y'], hand[17]['z']])
 
     v1 = index_mcp - wrist
     v2 = pinky_mcp - wrist
-    normal = np.cross(v1, v2)
-    norm = np.linalg.norm(normal)
-    return normal / norm if norm > 0 else np.array([0, 0, 1])
 
-def calculate_single_palm_score(s_frame, b_frame, s_key="hand", b_key="hand"):
-    s_normal = _get_palm_normal_for_hand(s_frame, s_key)
-    b_normal = _get_palm_normal_for_hand(b_frame, b_key)
+    # Anatomical handedness correction:
+    # If explicitly 'left_hand', invert cross product order so the normal vector
+    # consistently points in the true palmar direction (away from the palm face).
+    if hand_key == "left_hand":
+        normal = np.cross(v2, v1)
+    else:
+        normal = np.cross(v1, v2)
+
+    norm = np.linalg.norm(normal)
+    return normal / norm if norm > 0 else np.array([0.0, 0.0, 1.0])
+
+def _windowed_palm_normals(seq, hand_key="hand"):
+    """
+    Gathers palm normal vectors across the central signing execution window (apex +/- 15%).
+    Filters out transient monocular landmark jitter and depth noise.
+    """
+    n = len(seq)
+    if n == 0:
+        return [np.array([0.0, 0.0, 1.0])]
+    mid = n // 2
+    window_half = max(2, int(n * 0.15))
+    start_idx = max(0, mid - window_half)
+    end_idx = min(n, mid + window_half + 1)
+    
+    normals = []
+    for i in range(start_idx, end_idx):
+        f = seq[i]
+        hand = f.get(hand_key, f.get("hand", []))
+        if hand and len(hand) >= 21 and (hand[0]['x'] != 0 or hand[0]['y'] != 0):
+            normals.append(_get_palm_normal_for_hand(f, hand_key))
+    if not normals:
+        return [_get_palm_normal_for_hand(seq[mid], hand_key)]
+    return normals
+
+def calculate_single_palm_score(s_seq, b_seq, s_key="hand", b_key="hand"):
+    """
+    Windowed palm orientation score comparing representative apex normal vectors.
+    Evaluates both direct orientation and mirrored orientation.
+    """
+    s_normals = _windowed_palm_normals(s_seq, s_key) if isinstance(s_seq, list) else [_get_palm_normal_for_hand(s_seq, s_key)]
+    b_normals = _windowed_palm_normals(b_seq, b_key) if isinstance(b_seq, list) else [_get_palm_normal_for_hand(b_seq, b_key)]
+
+    # Compute robust median normal vector for student and baseline
+    s_mean = np.mean(s_normals, axis=0)
+    s_norm_val = np.linalg.norm(s_mean)
+    s_normal = s_mean / s_norm_val if s_norm_val > 0 else np.array([0.0, 0.0, 1.0])
+
+    b_mean = np.mean(b_normals, axis=0)
+    b_norm_val = np.linalg.norm(b_mean)
+    b_normal = b_mean / b_norm_val if b_norm_val > 0 else np.array([0.0, 0.0, 1.0])
 
     dot = np.dot(s_normal, b_normal)
     dot = max(-1.0, min(1.0, dot))
@@ -144,23 +193,48 @@ def calculate_single_palm_score(s_frame, b_frame, s_key="hand", b_key="hand"):
 def calculate_palm_orientation_score(student_seq, baseline_seq):
     if not student_seq or not baseline_seq: return 0
 
-    s_frame = student_seq[len(student_seq)//2]
-    b_frame = baseline_seq[len(baseline_seq)//2]
-
     is_b_two = is_two_handed_sequence(baseline_seq)
     is_s_two = is_two_handed_sequence(student_seq)
 
     if is_b_two and is_s_two:
-        direct = (calculate_single_palm_score(s_frame, b_frame, "right_hand", "right_hand") +
-                  calculate_single_palm_score(s_frame, b_frame, "left_hand", "left_hand")) / 2.0
-        mirror = (calculate_single_palm_score(s_frame, b_frame, "right_hand", "left_hand") +
-                  calculate_single_palm_score(s_frame, b_frame, "left_hand", "right_hand")) / 2.0
-        return max(direct, mirror)
+        direct = (calculate_single_palm_score(student_seq, baseline_seq, "right_hand", "right_hand") +
+                  calculate_single_palm_score(student_seq, baseline_seq, "left_hand", "left_hand")) / 2.0
+        mirror = (calculate_single_palm_score(student_seq, baseline_seq, "right_hand", "left_hand") +
+                  calculate_single_palm_score(student_seq, baseline_seq, "left_hand", "right_hand")) / 2.0
+        absolute_score = max(direct, mirror)
+
+        # Dual-Hand Relative Palm Orientation Metric (critical for signs like "Book"):
+        # Evaluates the angle between the two palms (e.g., facing each other vs open).
+        # This is invariant to slight forward/backward body tilt relative to the camera!
+        s_r_normals = _windowed_palm_normals(student_seq, "right_hand")
+        s_l_normals = _windowed_palm_normals(student_seq, "left_hand")
+        b_r_normals = _windowed_palm_normals(baseline_seq, "right_hand")
+        b_l_normals = _windowed_palm_normals(baseline_seq, "left_hand")
+
+        s_r_norm = np.mean(s_r_normals, axis=0)
+        s_r_norm = s_r_norm / (np.linalg.norm(s_r_norm) or 1.0)
+        s_l_norm = np.mean(s_l_normals, axis=0)
+        s_l_norm = s_l_norm / (np.linalg.norm(s_l_norm) or 1.0)
+
+        b_r_norm = np.mean(b_r_normals, axis=0)
+        b_r_norm = b_r_norm / (np.linalg.norm(b_r_norm) or 1.0)
+        b_l_norm = np.mean(b_l_normals, axis=0)
+        b_l_norm = b_l_norm / (np.linalg.norm(b_l_norm) or 1.0)
+
+        s_rel_dot = max(-1.0, min(1.0, np.dot(s_r_norm, s_l_norm)))
+        b_rel_dot = max(-1.0, min(1.0, np.dot(b_r_norm, b_l_norm)))
+
+        rel_angle_diff = abs(np.arccos(s_rel_dot) - np.arccos(b_rel_dot))
+        relative_score = max(0, min(100, 100 - (rel_angle_diff * 180 / np.pi)))
+
+        # Blend: 60% absolute body orientation + 40% dual-hand relative palm orientation
+        blended_score = (absolute_score * 0.60) + (relative_score * 0.40)
+        return max(absolute_score, blended_score)
     else:
         scores = []
         for s_k in ["hand", "right_hand", "left_hand"]:
             for b_k in ["hand", "right_hand", "left_hand"]:
-                scores.append(calculate_single_palm_score(s_frame, b_frame, s_k, b_k))
+                scores.append(calculate_single_palm_score(student_seq, baseline_seq, s_k, b_k))
         return max(scores) if scores else 0
 
 def calculate_location_score(student_seq, baseline_seq):

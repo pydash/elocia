@@ -173,30 +173,60 @@
 /* Educational Videos */
 .video-cards-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 20vw, 260px), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(1rem, 1.5vw, 1.5rem);
+}
+
+@media (max-width: 1100px) {
+  .video-cards-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .video-cards-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .video-card {
   background: white;
-  border-radius: 12px;
-  border: 2px solid #eee;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   display: flex;
   flex-direction: column;
 }
 
 .video-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  border-color: #cbd5e1;
+}
+
+.video-card.placeholder-card {
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  box-shadow: none;
+  cursor: default;
+  opacity: 0.85;
+}
+
+.video-card.placeholder-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #cbd5e1;
 }
 
 .video-thumbnail {
-  height: clamp(85px, 12vh, 110px);
+  aspect-ratio: 16 / 9;
   width: 100%;
+  position: relative;
+  background-color: #f1f5f9;
+  overflow: hidden;
 }
 
 .science-placeholder-art {
