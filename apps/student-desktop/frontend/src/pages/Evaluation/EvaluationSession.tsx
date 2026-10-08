@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
 import { getStageData, getStageNumber } from '../../data/curriculum';
-import { saveScore } from '../../utils/api';
+import { saveScore, removeFocusDrillSign } from '../../utils/api';
 import { startEvaluationTour, stopCurrentTour } from '../../utils/activityTours';
 
 const moveAwayMascot = '/images/Move away.png';
@@ -22,7 +22,7 @@ const star5 = '/images/5 star.png';
 const confettiImg = '/images/Confetti.png';
 const amazingMascot = '/images/Amazing.png';
 
-import type { Section } from '../../data/curriculum';
+import type { Section, StageItem } from '../../data/curriculum';
 
 interface EvaluationSessionProps {
   stageId: number | null;
@@ -81,17 +81,75 @@ const HAND_CONNECTIONS = [
 export default function EvaluationSession({ stageId, dynamicCurriculum, isPracticeMode = false, focusDrillSigns = null, onExit, onComplete, onNavigate }: EvaluationSessionProps) {
   const currentStageId = stageId ?? 1;
   const stageData = getStageData(currentStageId, dynamicCurriculum);
-  const rawItems = stageData?.items || [{ globalId: 1, name: "1" }];
-  
-  // If focus drill is active, filter items strictly to the requested signs!
-  const items = (focusDrillSigns && focusDrillSigns.length > 0)
-    ? rawItems.filter(it => focusDrillSigns.some(s => s.toLowerCase() === it.name.toLowerCase() || String(it.globalId) === s))
-    : rawItems;
-  const activeItems = items.length > 0 ? items : rawItems;
+  const rawItems = stageData?.items || [];
+
+  // Helper to map known standard baseline signs if not in currently loaded stage
+  const getFallbackGlobalId = (name: string): number => {
+    const n = name.trim().toUpperCase();
+    const num = parseInt(n, 10);
+    if (!isNaN(num)) {
+      if (num >= 1 && num <= 10) return 100 + num; // 1->101, 5->105
+      if (num >= 11 && num <= 20) return 110 + num; // 11->121, 16->126
+      return num;
+    }
+    if (n.length === 1 && n >= 'A' && n <= 'J') {
+      return 111 + (n.charCodeAt(0) - 65); // A->111, B->112, etc.
+    }
+    return 101;
+  };
+
+  // If focus drill is active, prioritize exactly the requested signs!
+  let activeItems: StageItem[] = [];
+  if (focusDrillSigns && focusDrillSigns.length > 0) {
+    // 1. Look in the current stage items
+    const fromStage = rawItems.filter(it => 
+      focusDrillSigns.some(s => s.toLowerCase() === it.name.toLowerCase() || String(it.globalId) === s)
+    );
+
+    // 2. Look across all stages in dynamicCurriculum
+    const allCurriculumItems: StageItem[] = [];
+    if (dynamicCurriculum) {
+      for (const sec of dynamicCurriculum) {
+        for (const un of sec.units) {
+          for (const st of un.stages) {
+            allCurriculumItems.push(...st.items);
+          }
+        }
+      }
+    }
+    const fromAll = allCurriculumItems.filter(it =>
+      focusDrillSigns.some(s => s.toLowerCase() === it.name.toLowerCase() || String(it.globalId) === s)
+    );
+
+    // Combine or construct exact StageItem for every requested sign
+    const resolved: StageItem[] = [];
+    const seen = new Set<string>();
+
+    for (const reqSign of focusDrillSigns) {
+      const match = fromStage.find(it => it.name.toLowerCase() === reqSign.toLowerCase() || String(it.globalId) === reqSign)
+        || fromAll.find(it => it.name.toLowerCase() === reqSign.toLowerCase() || String(it.globalId) === reqSign);
+
+      if (match && !seen.has(match.name)) {
+        seen.add(match.name);
+        resolved.push(match);
+      } else if (!seen.has(reqSign)) {
+        seen.add(reqSign);
+        resolved.push({
+          globalId: getFallbackGlobalId(reqSign),
+          name: reqSign
+        });
+      }
+    }
+
+    activeItems = resolved.length > 0 ? resolved : rawItems;
+  } else {
+    activeItems = rawItems.length > 0 ? rawItems : [{ globalId: 101, name: "1" }];
+  }
+
   const totalQuestions = activeItems.length;
 
   const [questionIndex, setQuestionIndex] = useState(0);
-  const currentItem = activeItems[questionIndex];
+  const currentItem = activeItems[questionIndex] || { globalId: 101, name: "1" };
 
   const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
   const [failCount, setFailCount] = useState<number>(0);
@@ -288,6 +346,12 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             }
           } catch (e) {
             console.warn('Could not update evaluation parameters localStorage:', e);
+          }
+
+          // If in practice / focus drill mode and the sign is passed, remove it from active focus drill!
+          if (isPassed && currentItemRef.current?.name) {
+            const sid = student.id || 'all';
+            removeFocusDrillSign(sid, currentItemRef.current.name);
           }
 
           // Save score to database (awards XP in Learn mode; updates streak in both Learn and Practice mode when passed)
@@ -713,7 +777,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
         </div>
       </header>
 
-      {currentTier === 4 && (
+      {!isPracticeMode && currentTier === 4 && (
         <div className="eval-tier4-overlay">
           <div className="tier4-modal">
             <div className="tier4-popup-wrap">
@@ -897,23 +961,43 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             )}
           </div>
 
-          <div className="eval-parameters-grid">
-            {parameters.map((param) => {
-              const needsWork = param.score < 60;
-              const label = getGradeLabel(param.score);
-              const starImg = getStarImage(param.score);
-              return (
-                <div key={param.name} className={`eval-param-card ${param.cssClass} ${needsWork ? 'needs-work' : ''} ${showFeedback ? 'show-feedback' : 'hide-feedback'}`}>
-                  <div className="eval-param-title">{param.name}</div>
-                  <img src={param.mascot} alt={`${param.name} mascot`} className="eval-param-mascot" />
-                  <div className={`eval-param-label ${needsWork ? 'label-warn' : 'label-good'}`}>{label}</div>
-                  <div className="eval-param-stars">
-                    <img src={starImg} alt={`${label} stars`} className="param-star-icon" />
+          {!isPracticeMode && (
+            <div className="eval-parameters-grid">
+              {parameters.map((param) => {
+                const needsWork = param.score < 60;
+                const label = getGradeLabel(param.score);
+                const starImg = getStarImage(param.score);
+                return (
+                  <div key={param.name} className={`eval-param-card ${param.cssClass} ${needsWork ? 'needs-work' : ''} ${showFeedback ? 'show-feedback' : 'hide-feedback'}`}>
+                    <div className="eval-param-title">{param.name}</div>
+                    <img src={param.mascot} alt={`${param.name} mascot`} className="eval-param-mascot" />
+                    <div className={`eval-param-label ${needsWork ? 'label-warn' : 'label-good'}`}>{label}</div>
+                    <div className="eval-param-stars">
+                      <img src={starImg} alt={`${label} stars`} className="param-star-icon" />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
+
+          {isPracticeMode && (
+            <div className="eval-practice-helper-box" style={{
+              marginTop: '16px',
+              padding: '16px 20px',
+              background: '#FFFBEB',
+              border: '2px dashed #F59E0B',
+              borderRadius: '20px',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: '#B45309', display: 'block' }}>
+                🎯 Focus Drill: Practice Mode
+              </span>
+              <p style={{ margin: '6px 0 0 0', fontSize: '13px', fontWeight: 600, color: '#92400E' }}>
+                No grades or pressure here! Try the sign as many times as you need. When you get it right, it will automatically clear from your practice list! ✨
+              </p>
+            </div>
+          )}
         </section>
       </main>
 

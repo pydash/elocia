@@ -3,8 +3,8 @@ import './Practice.css';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import { CURRICULUM } from '../../data/curriculum';
 import type { Section } from '../../data/curriculum';
-import { fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, fetchActiveFocusDrill, fetchNeedsPractice, API_BASE } from '../../utils/api';
-import type { StudentProgress, EducationalVideoItem, FocusDrillItem, PracticeItem } from '../../utils/api';
+import { fetchCurriculum, fetchStudentProgress, fetchEducationalVideos, fetchNeedsPractice, API_BASE } from '../../utils/api';
+import type { StudentProgress, EducationalVideoItem, PracticeItem } from '../../utils/api';
 
 // Assuming images are in public/images
 const seeItSignItImg = '/images/See it, Sign it!.png';
@@ -25,7 +25,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
   const [videoError, setVideoError] = useState<boolean>(false);
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
-  const [activeDrill, setActiveDrill] = useState<FocusDrillItem | null>(null);
   const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
 
   const getEmbedUrl = (url: string) => {
@@ -74,15 +73,8 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
           setStudentProgress(prog);
         }
       });
-      fetchActiveFocusDrill(studentId).then((drill) => {
-        if (drill && drill.active) {
-          setActiveDrill(drill);
-        }
-      });
       fetchNeedsPractice(studentId).then((items) => {
-        if (items && items.length > 0) {
-          setPracticeItems(items);
-        }
+        setPracticeItems(items || []);
       });
     }
   }, []);
@@ -101,86 +93,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             </div>
           </header>
 
-          {/* Assigned Focus Drill Banner (triggered by Teacher Dashboard) */}
-          {activeDrill && (
-            <div 
-              style={{
-                margin: '0 0 24px 0',
-                padding: '20px 24px',
-                borderRadius: '24px',
-                background: 'linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)',
-                border: '3px solid #FDBA74',
-                boxShadow: '0 10px 25px -5px rgba(251, 146, 60, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-                flexWrap: 'wrap'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div 
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '16px',
-                    backgroundColor: '#EA580C',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '26px',
-                    boxShadow: '0 4px 12px rgba(234, 88, 12, 0.3)'
-                  }}
-                >
-                  🎯
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#9A3412', margin: 0 }}>
-                      Teacher Focus Drill Assigned!
-                    </h3>
-                    <span style={{ fontSize: '11px', fontWeight: 800, background: '#FFEDD5', color: '#C2410C', padding: '2px 8px', borderRadius: '10px', border: '1px solid #FDBA74' }}>
-                      Stage {activeDrill.stage_id}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#C2410C', margin: '4px 0 0 0' }}>
-                    Practice specific signs you struggled with: {activeDrill.signs.map(s => `"${s}"`).join(', ')}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onStartLesson) {
-                      onStartLesson(activeDrill.stage_id, true, activeDrill.signs);
-                    } else {
-                      onNavigate('setup');
-                    }
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    borderRadius: '16px',
-                    background: '#EA580C',
-                    border: 'none',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                    boxShadow: '0 4px 14px rgba(234, 88, 12, 0.4)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <span>Start Focus Drill</span>
-                  <span>⚡</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Section: Keep Practicing (Focus Drill Cards from user screenshot) */}
           <section className="practice-section keep-practicing">

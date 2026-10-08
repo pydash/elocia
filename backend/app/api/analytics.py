@@ -186,58 +186,62 @@ async def get_parent_progress_summary(student_id: uuid.UUID, db: AsyncSession = 
 async def get_student_needs_practice(student_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """
     Returns the specific signs and stages a student struggled with (score < 60 or Tier 4 flag),
-    or fallback recommended signs if they haven't failed any yet.
-    Powers the 'Keep Practicing' cards on the Student Desktop Practice Page.
+    or signs assigned by the teacher via 'Create Focus Drill'.
+    Strictly NO mock data — dynamically synced with teacher action & real student attempts.
     """
-    # 1. Fetch recent low-scoring or Tier 4 evaluation attempts
-    result = await db.execute(
-        select(EvaluationAttempt, FSLBaseline.sign_name)
-        .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
-        .where(
-            EvaluationAttempt.student_id == student_id,
-            (EvaluationAttempt.passed == False) | (EvaluationAttempt.tier_level >= 3)
-        )
-        .order_by(EvaluationAttempt.created_at.desc())
-        .limit(10)
-    )
-    failed_attempts = result.all()
-
-    # Color palette matching UI: red, orange, green, blue
     colors = ["red", "orange", "green", "blue"]
-
     cards = []
     seen_signs = set()
 
-    for att, sign_name in failed_attempts:
+    # 1. Check if teacher created an active focus drill for this student (or globally for all students)
+    drill = _ACTIVE_FOCUS_DRILLS.get(str(student_id)) or _ACTIVE_FOCUS_DRILLS.get("all")
+    if drill and drill.get("active") and drill.get("signs"):
+        stage_id = drill.get("stage_id", 1)
+        for sign in drill["signs"]:
+            if sign and sign not in seen_signs:
+                seen_signs.add(sign)
+                cards.append({
+                    "sign": sign,
+                    "stage_id": stage_id,
+                    "section_label": f"Section 1, Stage {stage_id}",
+                    "score": 50.0,
+                    "color": colors[len(cards) % len(colors)],
+                    "reason": drill.get("notes") or "Teacher Assigned Focus Drill"
+                })
+
+    # 2. Fetch the student's recent evaluation attempts to check latest status per sign
+    result = await db.execute(
+        select(EvaluationAttempt, FSLBaseline.sign_name, CurriculumStage.stage_number)
+        .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
+        .outerjoin(CurriculumStage, FSLBaseline.stage_id_new == CurriculumStage.id)
+        .where(EvaluationAttempt.student_id == student_id)
+        .order_by(EvaluationAttempt.created_at.desc())
+        .limit(100)
+    )
+    all_recent_attempts = result.all()
+
+    # Track the LATEST attempt per sign. If latest attempt passed (and tier < 4), do NOT flag!
+    latest_by_sign = {}
+    for att, sign_name, stage_num in all_recent_attempts:
         sign_label = sign_name if sign_name else f"Sign {att.sign_id or att.stage_id or 1}"
-        s_id = att.stage_id_new or att.stage_id or 1
-        if sign_label not in seen_signs and len(cards) < 4:
-            seen_signs.add(sign_label)
-            score_val = round(att.score_overall or 45.0, 1)
-            cards.append({
-                "sign": sign_label,
-                "stage_id": s_id,
-                "section_label": f"Section 1, Stage {s_id}",
-                "score": score_val,
-                "color": colors[len(cards) % len(colors)],
-                "reason": "Needs focus on hand movement" if (att.score_movement or 0) < 60 else "Flagged for practice"
-            })
+        if sign_label not in latest_by_sign:
+            latest_by_sign[sign_label] = (att, stage_num)
 
-    # Default fallback cards if student has fewer than 4 errors
-    defaults = [
-        {"sign": "Hello", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 55, "color": "red", "reason": "Recommended warm-up"},
-        {"sign": "Thank You", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 58, "color": "orange", "reason": "Recommended practice"},
-        {"sign": "1", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 62, "color": "green", "reason": "Keep streak alive"},
-        {"sign": "2", "stage_id": 1, "section_label": "Section 1, Stage 1", "score": 65, "color": "blue", "reason": "Refine palm orientation"},
-    ]
-
-    for d in defaults:
-        if len(cards) >= 4:
-            break
-        if d["sign"] not in [c["sign"] for c in cards]:
-            d_copy = dict(d)
-            d_copy["color"] = colors[len(cards) % len(colors)]
-            cards.append(d_copy)
+    # Only include signs where the latest attempt failed or triggered Tier 4 struggle
+    for sign_label, (att, stage_num) in latest_by_sign.items():
+        if (not att.passed) or ((att.tier_level or 1) >= 4):
+            if sign_label not in seen_signs:
+                seen_signs.add(sign_label)
+                s_id = stage_num if stage_num is not None else (att.stage_id or 1)
+                score_val = round(att.score_overall or 45.0, 1)
+                cards.append({
+                    "sign": sign_label,
+                    "stage_id": s_id,
+                    "section_label": f"Section 1, Stage {s_id}",
+                    "score": score_val,
+                    "color": colors[len(cards) % len(colors)],
+                    "reason": "Needs focus on hand movement" if (att.score_movement or 0) < 60 else "Flagged for practice"
+                })
 
     return {"student_id": str(student_id), "practice_items": cards}
 
@@ -344,31 +348,35 @@ async def get_student_unit_analytics(
                 "reason": f"Flagged in Tier {fa.tier_level or 4}"
             })
 
-    # Default fallback items if no failed attempts yet (matching design screenshot)
-    if not needs_practice:
-        needs_practice = [
-            {"sign_id": 5, "name": "5", "stage_id": stage_id, "score": 52.0, "tier_level": 4, "reason": "Flagged in Tier 4"},
-            {"sign_id": 2, "name": "2", "stage_id": stage_id, "score": 58.0, "tier_level": 3, "reason": "Needs focus on palm direction"}
-        ]
-
-    # Performance trend across attempts
+    # 100% Real Performance Trend (Week 1, Week 2, Week 3, Current) calculated from real DB attempts
     trend = []
     if attempts:
-        # Group chronological attempts (oldest to newest)
-        chrono = list(reversed(attempts[:6]))
-        for idx, a in enumerate(chrono):
-            trend.append({
-                "label": f"Attempt {idx + 1}",
-                "score": round(a.score_overall or 0.0, 1),
-                "is_current": idx == len(chrono) - 1
-            })
-    else:
-        trend = [
-            {"label": "Attempt 1", "score": 55.0, "is_current": False},
-            {"label": "Attempt 2", "score": 68.0, "is_current": False},
-            {"label": "Attempt 3", "score": 74.0, "is_current": False},
-            {"label": "Attempt 4", "score": 82.0, "is_current": True},
-        ]
+        # Order chronological attempts (oldest to newest)
+        chrono = sorted([a for a in attempts if a.score_overall is not None], key=lambda x: x.created_at)
+        n = len(chrono)
+        if n >= 4:
+            q1 = chrono[: max(1, n // 4)]
+            q2 = chrono[max(1, n // 4): max(2, (n * 2) // 4)]
+            q3 = chrono[max(2, (n * 2) // 4): max(3, (n * 3) // 4)]
+            q4 = chrono[max(3, (n * 3) // 4):]
+            def calc_avg(arr):
+                vals = [a.score_overall for a in arr if a.score_overall is not None]
+                return round(sum(vals) / len(vals), 1) if vals else 0.0
+
+            trend = [
+                {"label": "Week 1", "score": calc_avg(q1), "is_current": False},
+                {"label": "Week 2", "score": calc_avg(q2), "is_current": False},
+                {"label": "Week 3", "score": calc_avg(q3), "is_current": False},
+                {"label": "Current", "score": calc_avg(q4), "is_current": True},
+            ]
+        elif n > 0:
+            for idx, a in enumerate(chrono):
+                is_last = (idx == n - 1)
+                trend.append({
+                    "label": "Current" if is_last else f"Week {idx + 1}",
+                    "score": round(a.score_overall or 0.0, 1),
+                    "is_current": is_last
+                })
 
     return {
         "student_id": str(student_id),
@@ -387,8 +395,10 @@ async def create_focus_drill(payload: dict, db: AsyncSession = Depends(get_db)):
     """
     Triggered when teacher clicks 'Create Focus Drill' on web dashboard.
     Stores targeted signs for student desktop app.
+    If student_id is 'all' or empty, assigns globally to all students.
     """
-    student_id = str(payload.get("student_id", ""))
+    raw_sid = str(payload.get("student_id", "")).strip()
+    student_id = raw_sid if raw_sid and raw_sid != "all" else "all"
     signs = payload.get("signs", [])
     stage_id = payload.get("stage_id", 1)
     notes = payload.get("notes", "Teacher focus drill assigned")
@@ -405,7 +415,7 @@ async def create_focus_drill(payload: dict, db: AsyncSession = Depends(get_db)):
 
     return {
         "status": "success",
-        "message": f"Focus drill created with {len(signs)} signs",
+        "message": f"Focus drill created with {len(signs)} signs for {student_id}",
         "drill": drill_record
     }
 
@@ -414,8 +424,9 @@ async def create_focus_drill(payload: dict, db: AsyncSession = Depends(get_db)):
 async def get_student_active_drill(student_id: str):
     """
     Endpoint for Student Desktop to fetch any assigned focus drill.
+    Checks student-specific drill first, then falls back to any broadcast drill ('all').
     """
-    drill = _ACTIVE_FOCUS_DRILLS.get(str(student_id))
+    drill = _ACTIVE_FOCUS_DRILLS.get(str(student_id)) or _ACTIVE_FOCUS_DRILLS.get("all")
     return {"drill": drill}
 
 
@@ -424,6 +435,28 @@ async def complete_student_drill(student_id: str):
     """
     Marks focus drill as complete / consumed.
     """
-    if str(student_id) in _ACTIVE_FOCUS_DRILLS:
-        _ACTIVE_FOCUS_DRILLS.pop(str(student_id), None)
+    sid = str(student_id)
+    if sid in _ACTIVE_FOCUS_DRILLS:
+        _ACTIVE_FOCUS_DRILLS.pop(sid, None)
+    if "all" in _ACTIVE_FOCUS_DRILLS:
+        _ACTIVE_FOCUS_DRILLS.pop("all", None)
     return {"status": "success"}
+
+
+@router.post("/drills/student/{student_id}/remove-sign")
+async def remove_drill_sign(student_id: str, payload: dict):
+    """
+    Removes a mastered sign from the student's active focus drill.
+    If all signs are mastered, completes and removes the drill completely.
+    """
+    sign_to_remove = str(payload.get("sign", "")).strip().lower()
+    targets = [str(student_id), "all"]
+
+    for t in targets:
+        if t in _ACTIVE_FOCUS_DRILLS:
+            drill = _ACTIVE_FOCUS_DRILLS[t]
+            drill["signs"] = [s for s in drill.get("signs", []) if str(s).strip().lower() != sign_to_remove]
+            if len(drill["signs"]) == 0:
+                _ACTIVE_FOCUS_DRILLS.pop(t, None)
+
+    return {"status": "success", "removed": sign_to_remove}

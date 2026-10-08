@@ -350,4 +350,16 @@ export async function completeFocusDrill(studentId: string): Promise<void> {
   }
 }
 
+export async function removeFocusDrillSign(studentId: string, sign: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/analytics/drills/student/${studentId}/remove-sign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sign }),
+    });
+  } catch (err) {
+    console.warn('Failed to remove focus drill sign:', err);
+  }
+}
+
 
