@@ -86,3 +86,38 @@ export async function fetchCurriculumStages(gradeLevel?: number): Promise<any> {
   return response.json();
 }
 
+/**
+ * Fetch specific signs the student needs to focus on (active Tier 4 or low scores).
+ */
+export async function fetchStudentNeedsPractice(studentId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/analytics/students/${studentId}/needs-practice`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = await response.json();
+  return data.practice_items || [];
+}
+
+/**
+ * Fetch official student stage progress (passed/unlocked per stage) from /users/{studentId}/progress.
+ * Single source of truth across Student Desktop, Teacher, and Parent portals.
+ */
+export async function fetchStudentStageProgress(studentId: string): Promise<any | null> {
+  const response = await fetch(`${API_BASE_URL}/users/${studentId}/progress`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json();
+}

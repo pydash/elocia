@@ -11,6 +11,16 @@ export interface ParentStudent {
   total_xp: number;
   level: number;
   streak: number;
+  has_tier4_flag?: boolean;
+}
+
+export interface PracticeCardItem {
+  sign: string;
+  stage_id: number;
+  section_label?: string;
+  score: number;
+  color?: string;
+  reason?: string;
 }
 
 export interface ParentProgressSummary {
@@ -31,6 +41,14 @@ export interface EvaluationAttemptItem {
   stage_id?: number | null;
   stage_id_new?: number | null;
   sign_id?: number | null;
+  sign_name?: string | null;
+  stage_number?: number | null;
+  stage_title?: string | null;
+  unit_number?: number | null;
+  unit_title?: string | null;
+  section_number?: number | null;
+  section_title?: string | null;
+  assignment_name?: string | null;
   score_overall: number;
   score_handshape: number;
   score_palm_orientation: number;
@@ -51,11 +69,13 @@ export interface PerformanceTrendItem {
   label: string;
   score: number;
   isCurrent?: boolean;
+  isUpcoming?: boolean;
 }
 
 export interface StagePathItem {
   stageNumber: number;
   title: string;
+  subtitle?: string;
   status: "completed" | "current" | "locked";
   progressPercentage?: number;
 }

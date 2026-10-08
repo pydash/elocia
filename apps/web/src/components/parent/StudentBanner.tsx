@@ -10,6 +10,7 @@ type StudentBannerProps = {
   color?: string;
   allChildren?: ParentStudent[];
   selectedChildId?: string;
+  has_tier4_flag?: boolean;
   onSelectChild?: (child: ParentStudent) => void;
 };
 
@@ -20,6 +21,7 @@ export default function StudentBanner({
   color = "#3B82F6",
   allChildren = [],
   selectedChildId,
+  has_tier4_flag = false,
   onSelectChild,
 }: StudentBannerProps) {
   const [showChildPicker, setShowChildPicker] = useState(false);
@@ -58,7 +60,10 @@ export default function StudentBanner({
                     }`}
                   >
                     <span>{c.emoji || "👦"}</span>
-                    <span className="truncate">{c.name}</span>
+                    <span className="truncate flex-1">{c.name}</span>
+                    {c.has_tier4_flag && (
+                      <span className="size-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Needs Practice" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -70,12 +75,28 @@ export default function StudentBanner({
       <hr className="border-gray-100 my-1" />
 
       <div className="flex items-center gap-5">
-        <div className="shrink-0">
+        <div className="relative shrink-0">
           <Avatar emoji={emoji} color={color} />
+          {has_tier4_flag && (
+            <span
+              className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 ring-4 ring-white"
+              title="Tier 4 Flag / Struggling with recent signs"
+            >
+              <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+            </span>
+          )}
         </div>
 
         <div className="min-w-0 flex-1 space-y-1">
-          <h2 className="text-3xl font-bold text-gray-800 tracking-tight">{name}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-bold text-gray-800 tracking-tight">{name}</h2>
+            {has_tier4_flag && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 border border-rose-200 text-rose-600">
+                <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                Needs Practice
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-gray-400 font-medium">
             <GraduationCap className="size-5 text-gray-500" />
             <p className="text-base text-gray-500">Grade {grade}</p>
