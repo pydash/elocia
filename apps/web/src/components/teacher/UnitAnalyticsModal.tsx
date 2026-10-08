@@ -237,42 +237,51 @@ export default function UnitAnalyticsModal({
                           Needs Practice
                         </h3>
                       </div>
-                      <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-600">
-                        {needsPractice.length} Signs Flagged
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        needsPractice.length > 0 ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+                      }`}>
+                        {needsPractice.length > 0 ? `${needsPractice.length} Signs Flagged` : "All Signs Mastered"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500">
                       Specific round signs where student repeatedly struggled or triggered Tier 4 Pass-and-Flag.
                     </p>
 
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      {needsPractice.map((item) => (
-                        <div
-                          key={item.sign_id}
-                          className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50/70 p-3 shadow-2xs"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white font-extrabold text-sm text-rose-700 shadow-2xs border border-rose-200">
-                              {item.name}
-                            </span>
-                            <div>
-                              <p className="text-xs font-bold text-gray-800 leading-none">
-                                Sign "{item.name}"
-                              </p>
-                              <span className="text-[10px] font-semibold text-rose-600">
-                                {item.score}% accuracy
-                              </span>
-                            </div>
-                          </div>
-                          <span
-                            className="text-xs font-bold text-gray-400 hover:text-gray-600 cursor-pointer"
-                            title={item.reason}
+                    {needsPractice.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2 pt-2">
+                        {needsPractice.map((item) => (
+                          <div
+                            key={item.sign_id}
+                            className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50/70 p-3 shadow-2xs"
                           >
-                            ⓘ
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white font-extrabold text-sm text-rose-700 shadow-2xs border border-rose-200">
+                                {item.name}
+                              </span>
+                              <div>
+                                <p className="text-xs font-bold text-gray-800 leading-none">
+                                  Sign "{item.name}"
+                                </p>
+                                <span className="text-[10px] font-semibold text-rose-600">
+                                  {item.score}% accuracy
+                                </span>
+                              </div>
+                            </div>
+                            <span
+                              className="text-xs font-bold text-gray-400 hover:text-gray-600 cursor-pointer"
+                              title={item.reason}
+                            >
+                              ⓘ
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-emerald-700 text-xs font-bold shadow-2xs">
+                        <span>✨</span>
+                        <span>Great job! No signs currently flagged for practice.</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Create Focus Drill Button */}
@@ -281,13 +290,21 @@ export default function UnitAnalyticsModal({
                       type="button"
                       disabled={isCreatingDrill || needsPractice.length === 0}
                       onClick={handleCreateFocusDrill}
-                      className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-[#e67c00] active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#FF8A00] px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-[#e67c00] active:scale-[0.99] transition-all disabled:opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                     >
                       <Dumbbell className="h-4 w-4" />
-                      <span>{isCreatingDrill ? "Dispatching Drill..." : "Create Focus Drill"}</span>
+                      <span>
+                        {isCreatingDrill
+                          ? "Dispatching Drill..."
+                          : needsPractice.length === 0
+                          ? "No Focus Drill Needed"
+                          : "Create Focus Drill"}
+                      </span>
                     </button>
                     <p className="text-[11px] text-center text-gray-400 mt-2 font-medium">
-                      Auto-creates targeted practice round on student's desktop app.
+                      {needsPractice.length === 0
+                        ? "Student has successfully practiced and cleared all flagged signs."
+                        : "Auto-creates targeted practice round on student's desktop app."}
                     </p>
                   </div>
                 </div>

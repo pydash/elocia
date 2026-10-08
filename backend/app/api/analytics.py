@@ -322,9 +322,6 @@ async def get_student_unit_analytics(
     lowest_param = min(param_dict, key=param_dict.get)
     diagnostic_insight = f"Student is struggling slightly with {lowest_param} parameters. Consider focusing practice on spatial positioning and accuracy."
 
-    # Identify items that were failed (passed = False or tier_level >= 3)
-    failed_attempts = [a for a in attempts if (not a.passed) or (a.tier_level and a.tier_level >= 3)]
-    
     # Query baseline sign names
     sign_names = {}
     baseline_res = await db.execute(select(FSLBaseline.sign_id, FSLBaseline.sign_name))
@@ -332,21 +329,30 @@ async def get_student_unit_analytics(
         if sid:
             sign_names[sid] = sname
 
+    # Identify items that currently need practice based on the LATEST attempt per sign.
+    # If the student practiced and passed the sign, it should no longer be flagged!
+    latest_attempt_by_sign = {}
+    for a in attempts:
+        s_id = a.sign_id or a.stage_id or 1
+        # attempts is ordered by created_at.desc(), so the first time we see s_id is the latest attempt
+        if s_id not in latest_attempt_by_sign:
+            latest_attempt_by_sign[s_id] = a
+
     needs_practice = []
     seen_signs = set()
-    for fa in failed_attempts:
-        s_id = fa.sign_id or fa.stage_id or 1
-        name = sign_names.get(s_id, f"Sign {s_id}")
-        if name not in seen_signs:
-            seen_signs.add(name)
-            needs_practice.append({
-                "sign_id": s_id,
-                "name": name,
-                "stage_id": fa.stage_id or stage_id,
-                "score": round(fa.score_overall or 45.0, 1),
-                "tier_level": fa.tier_level or 4,
-                "reason": f"Flagged in Tier {fa.tier_level or 4}"
-            })
+    for s_id, latest_att in latest_attempt_by_sign.items():
+        if (not latest_att.passed) or (latest_att.tier_level and latest_att.tier_level >= 4):
+            name = sign_names.get(s_id, f"Sign {s_id}")
+            if name not in seen_signs:
+                seen_signs.add(name)
+                needs_practice.append({
+                    "sign_id": s_id,
+                    "name": name,
+                    "stage_id": latest_att.stage_id or stage_id,
+                    "score": round(latest_att.score_overall or 45.0, 1),
+                    "tier_level": latest_att.tier_level or 4,
+                    "reason": f"Flagged in Tier {latest_att.tier_level or 4}"
+                })
 
     # 100% Real Performance Trend (Week 1, Week 2, Week 3, Current) calculated from real DB attempts
     trend = []

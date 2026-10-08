@@ -208,10 +208,27 @@ async def get_parent_students(parent_id: uuid.UUID, db: AsyncSession = Depends(g
     result = await db.execute(query)
     rows = result.all()
 
-    # Query student IDs that have active Tier 4 or unpassed attempts
+    # Query student IDs that have active Tier 4 or unpassed attempts based on their LATEST attempt per sign
+    # (If a student previously failed but subsequently practiced and passed the sign, the flag is cleared!)
+    latest_attempts_sub = (
+        select(
+            EvaluationAttempt.student_id,
+            EvaluationAttempt.sign_id,
+            EvaluationAttempt.passed,
+            EvaluationAttempt.tier_level,
+            func.row_number().over(
+                partition_by=(EvaluationAttempt.student_id, EvaluationAttempt.sign_id),
+                order_by=EvaluationAttempt.created_at.desc()
+            ).label("rn")
+        )
+        .subquery()
+    )
     tier4_res = await db.execute(
-        select(EvaluationAttempt.student_id)
-        .where((EvaluationAttempt.tier_level == 4) | (EvaluationAttempt.passed == False))
+        select(latest_attempts_sub.c.student_id)
+        .where(
+            latest_attempts_sub.c.rn == 1,
+            (latest_attempts_sub.c.passed == False) | (latest_attempts_sub.c.tier_level >= 4)
+        )
         .distinct()
     )
     flagged_student_ids = {str(sid) for (sid,) in tier4_res.all()}
@@ -456,14 +473,27 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
             parent_summary = ", ".join([p["name"] for p in parents_list])
             first_parent_id = parents_list[0]["id"]
 
-    # Check if student has active Tier 4 / unpassed flags
+    # Check if student has active Tier 4 / unpassed flags based on their LATEST attempt per sign
     has_tier4_flag = False
     if user.role == UserRole.student:
+        latest_attempts_sub = (
+            select(
+                EvaluationAttempt.sign_id,
+                EvaluationAttempt.passed,
+                EvaluationAttempt.tier_level,
+                func.row_number().over(
+                    partition_by=EvaluationAttempt.sign_id,
+                    order_by=EvaluationAttempt.created_at.desc()
+                ).label("rn")
+            )
+            .where(EvaluationAttempt.student_id == user_id)
+            .subquery()
+        )
         t4_check = await db.execute(
-            select(EvaluationAttempt.id)
+            select(latest_attempts_sub.c.sign_id)
             .where(
-                EvaluationAttempt.student_id == user_id,
-                (EvaluationAttempt.tier_level == 4) | (EvaluationAttempt.passed == False)
+                latest_attempts_sub.c.rn == 1,
+                (latest_attempts_sub.c.passed == False) | (latest_attempts_sub.c.tier_level >= 4)
             )
             .limit(1)
         )
