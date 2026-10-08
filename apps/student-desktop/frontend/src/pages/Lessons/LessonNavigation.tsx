@@ -66,6 +66,8 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
   const [sectionPages, setSectionPages] = useState<Record<string, number>>({});
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
+  const [showSectionPicker, setShowSectionPicker] = useState<boolean>(false);
+  const [hasAutoScrolled, setHasAutoScrolled] = useState<boolean>(false);
 
   useEffect(() => {
     // 1. Fetch student progress & grade level if student is logged in
@@ -96,6 +98,52 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
     });
   }, [unlockedStages]);
 
+  // 3. Auto-scroll to current active stage on page load (so student lands right where they need to learn)
+  useEffect(() => {
+    if (hasAutoScrolled || curriculumData.length === 0) return;
+
+    // Determine target active stage: highest unlocked stage not yet passed, or highest unlocked
+    const unlockedList = studentProgress?.unlocked_stages || unlockedStages || [1];
+    let targetStageId = unlockedList[unlockedList.length - 1];
+
+    if (studentProgress?.stages) {
+      const activeUnpassed = studentProgress.stages.find(s => s.unlocked && !s.passed);
+      if (activeUnpassed) {
+        targetStageId = activeUnpassed.stage_id;
+      }
+    }
+
+    // Ensure the carousel page containing this stage is opened
+    curriculumData.forEach((section, idx) => {
+      const stages = section.units.flatMap(u => u.stages).sort((a, b) => a.id - b.id);
+      const stageIdx = stages.findIndex(s => s.id === targetStageId);
+      if (stageIdx !== -1) {
+        const targetPage = Math.floor(stageIdx / 3);
+        const sectionKey = `${section.id}-${idx}`;
+        setSectionPages(prev => ({ ...prev, [sectionKey]: targetPage }));
+      }
+    });
+
+    // Smooth scroll to the target stage card
+    const timer = setTimeout(() => {
+      const targetCard = document.querySelector(`[data-stage-id="${targetStageId}"]`);
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHasAutoScrolled(true);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [curriculumData, studentProgress, unlockedStages, hasAutoScrolled]);
+
+  const scrollToSection = (sectionKey: string) => {
+    const el = document.getElementById(sectionKey);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setShowSectionPicker(false);
+    }
+  };
+
   const handleStageClick = (stageId: number, isLocked: boolean) => {
     if (isLocked) return;
     if (selectedStage === stageId) {
@@ -120,6 +168,8 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
     ? allStages.find(s => s.id === selectedStage) 
     : null;
 
+  const validSections = curriculumData.filter(section => section.units && section.units.some(u => u.stages && u.stages.length > 0));
+
   return (
     <div className="app-layout">
       <Navbar onNavigate={onNavigate} activeTab="learn" />
@@ -134,6 +184,62 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
           <img src={cloud5Img} alt="Cloud 5" className="bg-decor cloud-5" />
           <img src={cloud6Img} alt="Cloud 6" className="bg-decor cloud-6" />
         </div>
+
+        {/* Quick-Jump Section Navigator (Floating Pill for 10+ Sections) */}
+        {validSections.length > 1 && (
+          <div className="section-quickjump-container">
+            <button
+              type="button"
+              className="section-quickjump-trigger"
+              onClick={() => setShowSectionPicker(prev => !prev)}
+              title="Jump to Section"
+            >
+              <span>🧭</span>
+              <span className="quickjump-text">Jump to Section</span>
+              <span className="quickjump-badge">{validSections.length}</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showSectionPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {showSectionPicker && (
+              <div className="section-quickjump-dropdown">
+                <div className="quickjump-dropdown-header">Curriculum Sections</div>
+                <div className="quickjump-dropdown-list">
+                  {validSections.map((sec, idx) => {
+                    const secStages = sec.units.flatMap(u => u.stages);
+                    const passedCount = secStages.filter(st => {
+                      const stInfo = studentProgress?.stages.find(s => s.stage_id === st.id);
+                      return stInfo && stInfo.passed;
+                    }).length;
+                    const isFullyCompleted = passedCount > 0 && passedCount === secStages.length;
+
+                    return (
+                      <button
+                        key={`${sec.id}-${idx}`}
+                        type="button"
+                        className="quickjump-item"
+                        onClick={() => scrollToSection(`sec-node-${sec.id}-${idx}`)}
+                      >
+                        <div className="quickjump-item-info">
+                          <span className="quickjump-item-title">{sec.title}</span>
+                          <span className="quickjump-item-stats">
+                            {passedCount}/{secStages.length} Stages Completed
+                          </span>
+                        </div>
+                        {isFullyCompleted ? (
+                          <span className="quickjump-star" title="Section Completed">⭐</span>
+                        ) : (
+                          <span className="quickjump-arrow">→</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="map-container">
           {curriculumData.length === 0 || curriculumData.every(sec => sec.units.every(u => u.stages.length === 0)) ? (
@@ -191,11 +297,19 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                   .sort((a, b) => a.id - b.id);
                 
                 const sectionKey = `${section.id}-${idx}`;
+                const sectionDomId = `sec-node-${section.id}-${idx}`;
                 const currentPage = sectionPages[sectionKey] || 0;
                 const itemsPerPage = 3;
                 const totalPages = Math.ceil(stages.length / itemsPerPage);
                 const startIndex = currentPage * itemsPerPage;
                 const visibleStages = stages.slice(startIndex, startIndex + itemsPerPage);
+
+                // Section completion status
+                const passedStagesCount = stages.filter(st => {
+                  const sInfo = studentProgress?.stages.find(s => s.stage_id === st.id);
+                  return sInfo && sInfo.passed;
+                }).length;
+                const isSectionComplete = passedStagesCount > 0 && passedStagesCount === stages.length;
 
                 const handlePrevPage = () => {
                   setSectionPages(prev => ({
@@ -212,9 +326,12 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                 };
 
                 return (
-                  <div key={sectionKey} className="section-group">
+                  <div key={sectionKey} id={sectionDomId} className="section-group">
                     <div className="section-banner">
-                      {section.title}
+                      <span>{section.title}</span>
+                      {isSectionComplete && (
+                        <span style={{ marginLeft: '10px', fontSize: '1.2rem' }} title="Section Completed!">⭐</span>
+                      )}
                     </div>
 
                     <div className="stages-carousel-wrapper">
@@ -243,6 +360,7 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
                           return (
                             <div
                               key={stage.id}
+                              data-stage-id={stage.id}
                               className={`stage-card ${cardStateClass} ${selectedStage === stage.id ? 'selected' : ''}`}
                               onClick={() => handleStageClick(stage.id, isLocked)}
                               role="button"

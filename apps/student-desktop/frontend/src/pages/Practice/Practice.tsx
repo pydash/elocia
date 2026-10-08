@@ -26,6 +26,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
   const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
   const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
   const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
+  const [reviewPages, setReviewPages] = useState<Record<string, number>>({});
 
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
@@ -254,106 +255,183 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
             </div>
           </section>
 
-          {/* Section 4: Review Past Stages */}
+          {/* Section 4: Review Past Stages (Synchronized with Lesson Proper Map) */}
           <section className="practice-section review-stages">
             <div className="section-header centered">
               <h2>Review Past Stages</h2>
               <p>You can practice your completed stages here!</p>
             </div>
 
-            <div className="practice-section-banner">
-              {curriculumData[0]?.title || "SECTION 1"}, {curriculumData[0]?.units[0]?.title || "UNIT 1"}
-            </div>
+            {curriculumData.length === 0 || curriculumData.every(sec => sec.units.every(u => u.stages.length === 0)) ? (
+              <div style={{
+                padding: '36px 32px',
+                textAlign: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '24px',
+                border: '3px dashed #F59E0B',
+                maxWidth: '520px',
+                margin: '24px auto',
+                color: '#92400E',
+                fontWeight: 600
+              }}>
+                <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>📚</span>
+                Lessons are being prepared by your teacher. Check back soon!
+              </div>
+            ) : (
+              curriculumData
+                .filter(section => section.units && section.units.some(u => u.stages && u.stages.length > 0))
+                .map((section, secIdx) => {
+                  const stages = section.units
+                    .flatMap(u => u.stages)
+                    .sort((a, b) => a.id - b.id);
 
-            <div className="timeline-wrapper">
-              <div className="timeline-cards">
-                {(() => {
-                  const unitStages = curriculumData[0]?.units[0]?.stages || [];
+                  const sectionKey = `review-${section.id}-${secIdx}`;
+                  const currentPage = reviewPages[sectionKey] || 0;
+                  const itemsPerPage = 3;
+                  const totalPages = Math.ceil(stages.length / itemsPerPage);
+                  const startIndex = currentPage * itemsPerPage;
+                  const visibleStages = stages.slice(startIndex, startIndex + itemsPerPage);
                   const unlockedList = studentProgress?.unlocked_stages || [1];
 
-                  return unitStages.map((stage, idx) => {
-                    const isUnlocked = unlockedList.includes(stage.id);
-                    const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
-                    const isPassed = stageInfo?.passed || false;
-                    const isNextUnlocked = unlockedList.includes(stage.id + 1);
+                  const handlePrev = () => {
+                    setReviewPages(prev => ({
+                      ...prev,
+                      [sectionKey]: Math.max(0, (prev[sectionKey] || 0) - 1)
+                    }));
+                  };
 
-                    if (!isUnlocked) {
-                      return (
-                        <div key={stage.id} className="timeline-card-wrapper locked">
-                          <div className="practice-stage-card locked-card">
-                            <h4>STAGE</h4>
-                            <span className="locked-number">{stage.id}</span>
-                            <span className="lock-icon">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0110 0v4"></path>
-                              </svg>
-                            </span>
-                          </div>
+                  const handleNext = () => {
+                    setReviewPages(prev => ({
+                      ...prev,
+                      [sectionKey]: Math.min(totalPages - 1, (prev[sectionKey] || 0) + 1)
+                    }));
+                  };
+
+                  return (
+                    <div key={sectionKey} className="review-section-group" style={{ width: '100%', marginBottom: '40px' }}>
+                      <div className="section-banner" style={{ margin: '0 auto 28px auto' }}>
+                        {section.title}
+                      </div>
+
+                      <div className="stages-carousel-wrapper">
+                        {stages.length > itemsPerPage && currentPage > 0 && (
+                          <button
+                            className="carousel-arrow-btn arrow-prev"
+                            onClick={handlePrev}
+                            title="Previous Stages"
+                            aria-label="Previous Stages"
+                          >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'rotate(180deg)' }}>
+                              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        )}
+
+                        <div className="stages-path">
+                          <div className="path-line"></div>
+
+                          {visibleStages.map((stage) => {
+                            const originalStageIdx = stages.findIndex(s => s.id === stage.id);
+                            const isLocked = !unlockedList.includes(stage.id);
+                            const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
+                            const isCompleted = !!(stageInfo && stageInfo.passed);
+                            const cardStateClass = isLocked ? 'locked-card' : (isCompleted ? 'completed-card' : 'active-card');
+                            const xpPoints = (stage.items?.length || 1) * 10;
+
+                            return (
+                              <div
+                                key={stage.id}
+                                className={`stage-card ${cardStateClass}`}
+                                onClick={() => {
+                                  if (isLocked) return;
+                                  try {
+                                    const reviewed: number[] = JSON.parse(localStorage.getItem('elocia_reviewed_stages') || '[]');
+                                    if (!reviewed.includes(stage.id)) {
+                                      reviewed.push(stage.id);
+                                      localStorage.setItem('elocia_reviewed_stages', JSON.stringify(reviewed));
+                                    }
+                                  } catch (err) {
+                                    console.warn('Failed to update reviewed stages:', err);
+                                  }
+
+                                  if (onStartLesson) {
+                                    onStartLesson(stage.id, true);
+                                  } else {
+                                    onNavigate('setup');
+                                  }
+                                }}
+                                role="button"
+                                tabIndex={isLocked ? -1 : 0}
+                                title={isLocked ? 'Locked stage' : `Practice ${stage.title}`}
+                              >
+                                {isLocked ? (
+                                  <>
+                                    <div className="stage-text-group">
+                                      <span className="stage-label">Stage</span>
+                                      <span className="stage-number">{originalStageIdx + 1}</span>
+                                    </div>
+                                    <div className="icon-container">
+                                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                                      </svg>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="card-top-badge-row">
+                                      <span className={`status-pill ${isCompleted ? 'pill-completed' : 'pill-active'}`}>
+                                        {isCompleted ? 'Completed' : 'Stage ' + (originalStageIdx + 1)}
+                                      </span>
+                                      <div className="card-mini-icon">
+                                        {isCompleted ? (
+                                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="12" r="10" fill="#2ECC71"/>
+                                            <path d="M8 12.5L10.5 15L16 9.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        ) : (
+                                          <svg width="32" height="32" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="22" cy="22" r="22" fill="#FF9800"/>
+                                            <path d="M17 14.5L31 22L17 29.5V14.5Z" fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/>
+                                          </svg>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="card-body-text">
+                                      <h4 className="card-stage-title">{stage.title}</h4>
+                                      <p className="card-stage-subtitle">
+                                        {stage.items?.length ? `${stage.items.length} signs to learn` : (stage.description || 'Fun sign activities')}
+                                      </p>
+                                    </div>
+
+                                    <div className="card-footer-row">
+                                      <span className="card-reward-pts">⭐ {xpPoints} pts</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    }
 
-                    const cardStateClass = isPassed ? "completed" : "active";
-                    const borderClass = isPassed ? "" : "border-orange";
-
-                    return (
-                      <div key={stage.id} className={`timeline-card-wrapper ${cardStateClass}`}>
-                        <div 
-                          className={`practice-stage-card ${borderClass}`}
-                          onClick={() => {
-                            try {
-                              const reviewed: number[] = JSON.parse(localStorage.getItem('elocia_reviewed_stages') || '[]');
-                              if (!reviewed.includes(stage.id)) {
-                                reviewed.push(stage.id);
-                                localStorage.setItem('elocia_reviewed_stages', JSON.stringify(reviewed));
-                              }
-                            } catch (err) {
-                              console.warn('Failed to update reviewed stages:', err);
-                            }
-
-                            if (onStartLesson) {
-                              onStartLesson(stage.id, true);
-                            } else {
-                              onNavigate('setup');
-                            }
-                          }}
-                          title={`Click to practice ${stage.title}`}
-                        >
-                          <div className="stage-thumbnail">
-                            <div className="wooden-blocks-mock">
-                              <div className="wood-block b-red">4</div>
-                              <div className="wood-block b-blue">5</div>
-                              <div className="wood-block b-green">1</div>
-                              <div className="wood-block b-orange">2</div>
-                              <div className="wood-block b-purple">3</div>
-                            </div>
-                          </div>
-                          <div className="stage-info">
-                            <span className="grade-badge">Grade 1</span>
-                            <h4>{stage.title}</h4>
-                            <p>{stage.description}</p>
-                            <div className="stage-footer">
-                              <span className="star-icon">⭐</span>
-                              <span>{stageInfo ? `${stageInfo.stars}/5 Stars (${stageInfo.best_score}%)` : `${stage.items.length} Signs`}</span>
-                            </div>
-                          </div>
-                        </div>
-                        {idx < unitStages.length - 1 && (
-                          <div className={`timeline-segment ${isNextUnlocked ? "segment-green" : "segment-gray"}`}></div>
+                        {stages.length > itemsPerPage && currentPage < totalPages - 1 && (
+                          <button
+                            className="carousel-arrow-btn arrow-next"
+                            onClick={handleNext}
+                            title="Next Stages"
+                            aria-label="Next Stages"
+                          >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
                         )}
                       </div>
-                    );
-                  });
-                })()}
-              </div>
-
-              <button className="next-arrow-btn" onClick={() => onNavigate('navigation')} title="Go to Learning Map">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </button>
-            </div>
+                    </div>
+                  );
+                })
+            )}
           </section>
 
         </div>

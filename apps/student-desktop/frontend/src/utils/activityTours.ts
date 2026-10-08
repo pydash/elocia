@@ -125,10 +125,10 @@ export function startEvaluationTour() {
 export function startSeeItSignItTour() {
   const steps: DriveStep[] = [
     {
-      element: '.sisi-instruction-card',
+      element: '.eval-instruction-card',
       popover: {
         title: '🏷️ Sign the Word!',
-        description: 'Make the sign for this word! 🚀',
+        description: 'Look at the target word and sign it! 🚀',
         side: 'bottom',
         align: 'start'
       }
@@ -137,26 +137,17 @@ export function startSeeItSignItTour() {
       element: '.sisi-image-card-container',
       popover: {
         title: '🖼️ Picture Clue',
-        description: 'Look at the picture clue! 🔍',
+        description: 'Look at the picture clue to know what to sign! 🔍',
         side: 'left',
         align: 'start'
       }
     },
     {
-      element: '.sisi-camera-wrapper',
+      element: '.eval-camera-wrapper',
       popover: {
         title: '📷 Camera Magic!',
-        description: 'Put your hand in the center circle! ✋',
+        description: 'Show your hand to the camera! The game evaluates automatically! ✋',
         side: 'right',
-        align: 'center'
-      }
-    },
-    {
-      element: '.ps-bottom-controls',
-      popover: {
-        title: '✋ Check My Sign',
-        description: 'Click here when you are ready to sign! 🎯',
-        side: 'top',
         align: 'center'
       }
     },
@@ -164,7 +155,7 @@ export function startSeeItSignItTour() {
       element: '.sisi-score-card',
       popover: {
         title: '🔥 Your High Score!',
-        description: 'Win stars and boost your streak! 🏆',
+        description: 'Keep your streak alive to get a huge score multiplier! 🏆',
         side: 'left',
         align: 'center'
       }
@@ -189,7 +180,7 @@ export function startPuzzleSignTour() {
       element: '.eval-instruction-card',
       popover: {
         title: '🧩 Puzzle Clue',
-        description: 'Read the clue to solve the puzzle! 💡',
+        description: 'Read the equation and clue to solve the puzzle! 💡',
         side: 'bottom',
         align: 'start'
       }
@@ -207,17 +198,8 @@ export function startPuzzleSignTour() {
       element: '.eval-camera-wrapper',
       popover: {
         title: '📷 Sign Your Answer!',
-        description: 'Show your answer hand to the camera! ✋',
+        description: 'Show your answer to the camera! Auto-grading checks your sign! ✋',
         side: 'right',
-        align: 'center'
-      }
-    },
-    {
-      element: '.ps-bottom-controls',
-      popover: {
-        title: '✨ Check My Answer',
-        description: 'Click to see if you got it right! 🎉',
-        side: 'top',
         align: 'center'
       }
     }
@@ -238,37 +220,37 @@ export function startPuzzleSignTour() {
 export function startMagicFingersTour() {
   const steps: DriveStep[] = [
     {
-      element: '.sisi-instruction-card',
+      element: '.eval-instruction-card',
       popover: {
-        title: '🔤 Secret Word',
-        description: 'A letter is missing! Can you find it? 🔍',
+        title: '🔤 Missing Letter Slot',
+        description: 'A letter is missing from the word! Look at the arrow indicator! 🔍',
         side: 'bottom',
         align: 'start'
       }
     },
     {
-      element: '.sisi-camera-wrapper',
+      element: '.sisi-image-card-container',
       popover: {
-        title: '📷 Sign the Letter!',
-        description: 'Make the missing letter sign with your hand! ✋',
+        title: '🖼️ Word Clue Picture',
+        description: 'Use the picture to figure out what word it is! 💡',
+        side: 'left',
+        align: 'start'
+      }
+    },
+    {
+      element: '.eval-camera-wrapper',
+      popover: {
+        title: '📷 Sign the Missing Letter!',
+        description: 'Make the missing alphabet letter sign with your hand! ✋',
         side: 'right',
         align: 'center'
       }
     },
     {
-      element: '.ps-bottom-controls',
+      element: '.mf-score-card',
       popover: {
-        title: '✨ Check Letter',
-        description: 'Click here when you are ready to sign! 🎯',
-        side: 'top',
-        align: 'center'
-      }
-    },
-    {
-      element: '.sisi-score-card',
-      popover: {
-        title: '🏆 Star Points',
-        description: 'Earn points and become a sign master! 🌟',
+        title: '🏆 Star Points & Streak',
+        description: 'Earn points and build your streak bonus! 🌟',
         side: 'left',
         align: 'center'
       }
