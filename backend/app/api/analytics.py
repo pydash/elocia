@@ -354,35 +354,41 @@ async def get_student_unit_analytics(
                     "reason": f"Flagged in Tier {latest_att.tier_level or 4}"
                 })
 
-    # 100% Real Performance Trend (Week 1, Week 2, Week 3, Current) calculated from real DB attempts
+    # 100% Real Performance Trend (Week 1, Week 2, Week 3, Week 4)
+    # Calculated from real DB attempts matching the Parent portal calendar week grouping!
     trend = []
-    if attempts:
-        # Order chronological attempts (oldest to newest)
-        chrono = sorted([a for a in attempts if a.score_overall is not None], key=lambda x: x.created_at)
-        n = len(chrono)
-        if n >= 4:
-            q1 = chrono[: max(1, n // 4)]
-            q2 = chrono[max(1, n // 4): max(2, (n * 2) // 4)]
-            q3 = chrono[max(2, (n * 2) // 4): max(3, (n * 3) // 4)]
-            q4 = chrono[max(3, (n * 3) // 4):]
-            def calc_avg(arr):
-                vals = [a.score_overall for a in arr if a.score_overall is not None]
-                return round(sum(vals) / len(vals), 1) if vals else 0.0
+    valid_chrono = sorted([a for a in attempts if a.score_overall is not None and a.score_overall > 0], key=lambda x: x.created_at)
+    if valid_chrono:
+        first_date = valid_chrono[0].created_at
+        week_buckets = {0: [], 1: [], 2: [], 3: []}
+        
+        for a in valid_chrono:
+            diff_days = (a.created_at - first_date).days if hasattr(a.created_at, 'days') else max(0, int((a.created_at - first_date).total_seconds() // (7 * 24 * 3600)))
+            w_idx = min(3, max(0, diff_days))
+            week_buckets[w_idx].append(a.score_overall)
 
-            trend = [
-                {"label": "Week 1", "score": calc_avg(q1), "is_current": False},
-                {"label": "Week 2", "score": calc_avg(q2), "is_current": False},
-                {"label": "Week 3", "score": calc_avg(q3), "is_current": False},
-                {"label": "Current", "score": calc_avg(q4), "is_current": True},
-            ]
-        elif n > 0:
-            for idx, a in enumerate(chrono):
-                is_last = (idx == n - 1)
-                trend.append({
-                    "label": "Current" if is_last else f"Week {idx + 1}",
-                    "score": round(a.score_overall or 0.0, 1),
-                    "is_current": is_last
-                })
+        active_weeks = [w for w in range(4) if len(week_buckets[w]) > 0]
+        latest_active_week = max(active_weeks) if active_weeks else 0
+
+        for w in range(4):
+            scores = week_buckets[w]
+            has_data = len(scores) > 0
+            avg_score = round(sum(scores) / len(scores), 1) if has_data else 0.0
+            is_current = (w == latest_active_week) and has_data
+
+            trend.append({
+                "label": f"Week {w + 1}",
+                "score": avg_score,
+                "is_current": is_current,
+                "is_upcoming": not has_data
+            })
+    else:
+        trend = [
+            {"label": "Week 1", "score": 0.0, "is_current": True, "is_upcoming": True},
+            {"label": "Week 2", "score": 0.0, "is_current": False, "is_upcoming": True},
+            {"label": "Week 3", "score": 0.0, "is_current": False, "is_upcoming": True},
+            {"label": "Week 4", "score": 0.0, "is_current": False, "is_upcoming": True},
+        ]
 
     return {
         "student_id": str(student_id),

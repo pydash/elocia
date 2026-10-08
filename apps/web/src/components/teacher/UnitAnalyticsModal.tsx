@@ -28,6 +28,7 @@ interface TrendItem {
   label: string;
   score: number;
   is_current?: boolean;
+  is_upcoming?: boolean;
 }
 
 export default function UnitAnalyticsModal({
@@ -324,26 +325,35 @@ export default function UnitAnalyticsModal({
                       No evaluation attempts recorded yet for this student.
                     </div>
                   ) : (
-                    <div className="h-36 w-full flex items-end justify-between gap-3 sm:gap-6 px-2">
+                    <div className="h-40 w-full flex items-end justify-between gap-3 sm:gap-6 px-2 pb-2">
                       {trend.map((t, idx) => (
                         <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full">
                           <div
-                            className={`w-full rounded-2xl transition-all duration-500 ease-out ${
+                            className={`w-full rounded-2xl transition-all duration-500 ease-out flex items-center justify-center ${
                               t.is_current
-                                ? "bg-[#EA580C]"
-                                : idx === 2
-                                ? "bg-[#FB923C]"
-                                : idx === 1
-                                ? "bg-[#FDBA74]"
-                                : "bg-[#FED7AA]"
+                                ? "bg-[#FF8A00] shadow-md border-b-4 border-amber-800 text-white font-extrabold"
+                                : t.is_upcoming
+                                ? "bg-gray-100 border-2 border-dashed border-gray-200 text-gray-400 font-medium"
+                                : "bg-[#FBBF24]/85 text-gray-800 font-bold"
                             }`}
-                            style={{ height: `${Math.min(100, Math.max(20, t.score))}%` }}
-                          />
-                          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-gray-600 whitespace-nowrap">
-                            <span>{t.label}</span>
-                            {t.is_current && (
-                              <span className="text-gray-900 font-extrabold">{Math.round(t.score)}%</span>
+                            style={{
+                              height: t.is_upcoming
+                                ? "20%"
+                                : `${Math.min(100, Math.max(22, t.score))}%`,
+                            }}
+                          >
+                            {t.is_upcoming ? (
+                              <span className="text-[10px]">Upcoming</span>
+                            ) : (
+                              <span className="text-xs sm:text-sm drop-shadow-xs">
+                                {Math.round(t.score)}%
+                              </span>
                             )}
+                          </div>
+                          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-gray-600 whitespace-nowrap">
+                            <span className={t.is_current ? "text-[#FF8A00] font-extrabold" : ""}>
+                              {t.label}
+                            </span>
                           </div>
                         </div>
                       ))}
