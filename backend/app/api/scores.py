@@ -8,7 +8,7 @@ import uuid
 from app.database.connection import get_db
 from app.models.user import User, StudentProfile
 from app.models.session import EvaluationAttempt, StudentStageProgress
-from app.models.baseline import FSLBaseline, CurriculumStage
+from app.models.baseline import FSLBaseline, CurriculumStage, CurriculumUnit, CurriculumSection
 from app.models.minigame import MiniGameSession
 from app.schemas.score import ScoreSaveRequest
 from app.core.streak import record_streak_activity
@@ -282,18 +282,39 @@ async def save_score(
 async def get_student_scores(student_id: str, db: AsyncSession = Depends(get_db)):
     stud_uuid = uuid.UUID(student_id)
     result = await db.execute(
-        select(EvaluationAttempt)
+        select(
+            EvaluationAttempt,
+            FSLBaseline.sign_name,
+            CurriculumStage.stage_number,
+            CurriculumStage.title.label("stage_title"),
+            CurriculumUnit.unit_number,
+            CurriculumUnit.title.label("unit_title"),
+            CurriculumSection.section_number,
+            CurriculumSection.title.label("section_title")
+        )
+        .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
+        .outerjoin(CurriculumStage, FSLBaseline.stage_id_new == CurriculumStage.id)
+        .outerjoin(CurriculumUnit, CurriculumStage.unit_id == CurriculumUnit.id)
+        .outerjoin(CurriculumSection, CurriculumUnit.section_id == CurriculumSection.id)
         .where(EvaluationAttempt.student_id == stud_uuid)
         .order_by(EvaluationAttempt.created_at.desc())
     )
-    attempts = result.scalars().all()
+    attempts = result.all()
     return [
         {
             "id": str(a.id),
             "activity_type": a.activity_type,
-            "stage_id": a.stage_id,
+            "stage_id": stage_num or a.stage_id or 1,
             "sign_id": a.sign_id,
+            "sign_name": sign_name,
             "stage_id_new": a.stage_id_new,
+            "stage_number": stage_num or 1,
+            "stage_title": stage_title,
+            "unit_number": unit_num or 1,
+            "unit_title": unit_title,
+            "section_number": sec_num or 1,
+            "section_title": sec_title,
+            "assignment_name": f"Section {sec_num or 1}, Unit {unit_num or 1}",
             "score_overall": a.score_overall,
             "score_handshape": a.score_handshape,
             "score_palm_orientation": a.score_palm_orientation,
@@ -305,5 +326,5 @@ async def get_student_scores(student_id: str, db: AsyncSession = Depends(get_db)
             "xp_earned": a.xp_earned,
             "created_at": str(a.created_at)
         }
-        for a in attempts
+        for a, sign_name, stage_num, stage_title, unit_num, unit_title, sec_num, sec_title in attempts
     ]

@@ -208,6 +208,14 @@ async def get_parent_students(parent_id: uuid.UUID, db: AsyncSession = Depends(g
     result = await db.execute(query)
     rows = result.all()
 
+    # Query student IDs that have active Tier 4 or unpassed attempts
+    tier4_res = await db.execute(
+        select(EvaluationAttempt.student_id)
+        .where((EvaluationAttempt.tier_level == 4) | (EvaluationAttempt.passed == False))
+        .distinct()
+    )
+    flagged_student_ids = {str(sid) for (sid,) in tier4_res.all()}
+
     students = []
     for ps, u, sp in rows:
         students.append({
@@ -222,7 +230,8 @@ async def get_parent_students(parent_id: uuid.UUID, db: AsyncSession = Depends(g
             "relationship": ps.relationship or "Parent",
             "total_xp": sp.total_xp if sp else 0,
             "level": sp.level if sp else 1,
-            "streak": get_effective_streak(sp)
+            "streak": get_effective_streak(sp),
+            "has_tier4_flag": str(u.id) in flagged_student_ids
         })
     return students
 
