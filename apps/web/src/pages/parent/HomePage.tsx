@@ -1,3 +1,4 @@
+import { useState } from "react";
 import TopHeaderBar from "@/components/parent/TopHeaderBar";
 import StudentBanner from "@/components/parent/StudentBanner";
 import { useParentDashboard } from "@/hooks/useParentDashboard";
@@ -9,9 +10,14 @@ import {
   Medal,
   Trophy,
   Flame,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function ParentHomePage() {
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
+
   const {
     parentName,
     children,
@@ -20,6 +26,8 @@ export default function ParentHomePage() {
     stats,
     stagePath,
     achievements,
+    needsPractice,
+    scores,
     loading,
     error,
   } = useParentDashboard();
@@ -72,6 +80,7 @@ export default function ParentHomePage() {
           color={selectedChild.color}
           allChildren={children}
           selectedChildId={selectedChild.id}
+          has_tier4_flag={selectedChild.has_tier4_flag}
           onSelectChild={(child) => setSelectedChild(child)}
         />
 
@@ -138,6 +147,59 @@ export default function ParentHomePage() {
           </div>
         </div>
 
+        {/* Needs Practice / Focus Drill Signs Section (Syncs with Student & Teacher) */}
+        {needsPractice.length > 0 && (
+          <section className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                    Focus Signs for Home Practice
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200 flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-rose-500 animate-pulse" />
+                    {needsPractice.length} {needsPractice.length === 1 ? 'Sign' : 'Signs'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Signs where {selectedChild.name} encountered difficulty during recent evaluations. Try practicing these signs together at home!
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 pt-1">
+              {needsPractice.map((item, idx) => {
+                const borderColors = [
+                  "border-[#FF7675] bg-[#FFEAEA]/60 text-[#D63031]",
+                  "border-[#FDCB6E] bg-[#FFF9E6] text-[#D97706]",
+                  "border-[#74B9FF] bg-[#EBF5FB] text-[#0984E3]",
+                  "border-[#A29BFE] bg-[#F3F0FF] text-[#6C5CE7]"
+                ];
+                const cardStyle = borderColors[idx % borderColors.length];
+
+                return (
+                  <div
+                    key={`${item.sign}-${idx}`}
+                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all shadow-xs ${cardStyle}`}
+                  >
+                    <span className="text-3xl font-black tracking-tight mb-1">
+                      {item.sign}
+                    </span>
+                    <span className="text-[11px] font-bold opacity-80 uppercase tracking-wider">
+                      {item.section_label || `Stage ${item.stage_id}`}
+                    </span>
+                    {item.reason && (
+                      <span className="text-[10px] font-medium text-gray-500 text-center mt-1 truncate max-w-full" title={item.reason}>
+                        {item.reason}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Lower Row: Learning Path Progress (Left) + Achievements (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Learning Path Progress */}
@@ -155,67 +217,75 @@ export default function ParentHomePage() {
             <div className="flex items-center justify-between px-4 py-6">
               {stagePath.map((stage, idx) => (
                 <div key={stage.stageNumber} className="flex items-center flex-1 last:flex-none">
-                  {/* Stage Card */}
-                  <div
-                    className={`flex flex-col items-center justify-center w-24 h-32 rounded-2xl transition-all shadow-sm ${
-                      stage.status === "completed"
-                        ? "bg-[#E6F9EE] border border-[#A7F3D0] text-[#059669]"
-                        : stage.status === "current"
-                        ? "bg-white border-2 border-[#FF8A00] text-gray-800 shadow-md"
-                        : "bg-white border border-gray-200 text-gray-400"
-                    }`}
-                  >
-                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-80">
-                      Stage
-                    </span>
-                    <span
-                      className={`text-2xl font-extrabold my-1 ${
-                        stage.status === "completed"
-                          ? "text-[#059669]"
-                          : stage.status === "current"
-                          ? "text-[#FF8A00]"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {stage.stageNumber}
-                    </span>
+                    {/* Stage Card */}
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`flex flex-col items-center justify-center w-24 h-32 rounded-2xl transition-all shadow-sm ${
+                          stage.status === "completed"
+                            ? "bg-[#E6F9EE] border border-[#A7F3D0] text-[#059669]"
+                            : stage.status === "current"
+                            ? "bg-white border-2 border-[#FF8A00] text-gray-800 shadow-md"
+                            : "bg-white border border-gray-200 text-gray-400"
+                        }`}
+                      >
+                        <span className="text-[11px] font-bold tracking-wider uppercase opacity-80">
+                          Stage
+                        </span>
+                        <span
+                          className={`text-2xl font-extrabold my-1 ${
+                            stage.status === "completed"
+                              ? "text-[#059669]"
+                              : stage.status === "current"
+                              ? "text-[#FF8A00]"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {stage.stageNumber}
+                        </span>
 
-                    {/* Status Icon or Mini Progress */}
-                    {stage.status === "completed" ? (
-                      <div className="size-6 rounded-full bg-[#10B981] text-white flex items-center justify-center shadow-xs mt-1">
-                        <Check className="size-4 stroke-[3]" />
+                        {/* Status Icon or Mini Progress */}
+                        {stage.status === "completed" ? (
+                          <div className="size-6 rounded-full bg-[#10B981] text-white flex items-center justify-center shadow-xs mt-1">
+                            <Check className="size-4 stroke-[3]" />
+                          </div>
+                        ) : stage.status === "current" ? (
+                          <div className="w-12 h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                            <div
+                              className="h-full bg-[#FF8A00] rounded-full"
+                              style={{ width: `${stage.progressPercentage ?? 50}%` }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="size-6 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mt-1">
+                            <Lock className="size-3.5" />
+                          </div>
+                        )}
                       </div>
-                    ) : stage.status === "current" ? (
-                      <div className="w-12 h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
-                        <div
-                          className="h-full bg-[#FF8A00] rounded-full"
-                          style={{ width: `${stage.progressPercentage ?? 0}%` }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="size-6 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mt-1">
-                        <Lock className="size-3.5" />
-                      </div>
+                      {/* Subtitle below stage card e.g. Numbers (0-10) */}
+                      <span className="text-[11px] font-semibold text-gray-500 mt-2 text-center max-w-[96px] leading-tight">
+                        {stage.subtitle || `Stage ${stage.stageNumber}`}
+                      </span>
+                    </div>
+
+                    {/* Connector line between stages */}
+                    {idx < stagePath.length - 1 && (
+                      <div
+                        className={`h-1 flex-1 mx-2 -mt-6 rounded-full ${
+                          stage.status === "completed" ? "bg-[#10B981]" : "bg-gray-200"
+                        }`}
+                      />
                     )}
                   </div>
-
-                  {/* Connector line between stages */}
-                  {idx < stagePath.length - 1 && (
-                    <div
-                      className={`h-1 flex-1 mx-2 rounded-full ${
-                        stage.status === "completed" ? "bg-[#10B981]" : "bg-gray-200"
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="h-2" />
             </div>
-            <div className="h-2" />
-          </div>
 
-          {/* Right Column: Achievements Grid Matching Figma */}
-          <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
-            <h2 className="text-base font-bold text-gray-700 mb-4">Achievements</h2>
+            {/* Right Column: Achievements Grid Matching Figma */}
+            <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-gray-700">Achievements</h2>
+              </div>
 
             <div className="grid grid-cols-2 gap-4 py-2">
               {achievements.map((badge) => {
@@ -264,6 +334,159 @@ export default function ParentHomePage() {
             <div className="h-1" />
           </div>
         </div>
+
+        {/* Section: Recent Assignments (Matching User Screenshot exactly) */}
+        <section className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-gray-800">Recent Assignments</h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            {scores.length > 0 ? (
+              <>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="text-left border-b border-gray-100">
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        ASSIGNMENT NAME
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        DATE
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 text-right">
+                        SCORE
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {scores
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((assignment, index) => {
+                        const isFlagged = !assignment.passed || assignment.tier_level === 4;
+                        const stageNum = assignment.stage_number || assignment.stage_id || assignment.stage_id_new || 1;
+                        const assignmentTitle = assignment.assignment_name || `Section 1, Unit ${assignment.unit_number || 1}`;
+
+                        return (
+                          <tr
+                            key={assignment.id || index}
+                            className="hover:bg-gray-50/60 transition-colors border-b border-gray-50 last:border-b-0"
+                          >
+                            {/* Assignment Name Column matching user screenshot */}
+                            <td className="px-4 py-4.5">
+                              <div className="flex items-center gap-3.5">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF4E5] font-extrabold text-sm text-[#FF8A00] shadow-2xs">
+                                  {stageNum}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-gray-800 text-[15px]">
+                                    {assignmentTitle}
+                                  </span>
+                                  {assignment.sign_name && (
+                                    <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                                      Sign "{assignment.sign_name}"
+                                    </span>
+                                  )}
+                                  {isFlagged && (
+                                    <span
+                                      className="flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 animate-pulse shrink-0"
+                                      title="Tier 4 Flag / Struggling with this sign"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Date Column: formatted like "Oct 12, 2023" */}
+                            <td className="px-4 py-4.5 font-medium text-gray-400 text-sm">
+                              {assignment.created_at
+                                ? new Date(assignment.created_at).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })
+                                : "Recent"}
+                            </td>
+
+                            {/* Score Column: formatted like "75%" */}
+                            <td className="px-4 py-4.5 font-extrabold text-gray-800 text-sm text-right">
+                              {Math.round(assignment.score_overall)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+
+                {/* Pagination Controls */}
+                {Math.ceil(scores.length / itemsPerPage) > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 px-2">
+                    <span className="text-xs text-gray-500 font-medium">
+                      Showing{" "}
+                      <span className="font-bold text-gray-700">
+                        {(currentPage - 1) * itemsPerPage + 1}
+                      </span>{" "}
+                      to{" "}
+                      <span className="font-bold text-gray-700">
+                        {Math.min(currentPage * itemsPerPage, scores.length)}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-bold text-gray-700">{scores.length}</span> assignments
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        title="Previous page"
+                      >
+                        <ChevronLeft className="size-4" />
+                      </button>
+
+                      {Array.from({ length: Math.ceil(scores.length / itemsPerPage) }).map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`min-w-8 h-8 px-2 rounded-lg text-xs font-bold transition-all ${
+                              currentPage === pageNum
+                                ? "bg-[#FF8A00] text-white shadow-xs"
+                                : "text-gray-600 hover:bg-gray-100"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((p) =>
+                            Math.min(Math.ceil(scores.length / itemsPerPage), p + 1)
+                          )
+                        }
+                        disabled={currentPage >= Math.ceil(scores.length / itemsPerPage)}
+                        className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        title="Next page"
+                      >
+                        <ChevronRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="py-8 text-center text-sm font-medium text-gray-400">
+                No assignments or evaluation sessions completed yet.
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );

@@ -5,7 +5,7 @@ import { useGetStudentById } from "@/hooks/useStudents";
 
 import { fetchStudentScores } from "@/services/parent-progress";
 
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { getStreakMessage } from "@/helpers/streak";
 
@@ -26,6 +26,8 @@ export default function TeacherStudentProfilePage() {
   );
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState<boolean>(false);
   const [selectedStageId, setSelectedStageId] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
   const streakMessage = getStreakMessage(student?.streak || 0);
 
   useEffect(() => {
@@ -206,104 +208,168 @@ export default function TeacherStudentProfilePage() {
 
           <div className="mt-5 overflow-x-auto">
             {recentAttempts.length > 0 ? (
-              <table className="w-full border-separate border-spacing-0">
+              <>
+                <table className="w-full border-separate border-spacing-0">
                 <thead>
-                  <tr className="text-left">
-                    <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black)">
-                      Activity / Sign
+                  <tr className="text-left border-b border-gray-100">
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                      ASSIGNMENT NAME
                     </th>
-                    <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black)">
-                      Date
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                      DATE
                     </th>
-                    <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black)">
-                      Status
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                      SCORE
                     </th>
-                    <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black)">
-                      Score
-                    </th>
-                    <th className="paragraph-2 border-b border-(--border) px-4 py-3 font-semibold text-(--black) text-right">
-                      Actions
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 text-right">
+                      ACTIONS
                     </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {recentAttempts.map((assignment, index) => {
-                    const isFlagged = !assignment.passed || assignment.tier_level === 4;
-                    const stageNum = assignment.stage_id || assignment.stage_id_new || 1;
+                  {recentAttempts
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((assignment, index) => {
+                      const isFlagged = !assignment.passed || assignment.tier_level === 4;
+                      const stageNum = assignment.stage_number || assignment.stage_id || assignment.stage_id_new || 1;
+                      const assignmentTitle = assignment.assignment_name || `Section 1, Unit ${assignment.unit_number || 1}`;
 
-                    return (
-                      <tr key={assignment.id || index} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--black)">
-                          <div className="flex items-center gap-3">
-                            <span className="inline-flex rounded-full bg-(--primary-light) px-3 py-1 font-semibold text-(--primary)">
-                              #{index + 1}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span>Stage {stageNum} Sign Practice</span>
-                              {isFlagged && (
-                                <span
-                                  className="flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 animate-pulse"
-                                  title="Flagged (Tier 4 / Needs Focus)"
-                                />
-                              )}
+                      return (
+                        <tr key={assignment.id || index} className="hover:bg-gray-50/60 transition-colors border-b border-gray-50 last:border-b-0">
+                          {/* Assignment Name Column matching user screenshot */}
+                          <td className="border-b border-gray-100 px-4 py-4.5">
+                            <div className="flex items-center gap-3.5">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF4E5] font-extrabold text-sm text-[#FF8A00] shadow-2xs">
+                                {stageNum}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-800 text-[15px]">
+                                  {assignmentTitle}
+                                </span>
+                                {assignment.sign_name && (
+                                  <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                                    Sign "{assignment.sign_name}"
+                                  </span>
+                                )}
+                                {isFlagged && (
+                                  <span
+                                    className="flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 animate-pulse"
+                                    title="Flagged (Tier 4 / Needs Focus)"
+                                  />
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-(--ghost)">
-                          {assignment.created_at
-                            ? new Date(assignment.created_at).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )
-                            : "Recent"}
-                        </td>
-                        <td className="paragraph-2 border-b border-(--border) px-4 py-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                              assignment.passed
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-rose-100 text-rose-800"
-                            }`}
-                          >
-                            {!assignment.passed && (
-                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                            )}
-                            {assignment.passed ? "Passed" : "Needs Practice"}
-                          </span>
-                        </td>
-                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 font-semibold text-(--primary)">
-                          {Math.round(assignment.score_overall)}%
-                        </td>
-                        <td className="paragraph-2 border-b border-(--border) px-4 py-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedStageId(stageNum);
-                              setIsAnalyticsOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1 rounded-xl bg-orange-50 px-3 py-1.5 text-xs font-bold text-[#FF8A00] border border-orange-200 hover:bg-[#FF8A00] hover:text-white transition-all shadow-2xs cursor-pointer"
-                          >
-                            <span>Analytics</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+
+                          {/* Date Column: formatted like "Oct 12, 2023" */}
+                          <td className="border-b border-gray-100 px-4 py-4.5 font-medium text-gray-400 text-sm">
+                            {assignment.created_at
+                              ? new Date(assignment.created_at).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  }
+                                )
+                              : "Recent"}
+                          </td>
+
+                          {/* Score Column: formatted like "75%" */}
+                          <td className="border-b border-gray-100 px-4 py-4.5 font-extrabold text-gray-800 text-sm">
+                            {Math.round(assignment.score_overall)}%
+                          </td>
+
+                          {/* Actions: Analytics button */}
+                          <td className="border-b border-gray-100 px-4 py-4.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedStageId(stageNum);
+                                setIsAnalyticsOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-xl bg-orange-50 px-3 py-1.5 text-xs font-bold text-[#FF8A00] border border-orange-200 hover:bg-[#FF8A00] hover:text-white transition-all shadow-2xs cursor-pointer"
+                            >
+                              <span>Analytics</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
-            ) : (
-              <p className="text-center py-8 paragraph-2 text-(--ghost)">
-                No evaluation sessions or assignments recorded yet for this
-                student.
-              </p>
-            )}
-          </div>
+
+              {/* Pagination Controls */}
+              {Math.ceil(recentAttempts.length / itemsPerPage) > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 px-2">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Showing{" "}
+                    <span className="font-bold text-gray-700">
+                      {(currentPage - 1) * itemsPerPage + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-bold text-gray-700">
+                      {Math.min(currentPage * itemsPerPage, recentAttempts.length)}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-bold text-gray-700">{recentAttempts.length}</span> assignments
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      title="Previous page"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </button>
+
+                    {Array.from({ length: Math.ceil(recentAttempts.length / itemsPerPage) }).map((_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`min-w-8 h-8 px-2 rounded-lg text-xs font-bold transition-all ${
+                            currentPage === pageNum
+                              ? "bg-[#FF8A00] text-white shadow-xs"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((p) =>
+                          Math.min(Math.ceil(recentAttempts.length / itemsPerPage), p + 1)
+                        )
+                      }
+                      disabled={currentPage >= Math.ceil(recentAttempts.length / itemsPerPage)}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      title="Next page"
+                    >
+                      <ChevronRight className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-center py-8 paragraph-2 text-(--ghost)">
+              No evaluation sessions or assignments recorded yet for this
+              student.
+            </p>
+          )}
         </div>
+      </div>
       </section>
 
       {/* Unit Analytics Modal */}

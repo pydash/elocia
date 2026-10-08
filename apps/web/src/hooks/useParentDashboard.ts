@@ -9,12 +9,15 @@ import type {
   PerformanceTrendItem,
   StagePathItem,
   AchievementItem,
+  PracticeCardItem,
 } from "@/interfaces/parent.interface";
 import {
   fetchParentStudents,
   fetchParentProgressSummary,
   fetchStudentScores,
   fetchCurriculumStages,
+  fetchStudentNeedsPractice,
+  fetchStudentStageProgress,
 } from "@/services/parent-progress";
 
 export interface DashboardStats {
@@ -55,6 +58,7 @@ export function useParentDashboard() {
   ]);
 
   const [performanceTrend, setPerformanceTrend] = useState<PerformanceTrendItem[]>([]);
+  const [needsPractice, setNeedsPractice] = useState<PracticeCardItem[]>([]);
 
   const [achievements, setAchievements] = useState<AchievementItem[]>([
     {
@@ -135,25 +139,40 @@ export function useParentDashboard() {
         const studentId = selectedChild?.id || selectedChild?.student_id;
         if (!studentId) return;
 
-        const [summaryData, attemptsData, curriculumData] = await Promise.all([
+        const [summaryData, attemptsData, curriculumData, needsPracticeData, stageProgressData] = await Promise.all([
           fetchParentProgressSummary(studentId).catch(() => null),
           fetchStudentScores(studentId).catch(() => []),
           fetchCurriculumStages(selectedChild?.grade_level).catch(() => null),
+          fetchStudentNeedsPractice(studentId).catch(() => []),
+          fetchStudentStageProgress(studentId).catch(() => null),
         ]);
 
         if (!isMounted) return;
 
         setSummary(summaryData);
         setScores(attemptsData || []);
+        setNeedsPractice(needsPracticeData || []);
 
         // Compute Live Stats
         const validAttempts = (attemptsData || []).filter((a: EvaluationAttemptItem) => a.score_overall > 0);
-        const passedAttempts = (attemptsData || []).filter((a: EvaluationAttemptItem) => a.passed);
 
-        // Passed Stages count
-        const distinctStagesPassed = new Set(
-          passedAttempts.map((a: EvaluationAttemptItem) => a.stage_id_new || a.stage_id).filter(Boolean)
-        ).size;
+        // Official Stage Progression (from backend /users/{studentId}/progress)
+        // Check which stages the student has genuinely completed / passed
+        const officialPassedStages = new Set<number>();
+        const officialUnlockedStages = new Set<number>();
+        if (stageProgressData?.stages) {
+          for (const st of stageProgressData.stages) {
+            if (st.passed) officialPassedStages.add(st.stage_id);
+            if (st.unlocked) officialUnlockedStages.add(st.stage_id);
+          }
+        }
+        if (stageProgressData?.unlocked_stages) {
+          for (const u of stageProgressData.unlocked_stages) {
+            officialUnlockedStages.add(u);
+          }
+        }
+
+        const distinctStagesPassed = officialPassedStages.size;
 
         // Total curriculum stages available
         let totalStages = 10;
@@ -204,35 +223,92 @@ export function useParentDashboard() {
           ]);
         }
 
-        // Compute Performance Trend
+        // Compute Performance Trend (Transparent Calendar Weeks: Option A)
+        // Group attempts by calendar week difference from student's first attempt
         if (validAttempts.length > 0) {
           const chronological = [...validAttempts].sort(
             (a, b) => new Date(a.created_at || "").getTime() - new Date(b.created_at || "").getTime()
           );
-          const recentAttempts = chronological.slice(-5);
-          const trendItems: PerformanceTrendItem[] = recentAttempts.map((attempt, index) => ({
-            label:
-              recentAttempts.length === 1
-                ? "Session 1"
-                : index === recentAttempts.length - 1
-                ? "Latest"
-                : `Session ${index + 1}`,
-            score: Math.round(attempt.score_overall),
-            isCurrent: index === recentAttempts.length - 1,
-          }));
+
+          const firstDate = new Date(chronological[0].created_at || "").getTime();
+          const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+
+          // Group scores into weeks (0 = Week 1, 1 = Week 2, etc.)
+          const weekBuckets: Record<number, number[]> = { 0: [], 1: [], 2: [], 3: [] };
+
+          chronological.forEach((att) => {
+            const attDate = new Date(att.created_at || "").getTime();
+            const weekDiff = Math.max(0, Math.floor((attDate - firstDate) / msPerWeek));
+            if (weekDiff < 4) {
+              weekBuckets[weekDiff].push(att.score_overall);
+            } else {
+              weekBuckets[3].push(att.score_overall);
+            }
+          });
+
+          // Determine current active week index
+          const activeWeeksCount = Object.keys(weekBuckets).filter(
+            (w) => weekBuckets[Number(w)].length > 0
+          ).length;
+
+          const trendItems: PerformanceTrendItem[] = [0, 1, 2, 3].map((wIdx) => {
+            const scoresInWeek = weekBuckets[wIdx];
+            const hasData = scoresInWeek.length > 0;
+            const avgScore = hasData
+              ? Math.round(scoresInWeek.reduce((acc, s) => acc + s, 0) / scoresInWeek.length)
+              : 0;
+
+            const isCurrent = wIdx === activeWeeksCount - 1 || (wIdx === 0 && activeWeeksCount === 0);
+            const isUpcoming = !hasData;
+
+            return {
+              label: `Week ${wIdx + 1}`,
+              score: avgScore,
+              isCurrent: hasData && isCurrent,
+              isUpcoming,
+            };
+          });
+
           setPerformanceTrend(trendItems);
         } else {
-          setPerformanceTrend([]);
+          setPerformanceTrend([
+            { label: "Week 1", score: 0, isCurrent: true, isUpcoming: true },
+            { label: "Week 2", score: 0, isUpcoming: true },
+            { label: "Week 3", score: 0, isUpcoming: true },
+            { label: "Week 4", score: 0, isUpcoming: true },
+          ]);
         }
 
-        // Live Stage Path Status
-        const stage1Passed = distinctStagesPassed >= 1;
-        setStagePath([
-          { stageNumber: 1, title: "Stage 1", status: stage1Passed ? "completed" : "current", progressPercentage: stage1Passed ? 100 : 0 },
-          { stageNumber: 2, title: "Stage 2", status: stage1Passed ? "current" : "locked", progressPercentage: 0 },
-          { stageNumber: 3, title: "Stage 3", status: "locked" },
-          { stageNumber: 4, title: "Stage 4", status: "locked" },
-        ]);
+        // Live Stage Path Status with Titles & Subtitles matching Figma
+        const stagesList = (curriculumData?.sections?.[0]?.units?.[0]?.stages) || [];
+
+        const defaultSubtitles = [
+          "Numbers (0-10)",
+          "Numbers (11-20)",
+          "Numbers (21-30)",
+          "Numbers (31-40)"
+        ];
+
+        setStagePath([1, 2, 3, 4].map((sNum, sIdx) => {
+          const dynStage = stagesList[sIdx];
+          const dynStageId = dynStage?.id ?? sNum;
+          
+          // Check if passed/unlocked by stage_number or database ID
+          const isPassed = officialPassedStages.has(sNum) || officialPassedStages.has(dynStageId);
+          const isUnlocked = officialUnlockedStages.has(sNum) || officialUnlockedStages.has(dynStageId) || (sNum === 1);
+          const isCurrent = !isPassed && isUnlocked;
+
+          const title = dynStage?.title || `Stage ${sNum}`;
+          const subtitle = dynStage?.description || defaultSubtitles[sIdx] || `Numbers (${(sNum-1)*10+1}-${sNum*10})`;
+
+          return {
+            stageNumber: sNum,
+            title,
+            subtitle,
+            status: isPassed ? "completed" : isCurrent ? "current" : "locked",
+            progressPercentage: isPassed ? 100 : isCurrent ? 50 : 0,
+          };
+        }));
 
         // Live Achievements
         const hasHighAvg = realAvg >= 80 && validAttempts.length > 0;
@@ -296,6 +372,7 @@ export function useParentDashboard() {
     stagePath,
     parameterMastery,
     performanceTrend,
+    needsPractice,
     achievements,
     loading,
     error,

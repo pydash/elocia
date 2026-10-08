@@ -90,13 +90,27 @@ export default function ParentProgressPage() {
                       className={`w-full rounded-t-2xl transition-all duration-700 ease-out flex items-center justify-center ${
                         item.isCurrent
                           ? "bg-[#FF8A00] shadow-md border-b-4 border-amber-800"
-                          : "bg-[#FBBF24]/70 hover:bg-[#FBBF24]"
+                          : item.isUpcoming
+                          ? "bg-gray-100 border-2 border-dashed border-gray-200"
+                          : "bg-[#FBBF24]/75 hover:bg-[#FBBF24]"
                       }`}
-                      style={{ height: `${Math.min(100, Math.max(10, item.score))}%` }}
+                      style={{
+                        height: item.isUpcoming
+                          ? "20%"
+                          : `${Math.min(100, Math.max(15, item.score))}%`,
+                      }}
                     >
-                      {item.isCurrent && (
+                      {item.isCurrent ? (
                         <span className="text-white font-extrabold text-sm sm:text-base drop-shadow-xs">
                           {item.score}%
+                        </span>
+                      ) : !item.isUpcoming ? (
+                        <span className="text-gray-700 font-extrabold text-xs sm:text-sm">
+                          {item.score}%
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-gray-400">
+                          Upcoming
                         </span>
                       )}
                     </div>
@@ -104,7 +118,11 @@ export default function ParentProgressPage() {
                     {/* X-axis Label below bar */}
                     <span
                       className={`mt-3 text-xs sm:text-sm font-semibold tracking-wide ${
-                        item.isCurrent ? "text-gray-900 font-bold" : "text-gray-400"
+                        item.isCurrent
+                          ? "text-[#FF8A00] font-extrabold"
+                          : item.isUpcoming
+                          ? "text-gray-400"
+                          : "text-gray-700 font-bold"
                       }`}
                     >
                       {item.label}

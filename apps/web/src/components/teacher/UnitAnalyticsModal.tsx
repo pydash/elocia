@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Sparkles, AlertCircle, Dumbbell, CheckCircle2, TrendingUp } from "lucide-react";
+import { X, Sparkles, AlertCircle, Dumbbell, CheckCircle2 } from "lucide-react";
 
 interface UnitAnalyticsModalProps {
   studentId: string;
@@ -294,42 +294,44 @@ export default function UnitAnalyticsModal({
               </div>
 
               {/* 3. Performance Trend Bar Chart */}
-              <div className="rounded-3xl border-2 border-gray-100 bg-white p-5 shadow-xs space-y-3">
+              <div className="rounded-3xl border-2 border-gray-100 bg-white p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-orange-500" />
-                    <h3 className="text-base font-extrabold text-gray-900 tracking-tight">
-                      Performance Trend
-                    </h3>
-                  </div>
-                  <span className="text-xs font-semibold text-gray-400">
-                    Progress across evaluations
-                  </span>
+                  <h3 className="text-xl font-bold text-gray-900 tracking-tight">
+                    Performance Trend
+                  </h3>
                 </div>
 
-                <div className="h-44 w-full flex items-end justify-center gap-4 sm:gap-8 px-4 pt-4 pb-2">
-                  {trend.map((t, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full max-w-[80px]">
-                      <span className="text-[11px] font-bold text-gray-600 mb-1">
-                        {t.score}%
-                      </span>
-                      <div
-                        className={`w-full rounded-t-xl transition-all duration-700 ease-out flex items-center justify-center ${
-                          t.is_current
-                            ? "bg-[#FF8A00] shadow-md border-b-2 border-amber-800"
-                            : "bg-[#FBBF24]/70 hover:bg-[#FBBF24]"
-                        }`}
-                        style={{ height: `${Math.min(100, Math.max(15, t.score))}%` }}
-                      />
-                      <span
-                        className={`mt-2 text-[11px] font-semibold tracking-wide ${
-                          t.is_current ? "text-gray-900 font-bold" : "text-gray-400"
-                        }`}
-                      >
-                        {t.label}
-                      </span>
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-6">
+                  {trend.length === 0 ? (
+                    <div className="h-36 flex items-center justify-center text-xs font-semibold text-gray-400">
+                      No evaluation attempts recorded yet for this student.
                     </div>
-                  ))}
+                  ) : (
+                    <div className="h-36 w-full flex items-end justify-between gap-3 sm:gap-6 px-2">
+                      {trend.map((t, idx) => (
+                        <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full">
+                          <div
+                            className={`w-full rounded-2xl transition-all duration-500 ease-out ${
+                              t.is_current
+                                ? "bg-[#EA580C]"
+                                : idx === 2
+                                ? "bg-[#FB923C]"
+                                : idx === 1
+                                ? "bg-[#FDBA74]"
+                                : "bg-[#FED7AA]"
+                            }`}
+                            style={{ height: `${Math.min(100, Math.max(20, t.score))}%` }}
+                          />
+                          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-gray-600 whitespace-nowrap">
+                            <span>{t.label}</span>
+                            {t.is_current && (
+                              <span className="text-gray-900 font-extrabold">{Math.round(t.score)}%</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
