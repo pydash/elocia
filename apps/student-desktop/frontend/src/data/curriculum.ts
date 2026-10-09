@@ -1,6 +1,8 @@
 export interface StageItem {
   globalId: number;
   name: string;
+  videoUrl?: string;
+  videoFilename?: string;
 }
 
 export interface Stage {

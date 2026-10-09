@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './EvaluationSession.css';
 import { getStageData, getStageNumber } from '../../data/curriculum';
-import { saveScore, removeFocusDrillSign } from '../../utils/api';
+import { saveScore, removeFocusDrillSign, resolveMediaUrl } from '../../utils/api';
 import { startEvaluationTour, stopCurrentTour } from '../../utils/activityTours';
 
 const moveAwayMascot = '/images/Move away.png';
@@ -988,7 +988,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                 <div className="eval-teacher-video-box" style={{ overflow: 'hidden', position: 'relative', borderRadius: '12px' }}>
                   <span className="eval-watch-pill" style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 10 }}>Watch carefully!</span>
                   <video
-                    src={`/videos/${currentItem.globalId}.mp4`}
+                    src={resolveMediaUrl(currentItem.videoUrl) || `/videos/${currentItem.globalId}.mp4`}
                     controls
                     autoPlay
                     loop

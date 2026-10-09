@@ -61,7 +61,9 @@ async def upload_baseline_video(
     if stage_id is None:
         max_stage_res = await db.execute(select(func.coalesce(func.max(FSLBaseline.stage_id), 0)))
         max_stage = max_stage_res.scalar() or 0
-        stage_id = max(max_stage + 1, 101)
+        max_sign_res = await db.execute(select(func.coalesce(func.max(FSLBaseline.sign_id), 0)))
+        max_sign = max_sign_res.scalar() or 0
+        stage_id = max(max(max_stage, max_sign) + 1, 101)
 
     resolved_sign_id = sign_id if sign_id is not None else stage_id
 
@@ -97,9 +99,24 @@ async def upload_baseline_video(
                 detail=f"Landmark extraction failed: {err_msg}"
             )
 
-        # Parse JSON output from the worker
-        last_line = proc.stdout.strip().split("\n")[-1]
-        extract_result = json.loads(last_line)
+        # Parse JSON output robustly from worker lines (search backwards for {"success": ...})
+        lines = [line.strip() for line in proc.stdout.split("\n") if line.strip()]
+        extract_result = None
+        for line in reversed(lines):
+            try:
+                candidate = json.loads(line)
+                if isinstance(candidate, dict) and "success" in candidate:
+                    extract_result = candidate
+                    break
+            except Exception:
+                continue
+
+        if not extract_result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not parse landmark extraction output. Please ensure video format is supported."
+            )
+
         if not extract_result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
