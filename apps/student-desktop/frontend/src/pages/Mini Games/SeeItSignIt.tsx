@@ -108,6 +108,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
   const cooldownTimerRef = useRef<number | null>(null);
   const consecutiveMissRef = useRef(0);
   const hasPassedRef = useRef(false);
+  const [isCameraDisconnected, setIsCameraDisconnected] = useState<boolean>(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -385,6 +386,7 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
 
     async function enableCamera() {
       try {
+        setIsCameraDisconnected(false);
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480 },
           audio: false,
@@ -392,8 +394,19 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
         if (!cancelled && videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            console.warn('[CAMERA] SeeItSignIt video track ended unexpectedly (unplugged or disabled).');
+            setIsCameraDisconnected(true);
+          };
+        }
       } catch (err) {
         console.error('Webcam access failed:', err);
+        if (!cancelled) {
+          setIsCameraDisconnected(true);
+        }
       }
     }
     enableCamera();
@@ -787,8 +800,44 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
 
             <div className="eval-camera-wrapper">
               <div className={`eval-camera-card eval-camera-card--${autoState}`} style={{ position: 'relative' }}>
-                <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
+                <div className="eval-live-badge">
+                  <span className={`eval-live-dot ${isCameraDisconnected ? 'eval-live-dot--offline' : ''}`} />
+                  {isCameraDisconnected ? 'CAMERA OFF' : 'LIVE FEED'}
+                </div>
                 <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
+
+                {/* Camera Disconnect Warning Guard */}
+                {isCameraDisconnected && (
+                  <div className="eval-camera-disconnect-overlay">
+                    <div className="eval-camera-disconnect-card">
+                      <span className="eval-camera-disconnect-icon">📷⚠️</span>
+                      <h3 className="eval-camera-disconnect-title">Camera Disconnected!</h3>
+                      <p className="eval-camera-disconnect-text">
+                        Please check if your camera is plugged in or turned on. Ask your teacher or parent for help! 🐵
+                      </p>
+                      <button
+                        type="button"
+                        className="eval-camera-reconnect-btn"
+                        onClick={() => {
+                          setIsCameraDisconnected(false);
+                          navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+                            .then((s) => {
+                              if (videoRef.current) {
+                                videoRef.current.srcObject = s;
+                              }
+                              const track = s.getVideoTracks()[0];
+                              if (track) {
+                                track.onended = () => setIsCameraDisconnected(true);
+                              }
+                            })
+                            .catch(() => setIsCameraDisconnected(true));
+                        }}
+                      >
+                        🔄 Reconnect Camera
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="ps-crosshair">
                   <div className="ch-line ch-h"></div>
