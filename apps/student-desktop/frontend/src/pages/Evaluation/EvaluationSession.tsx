@@ -225,6 +225,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   const videoRef = useRef<HTMLVideoElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+  const [isCameraDisconnected, setIsCameraDisconnected] = useState<boolean>(false);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -232,15 +233,29 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
     async function enableCamera() {
       try {
+        setIsCameraDisconnected(false);
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480 },
           audio: false,
         });
+
         if (!cancelled && videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+
+        // Listen for track disconnect / unplug event
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            console.warn('[CAMERA] Video track ended unexpectedly (unplugged or disabled).');
+            setIsCameraDisconnected(true);
+          };
+        }
       } catch (err) {
         console.error('Webcam access failed:', err);
+        if (!cancelled) {
+          setIsCameraDisconnected(true);
+        }
       }
     }
     enableCamera();
@@ -801,10 +816,46 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
           <div className="eval-camera-wrapper">
             <div className={`eval-camera-card eval-camera-card--${autoState}`} style={{ position: 'relative' }}>
-              <div className="eval-live-badge"><span className="eval-live-dot" /> LIVE FEED</div>
+              <div className="eval-live-badge">
+                <span className={`eval-live-dot ${isCameraDisconnected ? 'eval-live-dot--offline' : ''}`} />
+                {isCameraDisconnected ? 'CAMERA OFF' : 'LIVE FEED'}
+              </div>
               <video ref={videoRef} autoPlay playsInline muted className="eval-webcam-stream" />
               <canvas ref={overlayRef} className="eval-overlay-canvas" />
               <div className="eval-camera-tier-tag">Tier {currentTier}</div>
+
+              {/* Camera Disconnect Warning Guard */}
+              {isCameraDisconnected && (
+                <div className="eval-camera-disconnect-overlay">
+                  <div className="eval-camera-disconnect-card">
+                    <span className="eval-camera-disconnect-icon">📷⚠️</span>
+                    <h3 className="eval-camera-disconnect-title">Camera Disconnected!</h3>
+                    <p className="eval-camera-disconnect-text">
+                      Please check if your camera is plugged in or turned on. Ask your teacher or parent for help! 🐵
+                    </p>
+                    <button
+                      type="button"
+                      className="eval-camera-reconnect-btn"
+                      onClick={() => {
+                        setIsCameraDisconnected(false);
+                        navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+                          .then((stream) => {
+                            if (videoRef.current) {
+                              videoRef.current.srcObject = stream;
+                            }
+                            const track = stream.getVideoTracks()[0];
+                            if (track) {
+                              track.onended = () => setIsCameraDisconnected(true);
+                            }
+                          })
+                          .catch(() => setIsCameraDisconnected(true));
+                      }}
+                    >
+                      🔄 Reconnect Camera
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Real-time automatic grading HUD - Child-friendly, playful for Grade 1-3 */}
               {!hasPassed && (
