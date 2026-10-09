@@ -214,9 +214,9 @@ export default function ParentHomePage() {
             </div>
 
             {/* Stages Flow */}
-            <div className="flex items-center justify-between px-4 py-6">
+            <div className="flex items-center justify-between px-2 sm:px-4 py-6 overflow-x-auto min-w-full">
               {stagePath.map((stage, idx) => (
-                <div key={stage.stageNumber} className="flex items-center flex-1 last:flex-none">
+                <div key={stage.stageNumber} className="flex items-center flex-1 min-w-[100px] last:flex-none">
                     {/* Stage Card */}
                     <div className="flex flex-col items-center">
                       <div

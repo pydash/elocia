@@ -1,6 +1,6 @@
 import Field from "../../components/Field";
 import Button from "../../components/Button";
-import { User, Lock, ShieldCheck } from "lucide-react";
+import { User, Lock, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAdultLogin } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ export default function AdminLoginPage() {
   const { login, loading, error: authError } = useAdultLogin();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [roleError, setRoleError] = useState("");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -33,12 +34,12 @@ export default function AdminLoginPage() {
   const displayError = roleError || authError;
 
   return (
-    <main className="flex h-screen w-screen">
+    <main className="flex min-h-screen w-full flex-col lg:flex-row">
       {/* Left Hero Panel */}
-      <section className="flex h-screen w-1/2 items-center justify-center bg-(--primary)">
-        <div className="flex flex-col items-center justify-center text-center px-12">
+      <section className="flex w-full lg:w-1/2 items-center justify-center bg-(--primary) py-8 px-6 lg:py-0">
+        <div className="flex flex-col items-center justify-center text-center px-4 sm:px-12 max-w-md">
           {/* Logo */}
-          <div className="mb-6 flex h-32 w-32 items-center justify-center">
+          <div className="mb-4 sm:mb-6 flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center">
             <img
               src="/logo.png"
               alt="Elocia logo"
@@ -46,13 +47,13 @@ export default function AdminLoginPage() {
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white tracking-wide uppercase mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[11px] sm:text-xs font-semibold text-white tracking-wide uppercase mb-3 sm:mb-4">
             <ShieldCheck className="size-4" /> System Administration
           </div>
 
-          <h1 className="heading-1 text-(--white)">ELOCIA Admin Portal</h1>
+          <h1 className="heading-1 text-2xl sm:text-4xl text-(--white)">ELOCIA Admin Portal</h1>
 
-          <p className="paragraph-2 mt-4 leading-relaxed! text-(--white)/90 max-w-md">
+          <p className="paragraph-2 mt-2 sm:mt-4 text-xs sm:text-base leading-relaxed text-(--white)/90">
             Centralized platform management, user administration,
             and school system configuration for the ELOCIA learning ecosystem.
           </p>
@@ -60,17 +61,17 @@ export default function AdminLoginPage() {
       </section>
 
       {/* Right Login Form */}
-      <section className="relative flex h-screen w-1/2 items-center justify-center overflow-hidden bg-(--primary-light)">
+      <section className="relative flex flex-1 items-center justify-center overflow-hidden bg-(--primary-light) p-4 sm:p-8">
         <div
           className="absolute inset-0 bg-[url('/pattern_background.png')] bg-cover bg-center bg-no-repeat opacity-30"
           aria-hidden="true"
         />
         
         {/* Login Card */}
-        <div className="relative z-10 w-100 rounded-xl bg-white px-8 py-12 shadow-md">
-          <div className="mb-6 flex flex-col items-center gap-2 text-center">
-            <h1 className="heading-3">Admin Sign In</h1>
-            <p className="paragraph-2 text-(--ghost)">
+        <div className="relative z-10 w-full max-w-md rounded-2xl bg-white px-6 py-8 sm:px-8 sm:py-12 shadow-xl border border-gray-100">
+          <div className="mb-6 flex flex-col items-center gap-1.5 text-center">
+            <h1 className="heading-3 text-xl sm:text-2xl font-bold">Admin Sign In</h1>
+            <p className="paragraph-2 text-xs sm:text-sm text-(--ghost)">
               Enter your administrator credentials
             </p>
           </div>
@@ -109,7 +110,9 @@ export default function AdminLoginPage() {
 
               <Field
                 leadingIcon={Lock}
-                type="password"
+                trailingIcon={showPassword ? EyeOff : Eye}
+                onTrailingIconClick={() => setShowPassword((prev) => !prev)}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 name="password"
                 placeholder="********"

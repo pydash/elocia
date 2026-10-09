@@ -117,27 +117,27 @@ export default function UnitAnalyticsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 md:p-6 overflow-y-auto">
       <div
-        className="relative w-full max-w-4xl rounded-3xl bg-white shadow-2xl border-3 border-(--border) overflow-hidden my-auto"
+        className="relative w-full max-w-4xl rounded-3xl bg-white shadow-2xl border-3 border-(--border) overflow-hidden my-auto max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5 bg-gradient-to-r from-orange-50/50 via-white to-amber-50/30">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-orange-50/50 via-white to-amber-50/30 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 font-extrabold text-xl shadow-xs">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 font-extrabold text-lg sm:text-xl shadow-xs">
               📊
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base sm:text-xl font-extrabold text-gray-900 tracking-tight">
                   Unit Analytics: Stage {stageId}
                 </h2>
                 <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
                   {studentName}
                 </span>
               </div>
-              <p className="text-xs font-medium text-gray-500 mt-0.5">
+              <p className="text-xs font-medium text-gray-500 mt-0.5 hidden sm:block">
                 Detailed 4-parameter signing diagnosis and targeted drill creator
               </p>
             </div>
@@ -145,14 +145,14 @@ export default function UnitAnalyticsModal({
 
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto grow">
           {loading ? (
             <div className="flex h-64 flex-col items-center justify-center gap-3">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
@@ -174,22 +174,22 @@ export default function UnitAnalyticsModal({
 
               {/* Diagnostic Insight Callout matching design */}
               {insight && (
-                <div className="flex items-start gap-3 rounded-2xl bg-sky-50 border border-sky-200 p-4 shadow-xs">
+                <div className="flex items-start gap-3 rounded-2xl bg-sky-50 border border-sky-200 p-3 sm:p-4 shadow-xs">
                   <Sparkles className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
                     <span className="text-xs font-extrabold uppercase tracking-wider text-sky-800">
                       AI Diagnostic Insight
                     </span>
-                    <p className="text-sm font-medium text-sky-900 leading-relaxed">
+                    <p className="text-xs sm:text-sm font-medium text-sky-900 leading-relaxed">
                       {insight}
                     </p>
                   </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
                 {/* 1. Parameter Mastery */}
-                <div className="rounded-3xl border-2 border-gray-100 bg-white p-5 shadow-xs space-y-4">
+                <div className="rounded-3xl border-2 border-gray-100 bg-white p-4 sm:p-5 shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-extrabold text-gray-900 tracking-tight">
                       Parameter Mastery
@@ -229,7 +229,7 @@ export default function UnitAnalyticsModal({
                 </div>
 
                 {/* 2. Needs Practice & Focus Drill */}
-                <div className="rounded-3xl border-2 border-gray-100 bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
+                <div className="rounded-3xl border-2 border-gray-100 bg-white p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export default function UnitAnalyticsModal({
                     </p>
 
                     {needsPractice.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                         {needsPractice.map((item) => (
                           <div
                             key={item.sign_id}

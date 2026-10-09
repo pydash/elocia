@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/Button";
 import Field from "@/components/Field";
-import { User, Lock, KeyRound, X, Search, Users, ShieldCheck } from "lucide-react";
+import { User, Lock, KeyRound, X, Search, Users, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import {
   updateUserAccount,
   type AdminUser,
@@ -24,7 +24,9 @@ export default function EditUserModal({
 }: EditUserModalProps) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [gradeLevel, setGradeLevel] = useState(1);
   const [studentCode, setStudentCode] = useState("");
   const [emoji, setEmoji] = useState("👦");
@@ -203,7 +205,9 @@ export default function EditUserModal({
                 </label>
                 <Field
                   leadingIcon={Lock}
-                  type="password"
+                  trailingIcon={showPassword ? EyeOff : Eye}
+                  onTrailingIconClick={() => setShowPassword((prev) => !prev)}
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter new password to reset"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -247,7 +251,9 @@ export default function EditUserModal({
                 </label>
                 <Field
                   leadingIcon={KeyRound}
-                  type="text"
+                  trailingIcon={showPin ? EyeOff : Eye}
+                  onTrailingIconClick={() => setShowPin((prev) => !prev)}
+                  type={showPin ? "text" : "password"}
                   maxLength={4}
                   placeholder="Enter new 4-digit PIN"
                   value={pin}

@@ -48,6 +48,9 @@ import ParentHomePage from "@/pages/parent/HomePage.tsx";
 import ParentStudentProfilePage from "./pages/parent/StudentProfilePage.tsx";
 import ParentProgressPage from "./pages/parent/ProgressPage.tsx";
 
+import TeacherProtectedRoute from "./components/teacher/TeacherProtectedRoute.tsx";
+import ParentProtectedRoute from "./components/parent/ParentProtectedRoute.tsx";
+
 // Admin Pages
 import AdminLoginPage from "./pages/admin/LoginPage.tsx";
 import AdminLayout from "./layouts/AdminLayout.tsx";
@@ -68,7 +71,14 @@ function App() {
         <Route path="/admin/login" element={<AdminLoginPage />} />
 
         {/* Teacher */}
-        <Route path="/teacher" element={<TeacherLayout />}>
+        <Route
+          path="/teacher"
+          element={
+            <TeacherProtectedRoute>
+              <TeacherLayout />
+            </TeacherProtectedRoute>
+          }
+        >
           {/* Classes */}
           <Route path="classes" index element={<TeacherClassesPage />} />
           <Route path="classes/:classId" element={<TeacherClassPage />} />
@@ -166,7 +176,14 @@ function App() {
         </Route>
 
         {/* Parent */}
-        <Route path="/parent" element={<ParentLayout />}>
+        <Route
+          path="/parent"
+          element={
+            <ParentProtectedRoute>
+              <ParentLayout />
+            </ParentProtectedRoute>
+          }
+        >
           <Route path="home" index element={<ParentHomePage />} />
           <Route
             path="home/student/:username"

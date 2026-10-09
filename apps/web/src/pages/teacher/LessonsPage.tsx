@@ -86,13 +86,14 @@ export default function TeacherLessonsPage() {
               Manage your curriculum, educational videos, and mini games.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <Input
               placeholder="Search curriculum, videos, or games..."
               leadingIcon={Search}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Search curriculum, videos, or mini games"
+              className="w-full sm:w-auto"
             />
             <AddCurriculumDialog onCreated={refresh} />
           </div>
@@ -156,7 +157,7 @@ export default function TeacherLessonsPage() {
 
 function CurriculumCardList({ curriculums }: { curriculums: Curriculum[] }) {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {curriculums.map((curriculum) => (
         <CurriculumCard key={curriculum.id} curriculum={curriculum} />
       ))}
@@ -166,7 +167,7 @@ function CurriculumCardList({ curriculums }: { curriculums: Curriculum[] }) {
 
 function EducationalVideoCardList({ videos }: { videos: EducationalVideo[] }) {
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {videos.map((video) => (
         <LessonCard
           key={video.id}

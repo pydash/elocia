@@ -93,11 +93,11 @@ export default function TeacherStudentsPage() {
         </div>
 
         {/* Status Toggle Sub-bar */}
-        <div className="flex items-center justify-between my-4">
-          <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 my-4">
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-gray-100 p-1">
             <button
               onClick={() => setStatusFilter("active")}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+              className={`rounded-lg px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 statusFilter === "active"
                   ? "bg-white text-(--primary) shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -107,7 +107,7 @@ export default function TeacherStudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter("inactive")}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+              className={`rounded-lg px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 statusFilter === "inactive"
                   ? "bg-white text-red-500 shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -117,7 +117,7 @@ export default function TeacherStudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter("all")}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+              className={`rounded-lg px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 statusFilter === "all"
                   ? "bg-white text-gray-900 shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -132,12 +132,12 @@ export default function TeacherStudentsPage() {
 
         {actionMessage && (
           <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 flex items-center gap-2">
-            <CheckCircle2 className="size-4 text-emerald-600" />
+            <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
             <span>{actionMessage}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mt-6">
           {filteredStudents.map((student) => (
             <StudentCard
               key={student.id}

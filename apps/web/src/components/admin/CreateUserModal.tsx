@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/Button";
 import Field from "@/components/Field";
-import { User, Lock, KeyRound, X, Search, UserCheck } from "lucide-react";
+import { User, Lock, KeyRound, X, Search, UserCheck, Eye, EyeOff } from "lucide-react";
 import {
   createAdultAccount,
   createStudentAccount,
@@ -25,6 +25,7 @@ export default function CreateUserModal({
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pin, setPin] = useState("1234");
   const [gradeLevel, setGradeLevel] = useState(1);
   const [emoji, setEmoji] = useState("👦");
@@ -198,7 +199,9 @@ export default function CreateUserModal({
                 </label>
                 <Field
                   leadingIcon={Lock}
-                  type="password"
+                  trailingIcon={showPassword ? EyeOff : Eye}
+                  onTrailingIconClick={() => setShowPassword((prev) => !prev)}
+                  type={showPassword ? "text" : "password"}
                   minLength={6}
                   placeholder="Minimum 6 characters"
                   value={password}

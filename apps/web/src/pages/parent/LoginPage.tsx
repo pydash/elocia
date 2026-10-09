@@ -1,33 +1,45 @@
 import { Link } from "react-router-dom";
 import Field from "../../components/Field";
 import Button from "../../components/Button";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAdultLogin } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { getRoleFromToken, tokenManager } from "@/helpers/jwt";
 
 export default function ParentLoginPage() {
   const navigate = useNavigate();
-  const { login, loading, error } = useAdultLogin();
+  const { login, loading, error: authError } = useAdultLogin();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [roleError, setRoleError] = useState("");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setRoleError("");
     const response = await login(username, password);
 
-    if (response) {
+    if (response && response.access_token) {
+      const role = getRoleFromToken(response.access_token);
+      if (role !== "parent") {
+        tokenManager.clearAccessToken();
+        setRoleError("Access Denied: This portal is strictly restricted to parents.");
+        return;
+      }
       navigate("/parent/home");
     }
   };
 
+  const displayError = roleError || authError;
+
   return (
-    <>
-      <main className="flex h-screen w-screen">
-        <section className="flex h-screen w-1/2 items-center justify-center bg-(--primary)">
-          <div className="flex flex-col items-center justify-center text-center">
+    <main className="flex min-h-screen w-full flex-col lg:flex-row">
+        {/* Left Hero Panel */}
+        <section className="flex w-full lg:w-1/2 items-center justify-center bg-(--primary) py-8 px-6 lg:py-0">
+          <div className="flex flex-col items-center justify-center text-center max-w-md">
             {/* Image Wrapper */}
-            <div className="mb-6 flex h-32 w-32 items-center justify-center">
+            <div className="mb-4 sm:mb-6 flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center">
               <img
                 src="/logo.png"
                 alt="Elocia logo"
@@ -35,28 +47,27 @@ export default function ParentLoginPage() {
               />
             </div>
 
-            <h1 className="heading-1 text-(--white)">Welcome Back!</h1>
+            <h1 className="heading-1 text-2xl sm:text-4xl text-(--white)">Welcome Back!</h1>
 
-            <p className="paragraph-2 mt-4 leading-relaxed! text-(--white)">
+            <p className="paragraph-2 mt-2 sm:mt-4 text-xs sm:text-base leading-relaxed text-(--white)">
               Stay connected with your child's learning journey.
-              <br />
               Track progress, celebrate achievements, and support
-              <br />
               their success every step of the way with ELOCIA.
             </p>
           </div>
         </section>
 
-        <section className="relative flex h-screen w-1/2 items-center justify-center overflow-hidden bg-(--primary-light)">
+        {/* Right Form Panel */}
+        <section className="relative flex flex-1 items-center justify-center overflow-hidden bg-(--primary-light) p-4 sm:p-8">
           <div
             className="absolute inset-0 bg-[url('/pattern_background.png')] bg-cover bg-center bg-no-repeat opacity-30"
             aria-hidden="true"
           />
           {/* Login Form Card */}
-          <div className="relative z-10 w-100 rounded-xl bg-white px-8 py-12 shadow-md">
-            <div className="mb-6 flex flex-col items-center gap-2 text-center">
-              <h1 className="heading-3">Login your account</h1>
-              <p className="paragraph-2 text-(--ghost)">
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white px-6 py-8 sm:px-8 sm:py-12 shadow-xl border border-gray-100">
+            <div className="mb-6 flex flex-col items-center gap-1.5 text-center">
+              <h1 className="heading-3 text-xl sm:text-2xl font-bold">Login your account</h1>
+              <p className="paragraph-2 text-xs sm:text-sm text-(--ghost)">
                 Ready to support your child's learning?
               </p>
             </div>
@@ -95,7 +106,9 @@ export default function ParentLoginPage() {
 
                 <Field
                   leadingIcon={Lock}
-                  type="password"
+                  trailingIcon={showPassword ? EyeOff : Eye}
+                  onTrailingIconClick={() => setShowPassword((prev) => !prev)}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   placeholder="********"
@@ -114,12 +127,12 @@ export default function ParentLoginPage() {
                 </div>
               </div>
 
-              {error && (
+              {displayError && (
                 <div
                   role="alert"
                   className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-(--danger)"
                 >
-                  {error}
+                  {displayError}
                 </div>
               )}
 
@@ -130,6 +143,5 @@ export default function ParentLoginPage() {
           </div>
         </section>
       </main>
-    </>
   );
 }

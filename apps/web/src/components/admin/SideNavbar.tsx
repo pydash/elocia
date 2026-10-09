@@ -36,60 +36,94 @@ const navItems: NavItem[] = [
   },
 ];
 
-export default function AdminSideNavbar() {
+type AdminSideNavbarProps = {
+  isOpen?: boolean;
+  onClose?: () => void;
+};
+
+export default function AdminSideNavbar({
+  isOpen = false,
+  onClose,
+}: AdminSideNavbarProps) {
   const location = useLocation();
   const { logout } = useAdultLogout("/admin/login");
 
   return (
-    <aside className="fixed flex h-screen w-64 flex-col border-r border-gray-200 bg-white z-20">
-      {/* Brand Header */}
-      <div className="p-6 flex flex-col items-center justify-center border-b border-gray-100">
-        <div className="flex size-20 items-center justify-center mb-2">
-          <img
-            src="/logo.png"
-            alt="Elocia logo"
-            className="h-full w-full object-contain"
-          />
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-(--primary-light) px-3 py-1 text-xs font-bold text-(--primary)">
-          <ShieldAlert className="size-3.5" />
-          <span>ADMIN CONSOLE</span>
-        </div>
-      </div>
+    <>
+      {/* Mobile/Tablet Backdrop Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden transition-opacity"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 flex flex-col justify-between">
-        {/* Top Menus */}
-        <div className="space-y-2">
-          {navItems.map((item) => {
-            const isActive = item.exact
-              ? location.pathname === item.to
-              : location.pathname.startsWith(item.to);
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
+        }`}
+      >
+        {/* Brand Header & Mobile Close Button */}
+        <div className="relative p-6 flex flex-col items-center justify-center border-b border-gray-100">
+          <div className="flex size-20 items-center justify-center mb-2">
+            <img
+              src="/logo.png"
+              alt="Elocia logo"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-(--primary-light) px-3 py-1 text-xs font-bold text-(--primary)">
+            <ShieldAlert className="size-3.5" />
+            <span>ADMIN CONSOLE</span>
+          </div>
 
-            return (
-              <NavbarMenuItem
-                key={item.name}
-                to={item.to}
-                isSelected={isActive}
-                icon={item.icon}
-              >
-                {item.name}
-              </NavbarMenuItem>
-            );
-          })}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="absolute right-3 top-4 flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 lg:hidden"
+              aria-label="Close navigation"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Bottom Actions */}
-        <div className="border-t border-gray-200 pt-4">
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </nav>
-    </aside>
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-6 flex flex-col justify-between overflow-y-auto">
+          {/* Top Menus */}
+          <div className="space-y-2">
+            {navItems.map((item) => {
+              const isActive = item.exact
+                ? location.pathname === item.to
+                : location.pathname.startsWith(item.to);
+
+              return (
+                <div key={item.name} onClick={onClose}>
+                  <NavbarMenuItem
+                    to={item.to}
+                    isSelected={isActive}
+                    icon={item.icon}
+                  >
+                    {item.name}
+                  </NavbarMenuItem>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Actions */}
+          <div className="border-t border-gray-200 pt-4">
+            <button
+              onClick={logout}
+              className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 cursor-pointer"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </nav>
+      </aside>
+    </>
   );
 }

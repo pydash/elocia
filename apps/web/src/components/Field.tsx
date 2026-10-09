@@ -4,11 +4,13 @@ import type { InputHTMLAttributes } from "react";
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   leadingIcon?: LucideIcon;
   trailingIcon?: LucideIcon;
+  onTrailingIconClick?: () => void;
 }
 
 export default function Field({
   leadingIcon: LeadingIcon,
   trailingIcon: TrailingIcon,
+  onTrailingIconClick,
   type = "text",
   className = "",
   ...props
@@ -23,14 +25,18 @@ export default function Field({
         value={props.value}
         onChange={props.onChange}
         type={type}
-        className={`w-full paragraph-2 rounded-md border-2 border-(--border) bg-(--gray-50) text-(--ghost) px-4 py-3 pl-12 outline-none ${className}`}
+        className={`w-full paragraph-2 rounded-md border-2 border-(--border) bg-(--gray-50) text-(--ghost) px-4 py-3 pl-12 ${
+          TrailingIcon ? "pr-12" : ""
+        } outline-none ${className}`}
         {...props}
       />
 
       {TrailingIcon && (
         <button
           type="button"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+          onClick={onTrailingIconClick}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+          aria-label="Toggle field visibility"
         >
           <TrailingIcon className="size-5" />
         </button>

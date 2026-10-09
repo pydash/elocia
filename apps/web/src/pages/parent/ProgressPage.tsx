@@ -39,14 +39,14 @@ export default function ParentProgressPage() {
     <div className="min-h-screen bg-gray-50/50 pb-16">
       <TopHeaderBar />
 
-      <main className="px-8 py-6 space-y-8 max-w-7xl mx-auto">
+      <main className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 sm:space-y-8 max-w-7xl mx-auto">
         {/* Section 1: Parameter Mastery */}
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">
             Parameter Mastery
           </h2>
 
-          <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100 shadow-sm space-y-6">
             {parameterMastery.map((param) => (
               <div key={param.key} className="space-y-2">
                 <div className="flex items-center justify-between">
