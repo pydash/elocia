@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import Field from "../../components/Field";
 import Button from "../../components/Button";
 import { User, Lock, Eye, EyeOff } from "lucide-react";
@@ -6,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useAdultLogin } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { getRoleFromToken, tokenManager } from "@/helpers/jwt";
+import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 
 export default function ParentLoginPage() {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ export default function ParentLoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [roleError, setRoleError] = useState("");
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -118,12 +119,13 @@ export default function ParentLoginPage() {
                 />
 
                 <div className="mt-1 flex justify-end">
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs font-medium text-(--primary) hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotOpen(true)}
+                    className="text-xs font-medium text-(--primary) hover:underline cursor-pointer"
                   >
                     Forgot password?
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -142,6 +144,12 @@ export default function ParentLoginPage() {
             </form>
           </div>
         </section>
+
+        <ForgotPasswordModal
+          isOpen={isForgotOpen}
+          onClose={() => setIsForgotOpen(false)}
+          portalName="Parent Portal"
+        />
       </main>
   );
 }
