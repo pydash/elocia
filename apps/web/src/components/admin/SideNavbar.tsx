@@ -4,6 +4,8 @@ import {
   School,
   LogOut,
   ShieldAlert,
+  Settings,
+  HelpCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import NavbarMenuItem from "../NavbarMenuItem";
@@ -113,7 +115,27 @@ export default function AdminSideNavbar({
           </div>
 
           {/* Bottom Actions */}
-          <div className="border-t border-gray-200 pt-4">
+          <div className="mt-auto space-y-2 pt-4 border-t border-gray-200">
+            <div onClick={onClose}>
+              <NavbarMenuItem
+                to="/admin/settings"
+                isSelected={location.pathname === "/admin/settings"}
+                icon={Settings}
+              >
+                Settings
+              </NavbarMenuItem>
+            </div>
+
+            <div onClick={onClose}>
+              <NavbarMenuItem
+                to="/admin/help"
+                isSelected={location.pathname === "/admin/help"}
+                icon={HelpCircle}
+              >
+                Help
+              </NavbarMenuItem>
+            </div>
+
             <button
               onClick={logout}
               className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 cursor-pointer"

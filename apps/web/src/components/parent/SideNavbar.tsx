@@ -103,7 +103,7 @@ export default function ParentSideNavbar({
           <div className="mt-auto space-y-3 sm:space-y-4 pt-4 border-t border-gray-100">
             <div onClick={onClose}>
               <NavbarMenuItem
-                to="/teacher/settings"
+                to="/parent/settings"
                 isSelected={currentPath === "settings"}
                 icon={Settings}
               >
@@ -113,7 +113,7 @@ export default function ParentSideNavbar({
 
             <div onClick={onClose}>
               <NavbarMenuItem
-                to="/teacher/help"
+                to="/parent/help"
                 isSelected={currentPath === "help"}
                 icon={HelpCircle}
               >

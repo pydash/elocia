@@ -47,6 +47,8 @@ import ParentLayout from "./layouts/ParentLayout.tsx";
 import ParentHomePage from "@/pages/parent/HomePage.tsx";
 import ParentStudentProfilePage from "./pages/parent/StudentProfilePage.tsx";
 import ParentProgressPage from "./pages/parent/ProgressPage.tsx";
+import ParentSettingsPage from "./pages/parent/SettingsPage.tsx";
+import ParentHelpPage from "./pages/parent/HelpPage.tsx";
 
 import TeacherProtectedRoute from "./components/teacher/TeacherProtectedRoute.tsx";
 import ParentProtectedRoute from "./components/parent/ParentProtectedRoute.tsx";
@@ -57,6 +59,8 @@ import AdminLayout from "./layouts/AdminLayout.tsx";
 import AdminDashboard from "./pages/admin/Dashboard.tsx";
 import AdminUsersPage from "./pages/admin/UsersPage.tsx";
 import AdminClassesPage from "./pages/admin/ClassesPage.tsx";
+import AdminSettingsPage from "./pages/admin/SettingsPage.tsx";
+import AdminHelpPage from "./pages/admin/HelpPage.tsx";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute.tsx";
 
 function App() {
@@ -190,6 +194,8 @@ function App() {
             element={<ParentStudentProfilePage />}
           />
           <Route path="progress" element={<ParentProgressPage />} />
+          <Route path="settings" element={<ParentSettingsPage />} />
+          <Route path="help" element={<ParentHelpPage />} />
         </Route>
 
         {/* System Admin */}
@@ -204,6 +210,8 @@ function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="classes" element={<AdminClassesPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="help" element={<AdminHelpPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
