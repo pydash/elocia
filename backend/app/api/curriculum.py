@@ -118,7 +118,12 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
             for b in baselines:
                 if b.sign_id is None or b.sign_id == 0:
                     continue
-                item = {"globalId": b.sign_id, "name": b.sign_name}
+                item = {
+                    "globalId": b.sign_id,
+                    "name": b.sign_name,
+                    "videoUrl": f"/videos/{b.video_filename}" if b.video_filename else None,
+                    "videoFilename": b.video_filename
+                }
                 if b.stage_id_new is not None:
                     baselines_by_stage.setdefault(b.stage_id_new, []).append(item)
 

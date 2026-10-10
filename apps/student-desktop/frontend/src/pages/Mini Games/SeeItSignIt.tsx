@@ -22,7 +22,6 @@ const seeItSignItLogo = '/images/See it, Sign it!.png';
 const wonderMascot = '/images/Wonder.png';
 const amazingMascot = '/images/Amazing.png';
 const backButtonImg = '/images/Back Button.png';
-const cloud1Img = '/images/Cloud 1.png';
 const confettiImg = '/images/Confetti.png';
 
 interface ScoreSet {
@@ -789,8 +788,6 @@ export default function SeeItSignIt({ onNavigate }: SeeItSignItProps) {
         </header>
 
         <main className="eval-main-row" style={{ backgroundImage: `url('/images/Grass.png')`, backgroundPosition: 'bottom', backgroundRepeat: 'no-repeat', backgroundSize: '100% 20%' }}>
-          <img src={cloud1Img} alt="Cloud" style={{ position: 'absolute', top: 50, left: '10%', opacity: 0.8, width: 150 }} />
-          
           {/* Left Column */}
           <section className="eval-left-col">
             <div className="eval-instruction-card">

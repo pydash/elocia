@@ -657,6 +657,15 @@ async def deactivate_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)
         )
     
     user.is_active = False
+
+    # When a teacher is deactivated, remove their assigned classroom association
+    if user.role == UserRole.teacher:
+        await db.execute(
+            Class.__table__.update()
+            .where(Class.teacher_id == user_id)
+            .values(teacher_id=None)
+        )
+
     await db.commit()
     return {"status": "deactivated", "user_id": str(user_id)}
 
@@ -673,47 +682,55 @@ async def delete_user_permanently(user_id: uuid.UUID, db: AsyncSession = Depends
             detail="Admin accounts are permanently protected and cannot be deleted."
         )
     
-    # Clean up foreign keys that don't cascade automatically
-    # 1. Nullify created_by references in educational videos, baselines, minigame configs
-    await db.execute(
-        EducationalVideo.__table__.update()
-        .where(EducationalVideo.created_by == user_id)
-        .values(created_by=None)
-    )
-    await db.execute(
-        FSLBaseline.__table__.update()
-        .where(FSLBaseline.created_by == user_id)
-        .values(created_by=None)
-    )
-    await db.execute(
-        MiniGameConfig.__table__.update()
-        .where(MiniGameConfig.created_by == user_id)
-        .values(created_by=None)
-    )
+    try:
+        # Clean up foreign keys that don't cascade automatically
+        # 1. Nullify created_by references in educational videos, baselines, minigame configs
+        await db.execute(
+            EducationalVideo.__table__.update()
+            .where(EducationalVideo.created_by == user_id)
+            .values(created_by=None)
+        )
+        await db.execute(
+            FSLBaseline.__table__.update()
+            .where(FSLBaseline.created_by == user_id)
+            .values(created_by=None)
+        )
+        await db.execute(
+            MiniGameConfig.__table__.update()
+            .where(MiniGameConfig.created_by == user_id)
+            .values(created_by=None)
+        )
 
-    # 2. Delete student evaluations and minigame sessions
-    await db.execute(delete(EvaluationAttempt).where(EvaluationAttempt.student_id == user_id))
-    await db.execute(delete(StudentStageProgress).where(StudentStageProgress.student_id == user_id))
-    await db.execute(delete(MiniGameSession).where(MiniGameSession.student_id == user_id))
+        # 2. Delete student evaluations and minigame sessions
+        await db.execute(delete(EvaluationAttempt).where(EvaluationAttempt.student_id == user_id))
+        await db.execute(delete(StudentStageProgress).where(StudentStageProgress.student_id == user_id))
+        await db.execute(delete(MiniGameSession).where(MiniGameSession.student_id == user_id))
 
-    # 3. Clean up parent/student links and classroom rosters
-    await db.execute(delete(ParentStudent).where((ParentStudent.parent_id == user_id) | (ParentStudent.student_id == user_id)))
-    await db.execute(delete(ClassStudent).where(ClassStudent.student_id == user_id))
+        # 3. Clean up parent/student links and classroom rosters
+        await db.execute(delete(ParentStudent).where((ParentStudent.parent_id == user_id) | (ParentStudent.student_id == user_id)))
+        await db.execute(delete(ClassStudent).where(ClassStudent.student_id == user_id))
 
-    # 4. If teacher, delete or unassign their classes
-    # Fetch classes taught by this user and clean up roster first, then class
-    teacher_classes = await db.execute(select(Class).where(Class.teacher_id == user_id))
-    for cls in teacher_classes.scalars().all():
-        await db.execute(delete(ClassStudent).where(ClassStudent.class_id == cls.id))
-        await db.delete(cls)
+        # 4. If teacher, unassign their classes instead of abruptly deleting classrooms, or delete if empty
+        await db.execute(
+            Class.__table__.update()
+            .where(Class.teacher_id == user_id)
+            .values(teacher_id=None)
+        )
 
-    # 5. Delete student profile if exists
-    await db.execute(delete(StudentProfile).where(StudentProfile.student_id == user_id))
+        # 5. Delete student profile if exists
+        await db.execute(delete(StudentProfile).where(StudentProfile.student_id == user_id))
 
-    # 6. Delete user
-    await db.delete(user)
-    await db.commit()
-    return {"status": "deleted", "user_id": str(user_id)}
+        # 6. Delete user
+        await db.delete(user)
+        await db.commit()
+        return {"status": "deleted", "user_id": str(user_id)}
+    except Exception as e:
+        await db.rollback()
+        print(f"[ERROR] Failed to permanently delete user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to permanently delete user: {str(e)}"
+        )
 
 @router.patch("/users/{user_id}/reactivate", status_code=status.HTTP_200_OK)
 async def reactivate_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):

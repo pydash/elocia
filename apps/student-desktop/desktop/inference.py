@@ -79,9 +79,25 @@ def calculate_single_handshape_score(s_seq, b_seq, s_key="hand", b_key="hand"):
     ext_diff = float(np.abs(s_ext - b_ext).max())
     spread_diff = float(np.abs(s_spread - b_spread).max())
 
-    ext_score = 100 - (ext_diff * 100)
-    spread_score = 100 - (spread_diff * 80)
-    return max(0, min(100, min(ext_score, spread_score)))
+    # Strict handshape scoring curve:
+    # Small differences (<= 0.15): acceptable anatomical variation (100 -> 80)
+    # Moderate differences (0.15 - 0.30): partial deformation (80 -> 45)
+    # Large differences (> 0.30, e.g. phone grasp vs sign): instant fail (< 45)
+    if ext_diff <= 0.15:
+        ext_score = 100.0 - (ext_diff * 133.0)
+    elif ext_diff <= 0.30:
+        ext_score = 80.0 - ((ext_diff - 0.15) * 233.0)
+    else:
+        ext_score = max(0.0, 45.0 - ((ext_diff - 0.30) * 120.0))
+
+    if spread_diff <= 0.15:
+        spread_score = 100.0 - (spread_diff * 133.0)
+    elif spread_diff <= 0.30:
+        spread_score = 80.0 - ((spread_diff - 0.15) * 233.0)
+    else:
+        spread_score = max(0.0, 45.0 - ((spread_diff - 0.30) * 120.0))
+
+    return round(max(0.0, min(100.0, min(ext_score, spread_score))), 1)
 
 def calculate_handshape_score(student_seq, baseline_seq):
     if not student_seq or not baseline_seq: return 0
@@ -188,7 +204,20 @@ def calculate_single_palm_score(s_seq, b_seq, s_key="hand", b_key="hand"):
     angle2 = np.arccos(dot_mirrored)
 
     best_angle = min(angle1, angle2)
-    return max(0, min(100, 100 - (best_angle * 180 / np.pi)))
+    angle_deg = best_angle * 180.0 / np.pi
+
+    # Strict palm orientation scoring curve:
+    # 0 - 15 degrees: excellent alignment (100 -> 80)
+    # 15 - 35 degrees: moderate deviation (80 -> 40)
+    # > 35 degrees: unacceptable or reversed orientation (< 40, failing)
+    if angle_deg <= 15.0:
+        score = 100.0 - (angle_deg * 1.33)
+    elif angle_deg <= 35.0:
+        score = 80.0 - ((angle_deg - 15.0) * 2.0)
+    else:
+        score = max(0.0, 40.0 - ((angle_deg - 35.0) * 1.0))
+
+    return round(max(0.0, min(100.0, score)), 1)
 
 def calculate_palm_orientation_score(student_seq, baseline_seq):
     if not student_seq or not baseline_seq: return 0
@@ -237,6 +266,22 @@ def calculate_palm_orientation_score(student_seq, baseline_seq):
                 scores.append(calculate_single_palm_score(student_seq, baseline_seq, s_k, b_k))
         return max(scores) if scores else 0
 
+def _score_location_distance(dist):
+    """
+    Strict multi-tier signing location curve.
+    dist is measured in normalized shoulder widths (0.0 = exact match):
+    - 0.00 to 0.20: within target signing space (100 -> 80)
+    - 0.20 to 0.38: outer boundary of target zone (80 -> 40)
+    - > 0.38: completely out of location target (ear, phone, lap) (< 40, fail)
+    """
+    if dist <= 0.20:
+        score = 100.0 - (dist * 100.0)
+    elif dist <= 0.38:
+        score = 80.0 - ((dist - 0.20) * 222.0)
+    else:
+        score = max(0.0, 40.0 - ((dist - 0.38) * 100.0))
+    return round(max(0.0, min(100.0, score)), 1)
+
 def calculate_location_score(student_seq, baseline_seq):
     if not student_seq or not baseline_seq: return 0
 
@@ -270,7 +315,7 @@ def calculate_location_score(student_seq, baseline_seq):
         best_dist = min(dist_direct, dist_mirror)
 
         total_err = (best_dist * 0.7) + (sep_diff * 0.3)
-        return max(0, min(100, 100 - (total_err * 45)))
+        return _score_location_distance(total_err)
     else:
         def location_vector(frame, key="hand"):
             scale = get_shoulder_width(frame)
@@ -285,7 +330,7 @@ def calculate_location_score(student_seq, baseline_seq):
                 b_vec_mirrored = np.array([-b_vec[0], b_vec[1], b_vec[2]])
                 dist_mirrored = np.linalg.norm(s_vec - b_vec_mirrored)
                 best_dist = min(dist, dist_mirrored)
-                scores.append(max(0, min(100, 100 - (best_dist * 45))))
+                scores.append(_score_location_distance(best_dist))
         return max(scores) if scores else 0
 
 def _dtw_distance(seq_a, seq_b):
@@ -317,9 +362,28 @@ def calculate_movement_score(student_seq, baseline_seq):
         arr = np.array(pts, dtype=np.double)
         return arr - arr.mean(axis=0, keepdims=True)
 
-    def score_single_traj(s_arr, b_arr):
+    def path_displacement(seq, hand_key="hand"):
+        pts = [get_wrist(f, hand_key) for f in seq if get_wrist(f, hand_key)[0] != 0]
+        if len(pts) < 2:
+            return 0.0
+        pts_arr = np.array(pts)
+        return float(np.sum(np.linalg.norm(np.diff(pts_arr, axis=0), axis=1)))
+
+    def score_single_traj(s_arr, b_arr, s_seq=None, b_seq=None, hand_key="hand"):
         if len(s_arr) == 0 or len(b_arr) == 0:
             return 0
+
+        # Motion Concordance Check:
+        # If baseline has significant dynamic movement (> 0.25) but student's hand
+        # is virtually stationary (< 0.12, e.g. holding a phone or casual rest),
+        # fail movement immediately (< 20%).
+        if s_seq is not None and b_seq is not None:
+            b_disp = path_displacement(b_seq, hand_key)
+            s_disp = path_displacement(s_seq, hand_key)
+            if b_disp > 0.25 and s_disp < 0.12:
+                # Stationary hand during dynamic sign: fail
+                return max(5.0, round((s_disp / (b_disp or 1.0)) * 30.0, 1))
+
         dist_full = min(
             _dtw_distance(s_arr, b_arr),
             _dtw_distance(s_arr, b_arr * np.array([-1.0, 1.0, 1.0]))
@@ -351,13 +415,15 @@ def calculate_movement_score(student_seq, baseline_seq):
         b_r = trajectory(baseline_seq, "right_hand")
         b_l = trajectory(baseline_seq, "left_hand")
 
-        direct = (score_single_traj(s_r, b_r) + score_single_traj(s_l, b_l)) / 2.0
-        mirror = (score_single_traj(s_r, b_l) + score_single_traj(s_l, b_r)) / 2.0
+        direct = (score_single_traj(s_r, b_r, student_seq, baseline_seq, "right_hand") + 
+                  score_single_traj(s_l, b_l, student_seq, baseline_seq, "left_hand")) / 2.0
+        mirror = (score_single_traj(s_r, b_l, student_seq, baseline_seq, "right_hand") + 
+                  score_single_traj(s_l, b_r, student_seq, baseline_seq, "left_hand")) / 2.0
         return max(direct, mirror)
     else:
         s_full = trajectory(student_seq, "hand")
         b_full = trajectory(baseline_seq, "hand")
-        return score_single_traj(s_full, b_full)
+        return score_single_traj(s_full, b_full, student_seq, baseline_seq, "hand")
 
 def filter_valid_frames(sequence):
     """

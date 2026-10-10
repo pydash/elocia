@@ -292,22 +292,24 @@ async def evaluate_endpoint(websocket: WebSocket):
                 continue
 
             # Check if active hand belongs to the foreground student's signing space
-            # Generously covers head/forehead (top), shoulders/ears (sides), and torso (bottom)
-            min_x = min(ls.x, rs.x) - 0.35
-            max_x = max(ls.x, rs.x) + 0.35
-            min_y = min(ls.y, rs.y) - 0.55
+            # Covers forehead down to upper torso, bounded within the shoulder signing corridor.
+            # Hands held high at the ear or off-screen (phone calls) are excluded.
+            min_x = min(ls.x, rs.x) - 0.22
+            max_x = max(ls.x, rs.x) + 0.22
+            min_y = min(ls.y, rs.y) - 0.40
+            max_y = max(ls.y, rs.y) + 0.50
 
             # Check candidate hands within foreground student's signing boundary
             rh_valid = None
             if results.right_hand_landmarks:
                 wrist = results.right_hand_landmarks.landmark[0]
-                if min_x <= wrist.x <= max_x and wrist.y >= min_y:
+                if min_x <= wrist.x <= max_x and min_y <= wrist.y <= max_y:
                     rh_valid = results.right_hand_landmarks
 
             lh_valid = None
             if results.left_hand_landmarks:
                 wrist = results.left_hand_landmarks.landmark[0]
-                if min_x <= wrist.x <= max_x and wrist.y >= min_y:
+                if min_x <= wrist.x <= max_x and min_y <= wrist.y <= max_y:
                     lh_valid = results.left_hand_landmarks
 
             active_hand = rh_valid or lh_valid
