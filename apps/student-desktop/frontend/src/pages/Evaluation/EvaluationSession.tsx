@@ -367,6 +367,15 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           if (isPassed && currentItemRef.current?.name) {
             const sid = student.id || 'all';
             removeFocusDrillSign(sid, currentItemRef.current.name);
+            try {
+              const finishedSigns = JSON.parse(localStorage.getItem('elocia_finished_drills') || '[]');
+              if (!finishedSigns.includes(currentItemRef.current.name)) {
+                finishedSigns.push(currentItemRef.current.name);
+                localStorage.setItem('elocia_finished_drills', JSON.stringify(finishedSigns));
+              }
+            } catch (err) {
+              console.warn('Failed to update elocia_finished_drills:', err);
+            }
           }
 
           // Save score to database (awards XP in Learn mode; updates streak in both Learn and Practice mode when passed)
@@ -978,6 +987,15 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
         <section className="eval-right-col-container">
           <div className="eval-number-card">
+            <img 
+              src={`/thumbnails/thumb_${currentItem.name}.png`}
+              alt={currentItem.name}
+              className="eval-number-image"
+              onError={(e) => {
+                // If specific sign thumb not found, gracefully hide the img tag
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
             <div className="eval-number-display">{currentItem.name}</div>
           </div>
 
@@ -985,14 +1003,14 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             {currentTier === 3 ? (
               <div className="eval-tier3-panel">
                 <span className="eval-tier3-badge">Teacher Demo</span>
-                <div className="eval-teacher-video-box" style={{ overflow: 'hidden', position: 'relative', borderRadius: '12px' }}>
+                <div className="eval-teacher-video-box" style={{ overflow: 'hidden', position: 'relative', borderRadius: '12px', background: '#000000' }}>
                   <span className="eval-watch-pill" style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 10 }}>Watch carefully!</span>
                   <video
                     src={resolveMediaUrl(currentItem.videoUrl) || `/videos/${currentItem.globalId}.mp4`}
                     controls
                     autoPlay
                     loop
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000000' }}
                   />
                 </div>
               </div>

@@ -14,7 +14,6 @@ interface PuzzleSignProps {
 const puzzleSignLogo = '/images/Puzzle Sign.png';
 const wonderMascot = '/images/Wonder.png';
 const amazingMascot = '/images/Amazing.png';
-const cloud1Img = '/images/Cloud 1.png';
 const backButtonImg = '/images/Back Button.png';
 const confettiImg = '/images/Confetti.png';
 
@@ -816,8 +815,6 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
       </header>
 
       <main className="eval-main-row" style={{ backgroundImage: `url('/images/Grass.png')`, backgroundPosition: 'bottom', backgroundRepeat: 'no-repeat', backgroundSize: '100% 20%' }}>
-        <img src={cloud1Img} alt="Cloud" style={{ position: 'absolute', top: 50, left: '10%', opacity: 0.8, width: 150 }} />
-
           <section className="eval-left-col">
             <div className="eval-instruction-card">
               <span className="eval-instruction-tag">Instruction</span>

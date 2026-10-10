@@ -111,7 +111,7 @@
 
 .kp-card {
   width: 100%;
-  height: clamp(150px, 20vh, 190px);
+  aspect-ratio: 1 / 1;
   border-radius: clamp(16px, 1.8vw, 24px);
   display: flex;
   flex-direction: column;
@@ -124,6 +124,7 @@
   box-shadow: 0 5px 12px rgba(0,0,0,0.07);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .kp-card:hover {

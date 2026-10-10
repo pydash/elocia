@@ -75,7 +75,13 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
         }
       });
       fetchNeedsPractice(studentId).then((items) => {
-        setPracticeItems(items || []);
+        try {
+          const finishedSigns: string[] = JSON.parse(localStorage.getItem('elocia_finished_drills') || '[]');
+          const filtered = (items || []).filter(it => !finishedSigns.includes(it.sign));
+          setPracticeItems(filtered);
+        } catch {
+          setPracticeItems(items || []);
+        }
       });
     }
   }, []);
@@ -527,6 +533,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   key={selectedVideo.id}
                   controls 
                   autoPlay
+                  loop
                   playsInline
                   onError={() => setVideoError(true)}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -834,7 +841,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                         onNavigate('setup');
                       }
                     }}
-                    style={{ height: '180px' }}
                     title={item.reason || `Practice sign: ${item.sign}`}
                   >
                     {item.score < 60 && (

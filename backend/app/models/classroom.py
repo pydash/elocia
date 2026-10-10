@@ -9,7 +9,7 @@ class Class(Base):
     __tablename__ = "classes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     name = Column(String(100), nullable=False)
     grade_level = Column(Integer, nullable=False, default=1)
     school_year = Column(String(20), nullable=False, default="2026-2027")
