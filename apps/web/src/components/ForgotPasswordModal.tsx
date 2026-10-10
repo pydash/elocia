@@ -5,12 +5,14 @@ interface ForgotPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   portalName?: string;
+  isAdmin?: boolean;
 }
 
 export default function ForgotPasswordModal({
   isOpen,
   onClose,
   portalName = "ELOCIA",
+  isAdmin = false,
 }: ForgotPasswordModalProps) {
   if (!isOpen) return null;
 
@@ -48,16 +50,33 @@ export default function ForgotPasswordModal({
 
         {/* Informational Message */}
         <div className="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-4 space-y-3">
-          <p className="text-xs sm:text-sm text-amber-950 font-medium leading-relaxed">
-            For security and privacy compliance, password resets are handled exclusively by your <strong>School Administrator</strong>.
-          </p>
-          <div className="pt-2 border-t border-amber-200/60 text-xs text-amber-900 font-semibold space-y-1.5">
-            <p>📌 How to reset your credentials:</p>
-            <ul className="list-disc list-inside space-y-1 font-normal text-amber-800">
-              <li>Please contact your designated <strong>School Administrator</strong>.</li>
-              <li>The administrator can immediately reset your password in the <strong>ELOCIA Admin Console</strong>.</li>
-            </ul>
-          </div>
+          {isAdmin ? (
+            <>
+              <p className="text-xs sm:text-sm text-amber-950 font-medium leading-relaxed">
+                Administrator accounts possess elevated system access. To ensure database security and system integrity, automated public password resets are restricted.
+              </p>
+              <div className="pt-2 border-t border-amber-200/60 text-xs text-amber-900 font-semibold space-y-1.5">
+                <p>📌 Master Admin Recovery Options:</p>
+                <ul className="list-disc list-inside space-y-1 font-normal text-amber-800">
+                  <li>Contact the <strong>Super Administrator</strong> or ICT System Lead to rotate console credentials.</li>
+                  <li>Use the server console administrative script: <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px] font-mono">python backend/scripts/create_admin.py</code> to restore access.</li>
+                </ul>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs sm:text-sm text-amber-950 font-medium leading-relaxed">
+                For security and privacy compliance, password resets are handled exclusively by your <strong>School Administrator</strong>.
+              </p>
+              <div className="pt-2 border-t border-amber-200/60 text-xs text-amber-900 font-semibold space-y-1.5">
+                <p>📌 How to reset your credentials:</p>
+                <ul className="list-disc list-inside space-y-1 font-normal text-amber-800">
+                  <li>Please contact your designated <strong>School Administrator</strong>.</li>
+                  <li>The administrator can immediately reset your password in the <strong>ELOCIA Admin Console</strong>.</li>
+                </ul>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Action Button */}

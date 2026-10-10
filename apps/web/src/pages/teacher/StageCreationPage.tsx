@@ -341,6 +341,7 @@ export function TeacherStagePreviewPage() {
   const draft = (location.state as { draft?: StageDraft } | null)?.draft;
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveProgressText, setSaveProgressText] = useState("");
 
   if (!draft) {
     return (
@@ -357,25 +358,29 @@ export function TeacherStagePreviewPage() {
     if (!unitId) return;
     setIsSaving(true);
     setError("");
+    setSaveProgressText("Creating curriculum stage...");
     try {
       const stage = await createStage(unitId, {
         stage_number: draft.stageNumber,
         title: draft.title.trim(),
         description: draft.description.trim(),
       });
-      // Upload all round baseline videos in parallel for 5x faster stage publishing
-      const roundUploads = draft.rounds
-        .filter((round) => Boolean(round.video))
-        .map((round) =>
-          uploadStageBaseline(
-            stage.id,
-            round.signName.trim(),
-            round.video!,
-            Number(draft.gradeLevel),
-            draft.description.trim(),
-          )
+
+      // Upload round baseline demonstration videos sequentially to guarantee reliable MediaPipe extraction & zero race conditions
+      const validRounds = draft.rounds.filter((round) => Boolean(round.video));
+      for (let i = 0; i < validRounds.length; i++) {
+        const round = validRounds[i];
+        setSaveProgressText(`Analyzing & uploading "${round.signName.trim()}" (${i + 1} of ${validRounds.length})...`);
+        await uploadStageBaseline(
+          stage.id,
+          round.signName.trim(),
+          round.video!,
+          Number(draft.gradeLevel),
+          draft.description.trim(),
         );
-      await Promise.all(roundUploads);
+      }
+
+      setSaveProgressText("Completed! Redirecting...");
       navigate(stagePath);
     } catch (submitError) {
       setError(
@@ -385,6 +390,7 @@ export function TeacherStagePreviewPage() {
       );
     } finally {
       setIsSaving(false);
+      setSaveProgressText("");
     }
   };
 
@@ -435,6 +441,12 @@ export function TeacherStagePreviewPage() {
             ))}
           </div>
         </article>
+        {isSaving && saveProgressText && (
+          <div className="mt-4 flex max-w-3xl items-center gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-900 animate-pulse">
+            <span className="text-lg">⏳</span>
+            <span>{saveProgressText}</span>
+          </div>
+        )}
         {error && (
           <p className="mt-4 paragraph-2 text-(--danger)" role="alert">
             {error}
@@ -444,12 +456,13 @@ export function TeacherStagePreviewPage() {
           <Button
             type="button"
             variant="outline"
+            disabled={isSaving}
             onClick={() => navigate(`${stagePath}/new`, { state: { draft } })}
           >
             Back
           </Button>
           <Button type="button" disabled={isSaving} onClick={finish}>
-            {isSaving ? "Saving..." : "Finish"}
+            {isSaving ? (saveProgressText ? "Processing..." : "Saving...") : "Finish & Publish"}
           </Button>
         </div>
       </main>

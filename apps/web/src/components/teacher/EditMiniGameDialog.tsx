@@ -52,6 +52,17 @@ export default function EditMiniGameDialog({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     setTitle(miniGame.title || "");
     setDescription(miniGame.description || "");
     setDifficulty(miniGame.difficulty || 1);
@@ -202,12 +213,13 @@ export default function EditMiniGameDialog({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-hidden animate-in fade-in"
       onClick={onClose}
     >
       <div
         className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl border border-gray-100 overflow-hidden text-left"
         onClick={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50/50">

@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useAdultLogin } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { getRoleFromToken, tokenManager } from "@/helpers/jwt";
+import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function AdminLoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
   const [roleError, setRoleError] = useState("");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -120,7 +122,16 @@ export default function AdminLoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
-              {/* Note: Forgot Password intentionally omitted for security */}
+
+              <div className="mt-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotOpen(true)}
+                  className="text-xs font-medium text-(--primary) hover:underline cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </div>
 
             {displayError && (
@@ -138,6 +149,13 @@ export default function AdminLoginPage() {
           </form>
         </div>
       </section>
+
+      <ForgotPasswordModal
+        isOpen={isForgotOpen}
+        onClose={() => setIsForgotOpen(false)}
+        portalName="Administrator Console"
+        isAdmin={true}
+      />
     </main>
   );
 }
