@@ -281,7 +281,7 @@ export default function CreateUserModal({
               {/* Optional Parent Assignment for Student */}
               <div className="relative">
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Assign Parent (Optional)
+                  Assign Parent
                 </label>
                 {selectedParent ? (
                   <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50/60 p-2.5">

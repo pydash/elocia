@@ -126,6 +126,22 @@ export function useParentDashboard() {
 
   useEffect(() => {
     loadParentChildren();
+
+    // Auto-refresh when tab gains focus so Admin changes appear immediately
+    const onFocus = () => {
+      loadParentChildren();
+    };
+    window.addEventListener("focus", onFocus);
+
+    // Light background poll every 15 seconds to keep data synchronized
+    const interval = setInterval(() => {
+      loadParentChildren();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+    };
   }, [loadParentChildren]);
 
   // 2. Load Child Performance Data when selectedChild changes
