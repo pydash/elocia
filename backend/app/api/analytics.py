@@ -70,7 +70,10 @@ async def get_tier4_flags(db: AsyncSession = Depends(get_db)):
         select(EvaluationAttempt, User.name.label("student_name"), FSLBaseline.sign_name)
         .join(User, EvaluationAttempt.student_id == User.id)
         .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
-        .where(EvaluationAttempt.tier_level == 4)
+        .where(
+            EvaluationAttempt.tier_level == 4,
+            EvaluationAttempt.activity_type == "evaluation"
+        )
         .order_by(EvaluationAttempt.created_at.desc())
     )
     rows = result.all()
@@ -193,7 +196,8 @@ async def get_student_needs_practice(student_id: uuid.UUID, db: AsyncSession = D
     cards = []
     seen_signs = set()
 
-    # 1. Check if teacher created an active focus drill for this student (or globally for all students)
+    # Only display focus drills explicitly created by the teacher via the Teacher Portal ("Create Focus Drill")
+    # Review stages and automatic Tier 4 attempts do NOT automatically trigger practice drills unless assigned by teacher.
     drill = _ACTIVE_FOCUS_DRILLS.get(str(student_id)) or _ACTIVE_FOCUS_DRILLS.get("all")
     if drill and drill.get("active") and drill.get("signs"):
         stage_id = drill.get("stage_id", 1)
@@ -207,40 +211,6 @@ async def get_student_needs_practice(student_id: uuid.UUID, db: AsyncSession = D
                     "score": 50.0,
                     "color": colors[len(cards) % len(colors)],
                     "reason": drill.get("notes") or "Teacher Assigned Focus Drill"
-                })
-
-    # 2. Fetch the student's recent evaluation attempts to check latest status per sign
-    result = await db.execute(
-        select(EvaluationAttempt, FSLBaseline.sign_name, CurriculumStage.stage_number)
-        .outerjoin(FSLBaseline, EvaluationAttempt.sign_id == FSLBaseline.sign_id)
-        .outerjoin(CurriculumStage, FSLBaseline.stage_id_new == CurriculumStage.id)
-        .where(EvaluationAttempt.student_id == student_id)
-        .order_by(EvaluationAttempt.created_at.desc())
-        .limit(100)
-    )
-    all_recent_attempts = result.all()
-
-    # Track the LATEST attempt per sign. If latest attempt passed (and tier < 4), do NOT flag!
-    latest_by_sign = {}
-    for att, sign_name, stage_num in all_recent_attempts:
-        sign_label = sign_name if sign_name else f"Sign {att.sign_id or att.stage_id or 1}"
-        if sign_label not in latest_by_sign:
-            latest_by_sign[sign_label] = (att, stage_num)
-
-    # Only include signs where the latest attempt failed or triggered Tier 4 struggle
-    for sign_label, (att, stage_num) in latest_by_sign.items():
-        if (not att.passed) or ((att.tier_level or 1) >= 4):
-            if sign_label not in seen_signs:
-                seen_signs.add(sign_label)
-                s_id = stage_num if stage_num is not None else (att.stage_id or 1)
-                score_val = round(att.score_overall or 45.0, 1)
-                cards.append({
-                    "sign": sign_label,
-                    "stage_id": s_id,
-                    "section_label": f"Section 1, Stage {s_id}",
-                    "score": score_val,
-                    "color": colors[len(cards) % len(colors)],
-                    "reason": "Needs focus on hand movement" if (att.score_movement or 0) < 60 else "Flagged for practice"
                 })
 
     return {"student_id": str(student_id), "practice_items": cards}
@@ -341,7 +311,9 @@ async def get_student_unit_analytics(
     needs_practice = []
     seen_signs = set()
     for s_id, latest_att in latest_attempt_by_sign.items():
-        if (not latest_att.passed) or (latest_att.tier_level and latest_att.tier_level >= 4):
+        # ONLY trigger for signs where the student reached Tier 4 struggle!
+        # Low scores (e.g. 60%) or failed attempts do NOT trigger unless they reached Tier 4.
+        if latest_att.tier_level and latest_att.tier_level >= 4:
             name = sign_names.get(s_id, f"Sign {s_id}")
             if name not in seen_signs:
                 seen_signs.add(name)
@@ -390,6 +362,68 @@ async def get_student_unit_analytics(
             {"label": "Week 4", "score": 0.0, "is_current": False, "is_upcoming": True},
         ]
 
+    # Construct detailed rounds breakdown for this stage
+    # Look up all baseline items configured for this stage
+    stage_baselines_res = await db.execute(
+        select(FSLBaseline)
+        .where(
+            (FSLBaseline.stage_id_new == stage_id) | (FSLBaseline.stage_id == stage_id),
+            FSLBaseline.is_active == True
+        )
+        .order_by(FSLBaseline.sign_id.asc())
+    )
+    stage_baselines = stage_baselines_res.scalars().all()
+
+    rounds_data = []
+    # If no stage_baselines found, build from latest_attempt_by_sign
+    if stage_baselines:
+        for b in stage_baselines:
+            latest_att = latest_attempt_by_sign.get(b.sign_id)
+            if latest_att:
+                rounds_data.append({
+                    "sign_id": b.sign_id,
+                    "sign_name": b.sign_name,
+                    "score_overall": round(latest_att.score_overall or 0.0, 1),
+                    "score_handshape": round(latest_att.score_handshape or 0.0, 1),
+                    "score_palm_orientation": round(latest_att.score_palm_orientation or 0.0, 1),
+                    "score_location": round(latest_att.score_location or 0.0, 1),
+                    "score_movement": round(latest_att.score_movement or 0.0, 1),
+                    "passed": bool(latest_att.passed),
+                    "tier_level": latest_att.tier_level or 1,
+                    "attempt_number": latest_att.attempt_number or 1,
+                    "attempted_at": str(latest_att.created_at) if latest_att.created_at else None
+                })
+            else:
+                rounds_data.append({
+                    "sign_id": b.sign_id,
+                    "sign_name": b.sign_name,
+                    "score_overall": 0.0,
+                    "score_handshape": 0.0,
+                    "score_palm_orientation": 0.0,
+                    "score_location": 0.0,
+                    "score_movement": 0.0,
+                    "passed": False,
+                    "tier_level": 1,
+                    "attempt_number": 0,
+                    "attempted_at": None
+                })
+    else:
+        for s_id, latest_att in latest_attempt_by_sign.items():
+            name = sign_names.get(s_id, f"Sign {s_id}")
+            rounds_data.append({
+                "sign_id": s_id,
+                "sign_name": name,
+                "score_overall": round(latest_att.score_overall or 0.0, 1),
+                "score_handshape": round(latest_att.score_handshape or 0.0, 1),
+                "score_palm_orientation": round(latest_att.score_palm_orientation or 0.0, 1),
+                "score_location": round(latest_att.score_location or 0.0, 1),
+                "score_movement": round(latest_att.score_movement or 0.0, 1),
+                "passed": bool(latest_att.passed),
+                "tier_level": latest_att.tier_level or 1,
+                "attempt_number": latest_att.attempt_number or 1,
+                "attempted_at": str(latest_att.created_at) if latest_att.created_at else None
+            })
+
     return {
         "student_id": str(student_id),
         "student_name": user.name,
@@ -398,7 +432,8 @@ async def get_student_unit_analytics(
         "parameter_mastery": parameter_mastery,
         "diagnostic_insight": diagnostic_insight,
         "needs_practice": needs_practice,
-        "performance_trend": trend
+        "performance_trend": trend,
+        "rounds": rounds_data
     }
 
 

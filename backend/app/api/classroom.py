@@ -49,6 +49,15 @@ class EducationalVideoCreate(BaseModel):
     thumbnail_url: Optional[str] = None
     created_by: Optional[uuid.UUID] = None
 
+class EducationalVideoUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    grade_level: Optional[int] = None
+    duration_minutes: Optional[int] = None
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+
 # ── Endpoints: Classes ────────────────────────────────────────────────────────
 @router.get("/")
 async def list_classes(teacher_id: Optional[uuid.UUID] = None, db: AsyncSession = Depends(get_db)):
@@ -349,6 +358,47 @@ async def upload_educational_video_file(
         "video_id": str(new_vid.id),
         "title": new_vid.title,
         "video_url": new_vid.video_url
+    }
+
+@videos_router.put("/{video_id}")
+async def update_educational_video(
+    video_id: uuid.UUID,
+    payload: EducationalVideoUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(select(EducationalVideo).where(EducationalVideo.id == video_id))
+    video = res.scalar_one_or_none()
+    if not video:
+        raise HTTPException(status_code=404, detail="Educational video not found")
+
+    if payload.title is not None:
+        video.title = payload.title
+    if payload.description is not None:
+        video.description = payload.description
+    if payload.subject is not None:
+        video.subject = payload.subject
+    if payload.grade_level is not None:
+        video.grade_level = payload.grade_level
+    if payload.duration_minutes is not None:
+        video.duration_minutes = payload.duration_minutes
+    if payload.video_url is not None:
+        video.video_url = payload.video_url
+    if payload.thumbnail_url is not None:
+        video.thumbnail_url = payload.thumbnail_url
+
+    await db.commit()
+    await db.refresh(video)
+    invalidate_educational_videos_cache()
+    return {
+        "status": "updated",
+        "video_id": str(video.id),
+        "title": video.title,
+        "description": video.description,
+        "subject": video.subject,
+        "grade_level": video.grade_level,
+        "duration_minutes": video.duration_minutes,
+        "video_url": video.video_url,
+        "thumbnail_url": video.thumbnail_url
     }
 
 @videos_router.delete("/{video_id}")

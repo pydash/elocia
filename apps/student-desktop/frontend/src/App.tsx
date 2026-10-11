@@ -118,7 +118,7 @@ function App() {
       )}
 
       {currentView === 'practice' && (
-        <Practice onNavigate={setCurrentView} onStartLesson={handleStartLesson} />
+        <Practice onNavigate={setCurrentView} onStartLesson={handleStartLesson} cachedCurriculum={curriculumData} />
       )}
 
       {currentView === 'puzzle-sign' && (
@@ -190,6 +190,17 @@ function App() {
               } catch (e) {
                 console.warn('Could not sync progress on stage complete:', e);
               }
+            }
+
+            // Persist completed stage locally for instantaneous unlock in Review Past Stages
+            try {
+              const currentCompleted: number[] = JSON.parse(localStorage.getItem('elocia_completed_stages') || '[]');
+              if (!currentCompleted.includes(completedStageId)) {
+                currentCompleted.push(completedStageId);
+                localStorage.setItem('elocia_completed_stages', JSON.stringify(currentCompleted));
+              }
+            } catch (e) {
+              console.warn('Failed to update local completed stages:', e);
             }
 
             // Celebrate with the Stage Complete milestone screen

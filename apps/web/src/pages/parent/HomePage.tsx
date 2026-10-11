@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import TopHeaderBar from "@/components/parent/TopHeaderBar";
 import StudentBanner from "@/components/parent/StudentBanner";
+import ParentStageAnalyticsModal from "@/components/parent/ParentStageAnalyticsModal";
 import { useParentDashboard } from "@/hooks/useParentDashboard";
 import {
   Check,
@@ -12,10 +13,26 @@ import {
   Flame,
   ChevronLeft,
   ChevronRight,
+  BarChart2,
 } from "lucide-react";
+
+interface StageGroupedAssignment {
+  stageNum: number;
+  relativeStageNum: number;
+  stageId: number;
+  title: string;
+  signCount: number;
+  avgScore: number;
+  latestDate: string;
+  isFlagged: boolean;
+}
 
 export default function ParentHomePage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [selectedStageForAnalytics, setSelectedStageForAnalytics] = useState<{
+    stageId: number;
+    title: string;
+  } | null>(null);
   const itemsPerPage = 5;
 
   const {
@@ -28,9 +45,74 @@ export default function ParentHomePage() {
     achievements,
     needsPractice,
     scores,
+    sections,
+    activeSectionIndex,
+    setActiveSectionIndex,
     loading,
     error,
   } = useParentDashboard();
+
+  // Group recent assignment scores by stage
+  const stageGroupedScores = useMemo<StageGroupedAssignment[]>(() => {
+    if (!scores || scores.length === 0) return [];
+
+    const map = new Map<number, {
+      stageNum: number;
+      relativeStageNum: number;
+      stageId: number;
+      title: string;
+      scores: number[];
+      dates: string[];
+      hasFlag: boolean;
+    }>();
+
+    scores.forEach((s) => {
+      const stageNum = s.stage_number || s.stage_id || s.stage_id_new || 1;
+      const stageId = s.stage_id || s.stage_id_new || stageNum;
+      const relStage = s.relative_stage_number || stageNum;
+      const secNum = s.section_number || (activeSectionIndex ?? 0) + 1;
+      const unitNum = s.unit_number || 1;
+      const title = s.assignment_name || `Section ${secNum}, Unit ${unitNum}, Stage ${relStage}`;
+      const isFlag = s.tier_level === 4;
+
+      if (!map.has(stageNum)) {
+        map.set(stageNum, {
+          stageNum,
+          relativeStageNum: relStage,
+          stageId,
+          title,
+          scores: [s.score_overall],
+          dates: s.created_at ? [s.created_at] : [],
+          hasFlag: isFlag,
+        });
+      } else {
+        const item = map.get(stageNum)!;
+        item.scores.push(s.score_overall);
+        if (s.created_at) item.dates.push(s.created_at);
+        if (isFlag) item.hasFlag = true;
+      }
+    });
+
+    return Array.from(map.values())
+      .map((item) => {
+        const avg =
+          item.scores.reduce((a, b) => a + b, 0) / (item.scores.length || 1);
+        const sortedDates = item.dates.sort(
+          (a, b) => new Date(b).getTime() - new Date(a).getTime()
+        );
+        return {
+          stageNum: item.stageNum,
+          relativeStageNum: item.relativeStageNum,
+          stageId: item.stageId,
+          title: item.title,
+          signCount: item.scores.length,
+          avgScore: Math.round(avg),
+          latestDate: sortedDates[0] || "",
+          isFlagged: item.hasFlag,
+        };
+      })
+      .sort((a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime());
+  }, [scores, activeSectionIndex]);
 
   if (loading) {
     return (
@@ -61,6 +143,9 @@ export default function ParentHomePage() {
       </div>
     );
   }
+
+  const currentSection = sections[activeSectionIndex];
+  const sectionTitle = currentSection?.title || `Section ${activeSectionIndex + 1}`;
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-16">
@@ -205,9 +290,35 @@ export default function ParentHomePage() {
           {/* Left Column: Learning Path Progress */}
           <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-8">
-              <span className="text-xs font-bold tracking-widest text-[#FF8A00] uppercase">
-                Section 1
-              </span>
+              {/* Section selector with Left / Right arrows */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveSectionIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={activeSectionIndex === 0}
+                  className="p-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title="Previous Section"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="text-xs font-bold tracking-widest text-[#FF8A00] uppercase">
+                  {sectionTitle}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveSectionIndex((prev) =>
+                      Math.min(sections.length - 1, prev + 1)
+                    )
+                  }
+                  disabled={activeSectionIndex >= sections.length - 1}
+                  className="p-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title="Next Section"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+
               <span className="text-sm font-semibold text-gray-600">
                 Learning Path Progress
               </span>
@@ -215,18 +326,28 @@ export default function ParentHomePage() {
 
             {/* Stages Flow */}
             <div className="flex items-center justify-between px-2 sm:px-4 py-6 overflow-x-auto min-w-full">
-              {stagePath.map((stage, idx) => (
-                <div key={stage.stageNumber} className="flex items-center flex-1 min-w-[100px] last:flex-none">
-                    {/* Stage Card */}
+              {stagePath.map((stage, idx) => {
+                const targetStageId = stage.stageId || stage.stageNumber;
+                return (
+                  <div key={stage.stageNumber} className="flex items-center flex-1 min-w-[100px] last:flex-none">
+                    {/* Stage Card - Clickable to open mini window */}
                     <div className="flex flex-col items-center">
-                      <div
-                        className={`flex flex-col items-center justify-center w-24 h-32 rounded-2xl transition-all shadow-sm ${
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStageForAnalytics({
+                            stageId: targetStageId,
+                            title: `Stage ${stage.stageNumber}${stage.subtitle ? ` - ${stage.subtitle}` : ""}`,
+                          });
+                        }}
+                        className={`flex flex-col items-center justify-center w-24 h-32 rounded-2xl transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 focus:outline-none ${
                           stage.status === "completed"
-                            ? "bg-[#E6F9EE] border border-[#A7F3D0] text-[#059669]"
+                            ? "bg-[#E6F9EE] border border-[#A7F3D0] text-[#059669] hover:border-[#059669]"
                             : stage.status === "current"
-                            ? "bg-white border-2 border-[#FF8A00] text-gray-800 shadow-md"
-                            : "bg-white border border-gray-200 text-gray-400"
+                            ? "bg-white border-2 border-[#FF8A00] text-gray-800 shadow-md hover:shadow-lg"
+                            : "bg-white border border-gray-200 text-gray-400 hover:border-gray-300"
                         }`}
+                        title="Click to view round details and performance"
                       >
                         <span className="text-[11px] font-bold tracking-wider uppercase opacity-80">
                           Stage
@@ -260,7 +381,7 @@ export default function ParentHomePage() {
                             <Lock className="size-3.5" />
                           </div>
                         )}
-                      </div>
+                      </button>
                       {/* Subtitle below stage card e.g. Numbers (0-10) */}
                       <span className="text-[11px] font-semibold text-gray-500 mt-2 text-center max-w-[96px] leading-tight">
                         {stage.subtitle || `Stage ${stage.stageNumber}`}
@@ -276,16 +397,17 @@ export default function ParentHomePage() {
                       />
                     )}
                   </div>
-                ))}
-              </div>
-              <div className="h-2" />
+                );
+              })}
             </div>
+            <div className="h-2" />
+          </div>
 
-            {/* Right Column: Achievements Grid Matching Figma */}
-            <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-gray-700">Achievements</h2>
-              </div>
+          {/* Right Column: Achievements Grid Matching Figma */}
+          <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-gray-700">Achievements</h2>
+            </div>
 
             <div className="grid grid-cols-2 gap-4 py-2">
               {achievements.map((badge) => {
@@ -335,72 +457,74 @@ export default function ParentHomePage() {
           </div>
         </div>
 
-        {/* Section: Recent Assignments (Matching User Screenshot exactly) */}
+        {/* Section: Recent Assignments (Grouped by Stage with Analytics Popup) */}
         <section className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-800">Recent Assignments</h2>
+            <div>
+              <h2 className="text-base font-bold text-gray-800">Recent Assignments</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Stages completed by {selectedChild.name}. Click Analytics to view rounds and parameter mastery.
+              </p>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            {scores.length > 0 ? (
+            {stageGroupedScores.length > 0 ? (
               <>
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="text-left border-b border-gray-100">
                       <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                        ASSIGNMENT NAME
+                        STAGE / ASSIGNMENT
                       </th>
                       <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
                         DATE
                       </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        ROUNDS
+                      </th>
                       <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 text-right">
-                        SCORE
+                        AVG SCORE
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 text-right">
+                        ACTION
                       </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {scores
+                    {stageGroupedScores
                       .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                      .map((assignment, index) => {
-                        const isFlagged = !assignment.passed || assignment.tier_level === 4;
-                        const stageNum = assignment.stage_number || assignment.stage_id || assignment.stage_id_new || 1;
-                        const assignmentTitle = assignment.assignment_name || `Section 1, Unit ${assignment.unit_number || 1}`;
-
+                      .map((stageItem) => {
                         return (
                           <tr
-                            key={assignment.id || index}
+                            key={stageItem.stageNum}
                             className="hover:bg-gray-50/60 transition-colors border-b border-gray-50 last:border-b-0"
                           >
-                            {/* Assignment Name Column matching user screenshot */}
+                            {/* Stage & Title Column */}
                             <td className="px-4 py-4.5">
                               <div className="flex items-center gap-3.5">
                                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF4E5] font-extrabold text-sm text-[#FF8A00] shadow-2xs">
-                                  {stageNum}
+                                  {stageItem.relativeStageNum}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-gray-800 text-[15px]">
-                                    {assignmentTitle}
+                                    {stageItem.title}
                                   </span>
-                                  {assignment.sign_name && (
-                                    <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
-                                      Sign "{assignment.sign_name}"
-                                    </span>
-                                  )}
-                                  {isFlagged && (
+                                  {stageItem.isFlagged && (
                                     <span
                                       className="flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 animate-pulse shrink-0"
-                                      title="Tier 4 Flag / Struggling with this sign"
+                                      title="Needs practice / Tier 4 flagged"
                                     />
                                   )}
                                 </div>
                               </div>
                             </td>
 
-                            {/* Date Column: formatted like "Oct 12, 2023" */}
+                            {/* Date Column */}
                             <td className="px-4 py-4.5 font-medium text-gray-400 text-sm">
-                              {assignment.created_at
-                                ? new Date(assignment.created_at).toLocaleDateString("en-US", {
+                              {stageItem.latestDate
+                                ? new Date(stageItem.latestDate).toLocaleDateString("en-US", {
                                     month: "short",
                                     day: "numeric",
                                     year: "numeric",
@@ -408,9 +532,33 @@ export default function ParentHomePage() {
                                 : "Recent"}
                             </td>
 
-                            {/* Score Column: formatted like "75%" */}
+                            {/* Rounds Column */}
+                            <td className="px-4 py-4.5 font-medium text-gray-600 text-sm">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-700">
+                                {stageItem.signCount} {stageItem.signCount === 1 ? "round attempt" : "rounds attempt"}
+                              </span>
+                            </td>
+
+                            {/* Score Column */}
                             <td className="px-4 py-4.5 font-extrabold text-gray-800 text-sm text-right">
-                              {Math.round(assignment.score_overall)}%
+                              {stageItem.avgScore}%
+                            </td>
+
+                            {/* Action Button: Opens Analytics Window */}
+                            <td className="px-4 py-4.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedStageForAnalytics({
+                                    stageId: stageItem.stageId,
+                                    title: stageItem.title,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-orange-200 bg-orange-50 text-xs font-bold text-[#FF8A00] hover:bg-[#FF8A00] hover:text-white transition-all shadow-xs"
+                              >
+                                <BarChart2 className="size-3.5" />
+                                Analytics
+                              </button>
                             </td>
                           </tr>
                         );
@@ -419,7 +567,7 @@ export default function ParentHomePage() {
                 </table>
 
                 {/* Pagination Controls */}
-                {Math.ceil(scores.length / itemsPerPage) > 1 && (
+                {Math.ceil(stageGroupedScores.length / itemsPerPage) > 1 && (
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100 px-2">
                     <span className="text-xs text-gray-500 font-medium">
                       Showing{" "}
@@ -428,10 +576,10 @@ export default function ParentHomePage() {
                       </span>{" "}
                       to{" "}
                       <span className="font-bold text-gray-700">
-                        {Math.min(currentPage * itemsPerPage, scores.length)}
+                        {Math.min(currentPage * itemsPerPage, stageGroupedScores.length)}
                       </span>{" "}
                       of{" "}
-                      <span className="font-bold text-gray-700">{scores.length}</span> assignments
+                      <span className="font-bold text-gray-700">{stageGroupedScores.length}</span> stages
                     </span>
 
                     <div className="flex items-center gap-1.5">
@@ -445,7 +593,7 @@ export default function ParentHomePage() {
                         <ChevronLeft className="size-4" />
                       </button>
 
-                      {Array.from({ length: Math.ceil(scores.length / itemsPerPage) }).map((_, i) => {
+                      {Array.from({ length: Math.ceil(stageGroupedScores.length / itemsPerPage) }).map((_, i) => {
                         const pageNum = i + 1;
                         return (
                           <button
@@ -467,10 +615,10 @@ export default function ParentHomePage() {
                         type="button"
                         onClick={() =>
                           setCurrentPage((p) =>
-                            Math.min(Math.ceil(scores.length / itemsPerPage), p + 1)
+                            Math.min(Math.ceil(stageGroupedScores.length / itemsPerPage), p + 1)
                           )
                         }
-                        disabled={currentPage >= Math.ceil(scores.length / itemsPerPage)}
+                        disabled={currentPage >= Math.ceil(stageGroupedScores.length / itemsPerPage)}
                         className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                         title="Next page"
                       >
@@ -488,6 +636,18 @@ export default function ParentHomePage() {
           </div>
         </section>
       </main>
+
+      {/* Parent Stage Analytics Modal */}
+      {selectedStageForAnalytics && (
+        <ParentStageAnalyticsModal
+          studentId={selectedChild.id}
+          studentName={selectedChild.name}
+          stageId={selectedStageForAnalytics.stageId}
+          stageTitle={selectedStageForAnalytics.title}
+          isOpen={true}
+          onClose={() => setSelectedStageForAnalytics(null)}
+        />
+      )}
     </div>
   );
 }

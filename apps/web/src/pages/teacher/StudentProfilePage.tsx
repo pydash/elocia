@@ -30,6 +30,54 @@ export default function TeacherStudentProfilePage() {
   const itemsPerPage = 5;
   const streakMessage = getStreakMessage(student?.streak || 0);
 
+  // Group attempts by Stage so recent assignments shows stages instead of individual attempted signs
+  const stageGroupedAssignments = (() => {
+    const stageMap: Record<number, {
+      stageNum: number;
+      relativeStageNum: number;
+      title: string;
+      unitNumber: number;
+      scores: number[];
+      latestDate: string;
+      isFlagged: boolean;
+      roundsCount: number;
+    }> = {};
+
+    recentAttempts.forEach((attempt) => {
+      const sNum = attempt.stage_number || attempt.stage_id || attempt.stage_id_new || 1;
+      const relStage = attempt.relative_stage_number || sNum;
+      const secNum = attempt.section_number || 1;
+      const unitNum = attempt.unit_number || 1;
+      const formattedTitle = attempt.assignment_name || `Section ${secNum}, Unit ${unitNum}, Stage ${relStage}`;
+
+      if (!stageMap[sNum]) {
+        stageMap[sNum] = {
+          stageNum: sNum,
+          relativeStageNum: relStage,
+          title: formattedTitle,
+          unitNumber: unitNum,
+          scores: [],
+          latestDate: attempt.created_at || "",
+          isFlagged: false,
+          roundsCount: 0,
+        };
+      }
+      stageMap[sNum].scores.push(attempt.score_overall);
+      stageMap[sNum].roundsCount += 1;
+      if (attempt.tier_level === 4) {
+        stageMap[sNum].isFlagged = true;
+      }
+      if (attempt.created_at && (!stageMap[sNum].latestDate || new Date(attempt.created_at) > new Date(stageMap[sNum].latestDate))) {
+        stageMap[sNum].latestDate = attempt.created_at;
+      }
+    });
+
+    return Object.values(stageMap).map((item) => ({
+      ...item,
+      avgScore: item.scores.length > 0 ? Math.round(item.scores.reduce((a, b) => a + b, 0) / item.scores.length) : 0,
+    })).sort((a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime());
+  })();
+
   useEffect(() => {
     if (id) {
       fetchStudentScores(id)
@@ -228,31 +276,25 @@ export default function TeacherStudentProfilePage() {
                 </thead>
 
                 <tbody>
-                  {recentAttempts
+                  {stageGroupedAssignments
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                    .map((assignment, index) => {
-                      const isFlagged = !assignment.passed || assignment.tier_level === 4;
-                      const stageNum = assignment.stage_number || assignment.stage_id || assignment.stage_id_new || 1;
-                      const assignmentTitle = assignment.assignment_name || `Section 1, Unit ${assignment.unit_number || 1}`;
-
+                    .map((stageGroup, index) => {
                       return (
-                        <tr key={assignment.id || index} className="hover:bg-gray-50/60 transition-colors border-b border-gray-50 last:border-b-0">
-                          {/* Assignment Name Column matching user screenshot */}
+                        <tr key={stageGroup.stageNum || index} className="hover:bg-gray-50/60 transition-colors border-b border-gray-50 last:border-b-0">
+                          {/* Assignment Name Column */}
                           <td className="border-b border-gray-100 px-4 py-4.5">
                             <div className="flex items-center gap-3.5">
                               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF4E5] font-extrabold text-sm text-[#FF8A00] shadow-2xs">
-                                {stageNum}
+                                {stageGroup.relativeStageNum}
                               </span>
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-gray-800 text-[15px]">
-                                  {assignmentTitle}
+                                  {stageGroup.title}
                                 </span>
-                                {assignment.sign_name && (
-                                  <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
-                                    Sign "{assignment.sign_name}"
-                                  </span>
-                                )}
-                                {isFlagged && (
+                                <span className="rounded-lg bg-orange-100/60 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                                  {stageGroup.roundsCount} {stageGroup.roundsCount === 1 ? "round attempt" : "rounds attempt"}
+                                </span>
+                                {stageGroup.isFlagged && (
                                   <span
                                     className="flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 animate-pulse"
                                     title="Flagged (Tier 4 / Needs Focus)"
@@ -264,8 +306,8 @@ export default function TeacherStudentProfilePage() {
 
                           {/* Date Column: formatted like "Oct 12, 2023" */}
                           <td className="border-b border-gray-100 px-4 py-4.5 font-medium text-gray-400 text-sm">
-                            {assignment.created_at
-                              ? new Date(assignment.created_at).toLocaleDateString(
+                            {stageGroup.latestDate
+                              ? new Date(stageGroup.latestDate).toLocaleDateString(
                                   "en-US",
                                   {
                                     month: "short",
@@ -278,7 +320,7 @@ export default function TeacherStudentProfilePage() {
 
                           {/* Score Column: formatted like "75%" */}
                           <td className="border-b border-gray-100 px-4 py-4.5 font-extrabold text-gray-800 text-sm">
-                            {Math.round(assignment.score_overall)}%
+                            {stageGroup.avgScore}%
                           </td>
 
                           {/* Actions: Analytics button */}
@@ -286,7 +328,7 @@ export default function TeacherStudentProfilePage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedStageId(stageNum);
+                                setSelectedStageId(stageGroup.stageNum);
                                 setIsAnalyticsOpen(true);
                               }}
                               className="inline-flex items-center gap-1 rounded-xl bg-orange-50 px-3 py-1.5 text-xs font-bold text-[#FF8A00] border border-orange-200 hover:bg-[#FF8A00] hover:text-white transition-all shadow-2xs cursor-pointer"
@@ -301,7 +343,7 @@ export default function TeacherStudentProfilePage() {
               </table>
 
               {/* Pagination Controls */}
-              {Math.ceil(recentAttempts.length / itemsPerPage) > 1 && (
+              {Math.ceil(stageGroupedAssignments.length / itemsPerPage) > 1 && (
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100 px-2">
                   <span className="text-xs text-gray-500 font-medium">
                     Showing{" "}
@@ -310,10 +352,10 @@ export default function TeacherStudentProfilePage() {
                     </span>{" "}
                     to{" "}
                     <span className="font-bold text-gray-700">
-                      {Math.min(currentPage * itemsPerPage, recentAttempts.length)}
+                      {Math.min(currentPage * itemsPerPage, stageGroupedAssignments.length)}
                     </span>{" "}
                     of{" "}
-                    <span className="font-bold text-gray-700">{recentAttempts.length}</span> assignments
+                    <span className="font-bold text-gray-700">{stageGroupedAssignments.length}</span> stages
                   </span>
 
                   <div className="flex items-center gap-1.5">
@@ -327,7 +369,7 @@ export default function TeacherStudentProfilePage() {
                       <ChevronLeft className="size-4" />
                     </button>
 
-                    {Array.from({ length: Math.ceil(recentAttempts.length / itemsPerPage) }).map((_, i) => {
+                    {Array.from({ length: Math.ceil(stageGroupedAssignments.length / itemsPerPage) }).map((_, i) => {
                       const pageNum = i + 1;
                       return (
                         <button
@@ -349,10 +391,10 @@ export default function TeacherStudentProfilePage() {
                       type="button"
                       onClick={() =>
                         setCurrentPage((p) =>
-                          Math.min(Math.ceil(recentAttempts.length / itemsPerPage), p + 1)
+                          Math.min(Math.ceil(stageGroupedAssignments.length / itemsPerPage), p + 1)
                         )
                       }
-                      disabled={currentPage >= Math.ceil(recentAttempts.length / itemsPerPage)}
+                      disabled={currentPage >= Math.ceil(stageGroupedAssignments.length / itemsPerPage)}
                       className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       title="Next page"
                     >

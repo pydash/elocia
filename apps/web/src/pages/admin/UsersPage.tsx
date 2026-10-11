@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import {
   fetchAllUsers,
-  deactivateUserAccount,
   deleteUserPermanently,
   reactivateUserAccount,
   type AdminUser,
@@ -51,36 +50,6 @@ export default function AdminUsersPage() {
   useEffect(() => {
     loadUsers();
   }, []);
-
-  const handleDeactivate = async (user: AdminUser) => {
-    if (user.role === "admin") {
-      alert("Admin accounts are permanently protected and cannot be deactivated.");
-      return;
-    }
-
-    const confirm = window.confirm(
-      `Are you sure you want to deactivate account for ${user.name}? They will be unable to log in, but their historical records will be preserved.`
-    );
-    if (!confirm) return;
-
-    // Optimistic UI update: instantly turn off active status locally
-    setUsers((prev) =>
-      prev.map((u) => (u.id === user.id ? { ...u, is_active: false } : u))
-    );
-    setActionMessage(`Account for ${user.name} has been deactivated.`);
-    setTimeout(() => setActionMessage(null), 4000);
-
-    try {
-      await deactivateUserAccount(user.id);
-    } catch (err) {
-      console.error("Error deactivating user:", err);
-      alert("Failed to deactivate user.");
-      // Rollback
-      setUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, is_active: true } : u))
-      );
-    }
-  };
 
   const handleDeletePermanent = async (user: AdminUser) => {
     if (user.role === "admin") {
@@ -166,7 +135,7 @@ export default function AdminUsersPage() {
       return matchName || matchUsername || matchCode;
     }
     return true;
-  });
+  }).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 
   return (
     <div className="space-y-6">
@@ -459,16 +428,8 @@ export default function AdminUsersPage() {
                       </button>
 
                       {user.role !== "admin" && (
-                        user.is_active ? (
-                          <button
-                            onClick={() => handleDeactivate(user)}
-                            title="Deactivate account"
-                            className="text-gray-400 hover:text-amber-600 p-1.5 rounded-md hover:bg-amber-50 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          {!user.is_active && (
                             <button
                               onClick={() => handleReactivate(user)}
                               title="Reactivate account"
@@ -477,15 +438,15 @@ export default function AdminUsersPage() {
                               <RotateCcw className="size-3.5" />
                               <span>Reactivate</span>
                             </button>
-                            <button
-                              onClick={() => setSelectedUserForDelete(user)}
-                              title="Delete permanently"
-                              className="text-gray-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          </div>
-                        )
+                          )}
+                          <button
+                            onClick={() => setSelectedUserForDelete(user)}
+                            title="Delete permanently"
+                            className="text-gray-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

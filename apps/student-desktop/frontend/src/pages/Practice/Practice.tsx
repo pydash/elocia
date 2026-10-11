@@ -15,17 +15,46 @@ const viewAllBtnImg = '/images/View all Button.png';
 interface PracticeProps {
   onNavigate: (view: 'navigation' | 'setup' | 'evaluation' | 'profile' | 'help' | 'settings' | 'achievements' | 'practice' | 'puzzle-sign' | 'see-it-sign-it' | 'magic-fingers') => void;
   onStartLesson?: (stageId: number, practiceMode?: boolean, drillSigns?: string[] | null) => void;
+  cachedCurriculum?: Section[];
 }
 
-export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
+export default function Practice({ onNavigate, onStartLesson, cachedCurriculum }: PracticeProps) {
   const [educationalVideos, setEducationalVideos] = useState<EducationalVideoItem[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<EducationalVideoItem | null>(null);
   const [showAllVideos, setShowAllVideos] = useState<boolean>(false);
   const [showAllPractice, setShowAllPractice] = useState<boolean>(false);
   const [videoError, setVideoError] = useState<boolean>(false);
-  const [curriculumData, setCurriculumData] = useState<Section[]>(CURRICULUM);
-  const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(null);
-  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
+
+  // Instant optimistic cache for curriculum
+  const [curriculumData, setCurriculumData] = useState<Section[]>(() => {
+    if (cachedCurriculum && cachedCurriculum.length > 0) return cachedCurriculum;
+    try {
+      const stored = localStorage.getItem('elocia_cached_curriculum');
+      return stored ? JSON.parse(stored) : CURRICULUM;
+    } catch {
+      return CURRICULUM;
+    }
+  });
+
+  // Instant optimistic cache for student progress
+  const [studentProgress, setStudentProgress] = useState<StudentProgress | null>(() => {
+    try {
+      const stored = localStorage.getItem('elocia_cached_progress');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('elocia_cached_needs_practice');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [reviewPages, setReviewPages] = useState<Record<string, number>>({});
 
   const getEmbedUrl = (url: string) => {
@@ -53,25 +82,31 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
       }
     }
 
-    // 2. Load dynamic curriculum for this student's grade
+    // 2. Load dynamic curriculum in background & cache
     fetchCurriculum(studentGrade).then(sections => {
-      if (sections) {
+      if (sections && sections.length > 0) {
         setCurriculumData(sections);
+        try {
+          localStorage.setItem('elocia_cached_curriculum', JSON.stringify(sections));
+        } catch {}
       }
     });
 
-    // 3. Load educational videos from backend for this student's grade
+    // 3. Load educational videos in background
     fetchEducationalVideos(studentGrade).then(videos => {
       if (videos) {
         setEducationalVideos(videos);
       }
     });
 
-    // 4. Load student progress, needs practice items & focus drill
+    // 4. Load student progress & needs practice in background
     if (studentId) {
       fetchStudentProgress(studentId).then((prog) => {
         if (prog) {
           setStudentProgress(prog);
+          try {
+            localStorage.setItem('elocia_cached_progress', JSON.stringify(prog));
+          } catch {}
         }
       });
       fetchNeedsPractice(studentId).then((items) => {
@@ -79,6 +114,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
           const finishedSigns: string[] = JSON.parse(localStorage.getItem('elocia_finished_drills') || '[]');
           const filtered = (items || []).filter(it => !finishedSigns.includes(it.sign));
           setPracticeItems(filtered);
+          localStorage.setItem('elocia_cached_needs_practice', JSON.stringify(filtered));
         } catch {
           setPracticeItems(items || []);
         }
@@ -145,7 +181,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                 ))
               ) : (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', width: '100%', borderRadius: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', fontSize: '14px', fontWeight: 500 }}>
-                  🎉 Great job! No signs currently flagged for extra practice. Keep up the good work!
+                  ✨ All caught up! Focus drills assigned by your teacher will appear here.
                 </div>
               )}
             </div>
@@ -204,22 +240,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                         <span className="grade-badge">Grade {video.grade_level}</span>
                         <h3 className="video-title">{video.title}</h3>
                         <p className="video-desc">{video.description || `Learn ${video.subject} concepts with Filipino Sign Language.`}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Fill out to 4 slots so layout never stretches single cards awkwardly */}
-                  {Array.from({ length: Math.max(0, 4 - Math.min(educationalVideos.length, 4)) }).map((_, idx) => (
-                    <div key={`slot-placeholder-${idx}`} className="video-card placeholder-card">
-                      <div className="video-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '32px' }}>
-                        🎬
-                      </div>
-                      <div className="video-info" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b' }}>
-                          Coming Soon
-                        </span>
-                        <p style={{ fontSize: '11px', color: '#94a3b8', margin: '4px 0 0 0' }}>
-                          More lesson videos will appear here
-                        </p>
                       </div>
                     </div>
                   ))}
@@ -297,7 +317,6 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   const totalPages = Math.ceil(stages.length / itemsPerPage);
                   const startIndex = currentPage * itemsPerPage;
                   const visibleStages = stages.slice(startIndex, startIndex + itemsPerPage);
-                  const unlockedList = studentProgress?.unlocked_stages || [1];
 
                   const handlePrev = () => {
                     setReviewPages(prev => ({
@@ -338,10 +357,24 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
 
                           {visibleStages.map((stage) => {
                             const originalStageIdx = stages.findIndex(s => s.id === stage.id);
-                            const isLocked = !unlockedList.includes(stage.id);
-                            const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
-                            const isCompleted = !!(stageInfo && stageInfo.passed);
-                            const cardStateClass = isLocked ? 'locked-card' : (isCompleted ? 'completed-card' : 'active-card');
+                            const stageSeqNum = originalStageIdx + 1;
+                            const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id || s.stage_id === stageSeqNum);
+                            
+                            // Check local completed stages cache as immediate optimistic fallback
+                            const localCompleted: number[] = (() => {
+                              try {
+                                return JSON.parse(localStorage.getItem('elocia_completed_stages') || '[]');
+                              } catch {
+                                return [];
+                              }
+                            })();
+
+                            const isCompleted = !!(stageInfo && stageInfo.passed) || 
+                                                localCompleted.includes(stage.id) || 
+                                                localCompleted.includes(stageSeqNum);
+                            // Review past stage must ONLY be playable after completing the main activity from learn
+                            const isLocked = !isCompleted;
+                            const cardStateClass = isLocked ? 'locked-card' : 'completed-card';
                             const xpPoints = (stage.items?.length || 1) * 10;
 
                             return (
@@ -368,7 +401,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                                 }}
                                 role="button"
                                 tabIndex={isLocked ? -1 : 0}
-                                title={isLocked ? 'Locked stage' : `Practice ${stage.title}`}
+                                title={isLocked ? 'Complete this stage in Learn mode first to review it here!' : `Practice ${stage.title}`}
                               >
                                 {isLocked ? (
                                   <>
@@ -784,7 +817,7 @@ export default function Practice({ onNavigate, onStartLesson }: PracticeProps) {
                   Keep Practicing (All Signs)
                 </h1>
                 <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#4a4a4a' }}>
-                  Signs you struggled with or recommended for mastery drill ({practiceItems.length} signs)
+                  Targeted signs assigned by your teacher ({practiceItems.length} signs)
                 </p>
               </div>
             </div>

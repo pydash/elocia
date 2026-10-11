@@ -300,21 +300,59 @@ async def get_student_scores(student_id: str, db: AsyncSession = Depends(get_db)
         .order_by(EvaluationAttempt.created_at.desc())
     )
     attempts = result.all()
-    return [
-        {
+
+    # Pre-calculate relative stage index per section for clean human-friendly labeling:
+    # E.g. Section 1 -> Stages 1, 2, 3, 4
+    #      Section 2 -> Stages 1, 2
+    #      Section 3 -> Stages 1, 2, 3, 4
+    stages_order_res = await db.execute(
+        select(CurriculumStage.id, CurriculumStage.stage_number, CurriculumSection.section_number)
+        .join(CurriculumUnit, CurriculumStage.unit_id == CurriculumUnit.id)
+        .join(CurriculumSection, CurriculumUnit.section_id == CurriculumSection.id)
+        .order_by(CurriculumSection.section_number.asc(), CurriculumStage.stage_number.asc())
+    )
+    all_stages = stages_order_res.all()
+    relative_stage_map: dict = {}
+    sec_counters: dict = {}
+    for st_id, st_global_num, s_num in all_stages:
+        sec_counters[s_num] = sec_counters.get(s_num, 0) + 1
+        rel_num = sec_counters[s_num]
+        relative_stage_map[st_id] = rel_num
+        relative_stage_map[f"g_{st_global_num}"] = rel_num
+
+    response_items = []
+    for a, sign_name, stage_num, stage_title, unit_num, unit_title, sec_num, sec_title in attempts:
+        effective_sec = sec_num or 1
+        effective_unit = unit_num or 1
+        
+        # Determine relative stage number within section
+        rel_stage = None
+        if a.stage_id_new and a.stage_id_new in relative_stage_map:
+            rel_stage = relative_stage_map[a.stage_id_new]
+        elif stage_num and f"g_{stage_num}" in relative_stage_map:
+            rel_stage = relative_stage_map[f"g_{stage_num}"]
+        elif a.stage_id and f"g_{a.stage_id}" in relative_stage_map:
+            rel_stage = relative_stage_map[f"g_{a.stage_id}"]
+        else:
+            rel_stage = stage_num or a.stage_id or 1
+
+        assignment_name = f"Section {effective_sec}, Unit {effective_unit}, Stage {rel_stage}"
+
+        response_items.append({
             "id": str(a.id),
             "activity_type": a.activity_type,
             "stage_id": stage_num or a.stage_id or 1,
+            "relative_stage_number": rel_stage,
             "sign_id": a.sign_id,
             "sign_name": sign_name,
             "stage_id_new": a.stage_id_new,
             "stage_number": stage_num or 1,
             "stage_title": stage_title,
-            "unit_number": unit_num or 1,
+            "unit_number": effective_unit,
             "unit_title": unit_title,
-            "section_number": sec_num or 1,
+            "section_number": effective_sec,
             "section_title": sec_title,
-            "assignment_name": f"Section {sec_num or 1}, Unit {unit_num or 1}",
+            "assignment_name": assignment_name,
             "score_overall": a.score_overall,
             "score_handshape": a.score_handshape,
             "score_palm_orientation": a.score_palm_orientation,
@@ -325,6 +363,6 @@ async def get_student_scores(student_id: str, db: AsyncSession = Depends(get_db)
             "streak": a.streak,
             "xp_earned": a.xp_earned,
             "created_at": str(a.created_at)
-        }
-        for a, sign_name, stage_num, stage_title, unit_num, unit_title, sec_num, sec_title in attempts
-    ]
+        })
+
+    return response_items

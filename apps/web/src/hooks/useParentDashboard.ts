@@ -43,11 +43,14 @@ export function useParentDashboard() {
     streak: 0,
   });
 
+  const [rawCurriculum, setRawCurriculum] = useState<any>(null);
+  const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
+
   const [stagePath, setStagePath] = useState<StagePathItem[]>([
-    { stageNumber: 1, title: "Stage 1", status: "current", progressPercentage: 0 },
-    { stageNumber: 2, title: "Stage 2", status: "locked" },
-    { stageNumber: 3, title: "Stage 3", status: "locked" },
-    { stageNumber: 4, title: "Stage 4", status: "locked" },
+    { stageId: 1, stageNumber: 1, title: "Stage 1", status: "current", progressPercentage: 0 },
+    { stageId: 2, stageNumber: 2, title: "Stage 2", status: "locked" },
+    { stageId: 3, stageNumber: 3, title: "Stage 3", status: "locked" },
+    { stageId: 4, stageNumber: 4, title: "Stage 4", status: "locked" },
   ]);
 
   const [parameterMastery, setParameterMastery] = useState<ParameterMasteryItem[]>([
@@ -99,9 +102,11 @@ export function useParentDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   // 1. Initial Load: Fetch Parent's Children
-  const loadParentChildren = useCallback(async () => {
+  const loadParentChildren = useCallback(async (isSilent: boolean = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError(null);
       const token = tokenManager.getAccessToken();
       const parentId = token ? getIdFromToken(token) : null;
@@ -120,23 +125,26 @@ export function useParentDashboard() {
       console.error("Error loading parent children:", err);
       setError(err?.message || "Failed to load children");
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    loadParentChildren();
+    // Initial fetch (shows initial loader)
+    loadParentChildren(false);
 
-    // Auto-refresh when tab gains focus so Admin changes appear immediately
+    // Auto-refresh silently when tab gains focus so Admin changes appear immediately without locking the screen
     const onFocus = () => {
-      loadParentChildren();
+      loadParentChildren(true);
     };
     window.addEventListener("focus", onFocus);
 
-    // Light background poll every 15 seconds to keep data synchronized
+    // Silent background poll every 30 seconds
     const interval = setInterval(() => {
-      loadParentChildren();
-    }, 15000);
+      loadParentChildren(true);
+    }, 30000);
 
     return () => {
       window.removeEventListener("focus", onFocus);
@@ -295,8 +303,11 @@ export function useParentDashboard() {
           ]);
         }
 
+        setRawCurriculum(curriculumData);
+
         // Live Stage Path Status with Titles & Subtitles matching Figma
-        const stagesList = (curriculumData?.sections?.[0]?.units?.[0]?.stages) || [];
+        const currentSec = curriculumData?.sections?.[activeSectionIndex] || curriculumData?.sections?.[0];
+        const stagesList = (currentSec?.units?.[0]?.stages) || (curriculumData?.sections?.[0]?.units?.[0]?.stages) || [];
 
         const defaultSubtitles = [
           "Numbers (0-10)",
@@ -305,19 +316,22 @@ export function useParentDashboard() {
           "Numbers (31-40)"
         ];
 
-        setStagePath([1, 2, 3, 4].map((sNum, sIdx) => {
+        const targetCount = stagesList.length > 0 ? stagesList.length : 4;
+        setStagePath(Array.from({ length: targetCount }).map((_, sIdx) => {
+          const sNum = sIdx + 1;
           const dynStage = stagesList[sIdx];
           const dynStageId = dynStage?.id ?? sNum;
           
           // Check if passed/unlocked by stage_number or database ID
           const isPassed = officialPassedStages.has(sNum) || officialPassedStages.has(dynStageId);
-          const isUnlocked = officialUnlockedStages.has(sNum) || officialUnlockedStages.has(dynStageId) || (sNum === 1);
+          const isUnlocked = officialUnlockedStages.has(sNum) || officialUnlockedStages.has(dynStageId) || (sNum === 1 && activeSectionIndex === 0);
           const isCurrent = !isPassed && isUnlocked;
 
           const title = dynStage?.title || `Stage ${sNum}`;
           const subtitle = dynStage?.description || defaultSubtitles[sIdx] || `Numbers (${(sNum-1)*10+1}-${sNum*10})`;
 
           return {
+            stageId: dynStageId,
             stageNumber: sNum,
             title,
             subtitle,
@@ -375,7 +389,9 @@ export function useParentDashboard() {
     return () => {
       isMounted = false;
     };
-  }, [selectedChild]);
+  }, [selectedChild, activeSectionIndex]);
+
+  const sections = rawCurriculum?.sections || [];
 
   return {
     parentName,
@@ -390,6 +406,9 @@ export function useParentDashboard() {
     performanceTrend,
     needsPractice,
     achievements,
+    sections,
+    activeSectionIndex,
+    setActiveSectionIndex,
     loading,
     error,
     refetch: loadParentChildren,

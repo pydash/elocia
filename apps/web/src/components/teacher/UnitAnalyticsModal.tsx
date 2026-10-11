@@ -31,6 +31,20 @@ interface TrendItem {
   is_upcoming?: boolean;
 }
 
+interface RoundItem {
+  sign_id: number;
+  sign_name: string;
+  score_overall: number;
+  score_handshape: number;
+  score_palm_orientation: number;
+  score_location: number;
+  score_movement: number;
+  passed: boolean;
+  tier_level?: number;
+  attempt_number?: number;
+  attempted_at?: string | null;
+}
+
 export default function UnitAnalyticsModal({
   studentId,
   studentName,
@@ -43,6 +57,8 @@ export default function UnitAnalyticsModal({
   const [insight, setInsight] = useState<string>("");
   const [needsPractice, setNeedsPractice] = useState<NeedsPracticeItem[]>([]);
   const [trend, setTrend] = useState<TrendItem[]>([]);
+  const [rounds, setRounds] = useState<RoundItem[]>([]);
+  const [selectedRound, setSelectedRound] = useState<RoundItem | null>(null);
   const [overallScore, setOverallScore] = useState<number>(78);
   const [drillSuccess, setDrillSuccess] = useState<boolean>(false);
   const [isCreatingDrill, setIsCreatingDrill] = useState<boolean>(false);
@@ -52,6 +68,7 @@ export default function UnitAnalyticsModal({
 
     setLoading(true);
     setDrillSuccess(false);
+    setSelectedRound(null);
 
     fetch(`http://localhost:8000/analytics/students/${studentId}/unit-analytics?stage_id=${stageId}`)
       .then((res) => {
@@ -64,6 +81,7 @@ export default function UnitAnalyticsModal({
         setNeedsPractice(data.needs_practice || []);
         setTrend(data.performance_trend || []);
         setOverallScore(data.overall_score || 78);
+        setRounds(data.rounds || []);
       })
       .catch((err) => {
         console.warn("Using fallback analytics data:", err);
@@ -84,6 +102,13 @@ export default function UnitAnalyticsModal({
           { label: "Week 2", score: 68 },
           { label: "Week 3", score: 74 },
           { label: "Current", score: 82, is_current: true },
+        ]);
+        setRounds([
+          { sign_id: 1, sign_name: "1", score_overall: 85, score_handshape: 90, score_palm_orientation: 82, score_location: 84, score_movement: 85, passed: true },
+          { sign_id: 2, sign_name: "2", score_overall: 58, score_handshape: 75, score_palm_orientation: 55, score_location: 60, score_movement: 62, passed: false },
+          { sign_id: 3, sign_name: "3", score_overall: 92, score_handshape: 95, score_palm_orientation: 90, score_location: 92, score_movement: 91, passed: true },
+          { sign_id: 4, sign_name: "4", score_overall: 88, score_handshape: 89, score_palm_orientation: 88, score_location: 86, score_movement: 89, passed: true },
+          { sign_id: 5, sign_name: "5", score_overall: 52, score_handshape: 60, score_palm_orientation: 52, score_location: 50, score_movement: 55, passed: false }
         ]);
       })
       .finally(() => setLoading(false));
@@ -187,20 +212,109 @@ export default function UnitAnalyticsModal({
                 </div>
               )}
 
+              {/* Rounds Content Section - Click a round to inspect parameter mastery */}
+              <div className="rounded-3xl border-2 border-gray-100 bg-white p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-extrabold text-gray-900 tracking-tight">
+                      Stage Rounds & Attempts
+                    </span>
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
+                      {rounds.length} {rounds.length === 1 ? "Round" : "Rounds"}
+                    </span>
+                  </div>
+                  {selectedRound && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRound(null)}
+                      className="text-xs font-bold text-orange-600 hover:text-orange-700 underline cursor-pointer"
+                    >
+                      Show Stage Average
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Click on any round sign below to inspect its individual 4-parameter mastery breakdown.
+                </p>
+
+                {rounds.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-1">
+                    {rounds.map((r) => {
+                      const isSelected = selectedRound?.sign_id === r.sign_id;
+                      const isAttempted = r.score_overall > 0 || r.passed;
+
+                      return (
+                        <button
+                          key={r.sign_id}
+                          type="button"
+                          onClick={() => setSelectedRound(isSelected ? null : r)}
+                          className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer text-center ${
+                            isSelected
+                              ? "border-[#FF8A00] bg-orange-50/80 shadow-sm scale-102 ring-2 ring-orange-200"
+                              : isAttempted
+                              ? r.passed
+                                ? "border-emerald-200 bg-emerald-50/40 hover:border-emerald-300"
+                                : "border-rose-200 bg-rose-50/40 hover:border-rose-300"
+                              : "border-gray-200 bg-gray-50/50 hover:border-gray-300"
+                          }`}
+                        >
+                          <span className="text-lg font-black text-gray-800">
+                            {r.sign_name}
+                          </span>
+                          <span className="text-[11px] font-bold mt-0.5 text-gray-500">
+                            Sign "{r.sign_name}"
+                          </span>
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                                isAttempted
+                                  ? r.passed
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-rose-100 text-rose-700"
+                                  : "bg-gray-100 text-gray-400"
+                              }`}
+                            >
+                              {isAttempted ? `${Math.round(r.score_overall)}%` : "Not attempted"}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 py-3 text-center">No rounds registered for this stage.</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
                 {/* 1. Parameter Mastery */}
                 <div className="rounded-3xl border-2 border-gray-100 bg-white p-4 sm:p-5 shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-extrabold text-gray-900 tracking-tight">
-                      Parameter Mastery
-                    </h3>
+                    <div>
+                      <h3 className="text-base font-extrabold text-gray-900 tracking-tight">
+                        Parameter Mastery
+                      </h3>
+                      {selectedRound && (
+                        <p className="text-[11px] font-semibold text-orange-600 mt-0.5">
+                          Viewing metrics for: Round "{selectedRound.sign_name}"
+                        </p>
+                      )}
+                    </div>
                     <span className="text-xs font-bold text-gray-400">
-                      Overall: {overallScore}%
+                      Overall: {selectedRound ? Math.round(selectedRound.score_overall) : overallScore}%
                     </span>
                   </div>
 
                   <div className="space-y-4 pt-1">
-                    {parameters.map((param) => {
+                    {(selectedRound
+                      ? [
+                          { name: "Handshape", key: "handshape", score: selectedRound.score_handshape },
+                          { name: "Palm Orientation", key: "palm_orientation", score: selectedRound.score_palm_orientation },
+                          { name: "Location", key: "location", score: selectedRound.score_location },
+                          { name: "Movement", key: "movement", score: selectedRound.score_movement },
+                        ]
+                      : parameters
+                    ).map((param) => {
                       const colorClass =
                         param.score >= 80
                           ? "bg-emerald-500"
@@ -213,7 +327,7 @@ export default function UnitAnalyticsModal({
                           <div className="flex items-center justify-between text-xs font-bold text-gray-700">
                             <span>{param.name}</span>
                             <span className="rounded-full bg-gray-100 px-2 py-0.5 font-extrabold text-gray-800">
-                              {param.score}%
+                              {Math.round(param.score)}%
                             </span>
                           </div>
                           <div className="h-3 w-full rounded-full bg-gray-100 overflow-hidden">

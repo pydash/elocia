@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useGetLessonLibrary } from "@/hooks/useLessonLibrary";
 
 import TopNavbar from "@/components/teacher/TopHeaderBar";
-import LessonCard from "@/components/teacher/LessonCard";
 import Input from "@/components/Input";
 import MiniGameCard from "@/components/teacher/MiniGameCard";
 import CurriculumCard from "@/components/teacher/CurriculumCard";
@@ -12,8 +11,11 @@ import ErrorState from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
 import Separator from "@/components/Separator";
 import EmptyState from "@/components/EmptyState";
+import EducationalVideoCard from "@/components/teacher/EducationalVideoCard";
+import Button from "@/components/Button";
+import { Link } from "react-router-dom";
 
-import { Search } from "lucide-react";
+import { Search, Video, Plus } from "lucide-react";
 
 import type { Curriculum } from "@/interfaces/curriculum.interface";
 import type { EducationalVideo } from "@/interfaces/educational-video.interface";
@@ -95,7 +97,15 @@ export default function TeacherLessonsPage() {
               aria-label="Search curriculum, videos, or mini games"
               className="w-full sm:w-auto"
             />
-            <AddCurriculumDialog onCreated={refresh} />
+            <div className="flex items-center gap-2">
+              <AddCurriculumDialog onCreated={refresh} />
+              <Link to="/teacher/tasks/upload/step-1">
+                <Button type="button" className="gap-2 bg-orange-500 hover:bg-orange-600 text-white cursor-pointer">
+                  <Video className="size-4" />
+                  <span>Upload Video</span>
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -118,13 +128,21 @@ export default function TeacherLessonsPage() {
 
         {/* Video Content */}
         <div className="mt-12">
-          <div className="flex flex-col gap-3">
-            <h2 className="heading-3 text-(--black)">Educational Videos</h2>
-            <div className="h-1 w-36 bg-(--primary) rounded-full" />
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3">
+              <h2 className="heading-3 text-(--black)">Educational Videos</h2>
+              <div className="h-1 w-36 bg-(--primary) rounded-full" />
+            </div>
+            <Link to="/teacher/tasks/upload/step-1">
+              <Button type="button" className="gap-2 bg-orange-500 hover:bg-orange-600 text-white cursor-pointer">
+                <Plus className="size-4" />
+                <span>Add Video</span>
+              </Button>
+            </Link>
           </div>
           <div className="mt-4">
             {filteredVideos.length ? (
-              <EducationalVideoCardList videos={filteredVideos} />
+              <EducationalVideoCardList videos={filteredVideos} onRefresh={refresh} />
             ) : (
               <EmptyState title="No Educational Videos Found" />
             )}
@@ -165,19 +183,20 @@ function CurriculumCardList({ curriculums }: { curriculums: Curriculum[] }) {
   );
 }
 
-function EducationalVideoCardList({ videos }: { videos: EducationalVideo[] }) {
+function EducationalVideoCardList({
+  videos,
+  onRefresh,
+}: {
+  videos: EducationalVideo[];
+  onRefresh?: () => void;
+}) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {videos.map((video) => (
-        <LessonCard
+        <EducationalVideoCard
           key={video.id}
-          id={video.id}
-          imageUrl={video.thumbnailUrl || "/path/to/image.jpg"}
-          title={video.title}
-          description={video.description || "Video description"}
-          status="published"
-          onEdit={() => {}}
-          onToggleVisibility={() => {}}
+          video={video}
+          onRefresh={onRefresh}
         />
       ))}
     </div>

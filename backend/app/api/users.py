@@ -138,10 +138,14 @@ async def get_students(
     )
     result = await db.execute(query)
     rows = result.all()
-    # Query student IDs that have active Tier 4 or unpassed attempts
+    # Query student IDs that have active Tier 4 attempts in official evaluations.
+    # Low score (e.g. 60%) or failed attempts do NOT trigger the red dot unless the student actually reaches Tier 4!
     tier4_res = await db.execute(
         select(EvaluationAttempt.student_id)
-        .where((EvaluationAttempt.tier_level == 4) | (EvaluationAttempt.passed == False))
+        .where(
+            EvaluationAttempt.activity_type == "evaluation",
+            EvaluationAttempt.tier_level == 4
+        )
         .distinct()
     )
     flagged_student_ids = {str(sid) for (sid,) in tier4_res.all()}
@@ -684,7 +688,7 @@ async def delete_user_permanently(user_id: uuid.UUID, db: AsyncSession = Depends
     
     try:
         # Clean up foreign keys that don't cascade automatically
-        # 1. Nullify created_by references in educational videos, baselines, minigame configs
+        # 1. Nullify created_by references in educational videos and baselines
         await db.execute(
             EducationalVideo.__table__.update()
             .where(EducationalVideo.created_by == user_id)
@@ -693,11 +697,6 @@ async def delete_user_permanently(user_id: uuid.UUID, db: AsyncSession = Depends
         await db.execute(
             FSLBaseline.__table__.update()
             .where(FSLBaseline.created_by == user_id)
-            .values(created_by=None)
-        )
-        await db.execute(
-            MiniGameConfig.__table__.update()
-            .where(MiniGameConfig.created_by == user_id)
             .values(created_by=None)
         )
 

@@ -1,4 +1,16 @@
-export const API_BASE = 'http://127.0.0.1:8000';
+function getApiBase(): string {
+  const custom = typeof window !== 'undefined' ? localStorage.getItem('elocia_api_host') : null;
+  if (custom && custom.trim()) {
+    return custom.trim().replace(/\/+$/, '');
+  }
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+  return 'http://127.0.0.1:8000';
+}
+
+export const API_BASE = getApiBase();
 
 /**
  * Normalizes image and video URLs returned by the backend.

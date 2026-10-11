@@ -43,6 +43,7 @@ export interface EvaluationAttemptItem {
   sign_id?: number | null;
   sign_name?: string | null;
   stage_number?: number | null;
+  relative_stage_number?: number | null;
   stage_title?: string | null;
   unit_number?: number | null;
   unit_title?: string | null;
@@ -73,6 +74,7 @@ export interface PerformanceTrendItem {
 }
 
 export interface StagePathItem {
+  stageId?: number;
   stageNumber: number;
   title: string;
   subtitle?: string;

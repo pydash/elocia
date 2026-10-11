@@ -62,6 +62,39 @@ export async function fetchEducationalVideos(): Promise<EducationalVideo[]> {
   }));
 }
 
+export async function updateEducationalVideo(
+  videoId: string,
+  payload: Partial<CreateEducationalVideoPayload>
+): Promise<EducationalVideo> {
+  const response = await fetch(`${API_BASE_URL}/educational-videos/${videoId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to update educational video");
+  }
+
+  return response.json();
+}
+
+export async function deleteEducationalVideo(videoId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/educational-videos/${videoId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to delete educational video");
+  }
+
+  return response.json();
+}
+
 export async function uploadEducationalVideoFile(
   payload: {
     title: string;

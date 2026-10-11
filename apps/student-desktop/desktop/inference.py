@@ -129,13 +129,14 @@ def calculate_handshape_score(student_seq, baseline_seq):
 
 def _get_palm_normal_for_hand(frame, hand_key="hand"):
     """
-    Computes true anatomical palmar normal vector pointing outwards from the palm.
-    - Right hand: cross(index - wrist, pinky - wrist) points outward from the palm.
-    - Left hand:  cross(pinky - wrist, index - wrist) points outward from the palm.
+    Computes true anatomical palmar normal vector pointing outwards from the palm face.
+    - Right hand: cross(index - wrist, pinky - wrist) points outward from the palm face towards camera (-Z).
+    - Left hand:  cross(pinky - wrist, index - wrist) points outward from the palm face towards camera (-Z).
+    If hand_key is generic "hand", infer handedness from proximity to shoulders in pose.
     """
     hand = frame.get(hand_key, frame.get("hand", []))
     if not hand or len(hand) < 21:
-        return np.array([0.0, 0.0, 1.0])
+        return np.array([0.0, 0.0, -1.0])
     wrist = np.array([hand[0]['x'], hand[0]['y'], hand[0]['z']])
     index_mcp = np.array([hand[5]['x'], hand[5]['y'], hand[5]['z']])
     pinky_mcp = np.array([hand[17]['x'], hand[17]['y'], hand[17]['z']])
@@ -143,25 +144,34 @@ def _get_palm_normal_for_hand(frame, hand_key="hand"):
     v1 = index_mcp - wrist
     v2 = pinky_mcp - wrist
 
-    # Anatomical handedness correction:
-    # If explicitly 'left_hand', invert cross product order so the normal vector
-    # consistently points in the true palmar direction (away from the palm face).
-    if hand_key == "left_hand":
+    # Determine handedness
+    is_left = (hand_key == "left_hand")
+    if hand_key == "hand" and frame.get("pose") and len(frame["pose"]) >= 13:
+        pose = frame["pose"]
+        ls = pose[11]
+        rs = pose[12]
+        if (ls.get('x', 0) != 0 or rs.get('x', 0) != 0):
+            d_ls = (wrist[0] - ls.get('x', 0))**2 + (wrist[1] - ls.get('y', 0))**2
+            d_rs = (wrist[0] - rs.get('x', 0))**2 + (wrist[1] - rs.get('y', 0))**2
+            is_left = (d_ls < d_rs)
+
+    if is_left:
         normal = np.cross(v2, v1)
     else:
         normal = np.cross(v1, v2)
 
     norm = np.linalg.norm(normal)
-    return normal / norm if norm > 0 else np.array([0.0, 0.0, 1.0])
+    return normal / norm if norm > 0 else np.array([0.0, 0.0, -1.0])
 
 def _windowed_palm_normals(seq, hand_key="hand"):
     """
     Gathers palm normal vectors across the central signing execution window (apex +/- 15%).
     Filters out transient monocular landmark jitter and depth noise.
+    Returns empty list if the requested hand_key is absent in the sequence.
     """
     n = len(seq)
     if n == 0:
-        return [np.array([0.0, 0.0, 1.0])]
+        return []
     mid = n // 2
     window_half = max(2, int(n * 0.15))
     start_idx = max(0, mid - window_half)
@@ -170,35 +180,46 @@ def _windowed_palm_normals(seq, hand_key="hand"):
     normals = []
     for i in range(start_idx, end_idx):
         f = seq[i]
-        hand = f.get(hand_key, f.get("hand", []))
-        if hand and len(hand) >= 21 and (hand[0]['x'] != 0 or hand[0]['y'] != 0):
+        hand = f.get(hand_key)
+        if hand and len(hand) >= 21 and any(lm['x'] != 0 or lm['y'] != 0 for lm in hand[:5]):
             normals.append(_get_palm_normal_for_hand(f, hand_key))
+            
+    # If no window frames had the hand, check if mid frame specifically has it
     if not normals:
-        return [_get_palm_normal_for_hand(seq[mid], hand_key)]
+        mid_hand = seq[mid].get(hand_key)
+        if mid_hand and len(mid_hand) >= 21 and any(lm['x'] != 0 or lm['y'] != 0 for lm in mid_hand[:5]):
+            normals.append(_get_palm_normal_for_hand(seq[mid], hand_key))
+            
     return normals
 
 def calculate_single_palm_score(s_seq, b_seq, s_key="hand", b_key="hand"):
     """
     Windowed palm orientation score comparing representative apex normal vectors.
-    Evaluates both direct orientation and mirrored orientation.
+    Evaluates both direct orientation and horizontally mirrored orientation.
+    Returns None if either sequence lacks landmarks for the specified hand.
     """
     s_normals = _windowed_palm_normals(s_seq, s_key) if isinstance(s_seq, list) else [_get_palm_normal_for_hand(s_seq, s_key)]
     b_normals = _windowed_palm_normals(b_seq, b_key) if isinstance(b_seq, list) else [_get_palm_normal_for_hand(b_seq, b_key)]
 
-    # Compute robust median normal vector for student and baseline
+    if not s_normals or not b_normals:
+        return None
+
+    # Compute robust mean normal vector for student and baseline
     s_mean = np.mean(s_normals, axis=0)
     s_norm_val = np.linalg.norm(s_mean)
-    s_normal = s_mean / s_norm_val if s_norm_val > 0 else np.array([0.0, 0.0, 1.0])
+    s_normal = s_mean / s_norm_val if s_norm_val > 0 else np.array([0.0, 0.0, -1.0])
 
     b_mean = np.mean(b_normals, axis=0)
     b_norm_val = np.linalg.norm(b_mean)
-    b_normal = b_mean / b_norm_val if b_norm_val > 0 else np.array([0.0, 0.0, 1.0])
+    b_normal = b_mean / b_norm_val if b_norm_val > 0 else np.array([0.0, 0.0, -1.0])
 
+    # Direct comparison:
     dot = np.dot(s_normal, b_normal)
     dot = max(-1.0, min(1.0, dot))
     angle1 = np.arccos(dot)
 
-    b_normal_mirrored = np.array([b_normal[0], -b_normal[1], -b_normal[2]])
+    # Horizontal mirror comparison (flip X axis across sagittal plane; Y and Z point towards viewer):
+    b_normal_mirrored = np.array([-b_normal[0], b_normal[1], b_normal[2]])
     dot_mirrored = np.dot(s_normal, b_normal_mirrored)
     dot_mirrored = max(-1.0, min(1.0, dot_mirrored))
     angle2 = np.arccos(dot_mirrored)
@@ -206,16 +227,16 @@ def calculate_single_palm_score(s_seq, b_seq, s_key="hand", b_key="hand"):
     best_angle = min(angle1, angle2)
     angle_deg = best_angle * 180.0 / np.pi
 
-    # Strict palm orientation scoring curve:
-    # 0 - 15 degrees: excellent alignment (100 -> 80)
-    # 15 - 35 degrees: moderate deviation (80 -> 40)
-    # > 35 degrees: unacceptable or reversed orientation (< 40, failing)
-    if angle_deg <= 15.0:
-        score = 100.0 - (angle_deg * 1.33)
-    elif angle_deg <= 35.0:
-        score = 80.0 - ((angle_deg - 15.0) * 2.0)
+    # Ergonomic palm orientation scoring curve:
+    # 0 - 25 degrees: excellent alignment with teacher demo (100 -> 80)
+    # 25 - 45 degrees: acceptable learner pitch/yaw variation (80 -> 50)
+    # > 45 degrees: unacceptable or reversed orientation (< 50, veto fail if back of hand)
+    if angle_deg <= 25.0:
+        score = 100.0 - (angle_deg * 0.8)
+    elif angle_deg <= 45.0:
+        score = 80.0 - ((angle_deg - 25.0) * 1.5)
     else:
-        score = max(0.0, 40.0 - ((angle_deg - 35.0) * 1.0))
+        score = max(0.0, 50.0 - ((angle_deg - 45.0) * 1.5))
 
     return round(max(0.0, min(100.0, score)), 1)
 
@@ -226,10 +247,13 @@ def calculate_palm_orientation_score(student_seq, baseline_seq):
     is_s_two = is_two_handed_sequence(student_seq)
 
     if is_b_two and is_s_two:
-        direct = (calculate_single_palm_score(student_seq, baseline_seq, "right_hand", "right_hand") +
-                  calculate_single_palm_score(student_seq, baseline_seq, "left_hand", "left_hand")) / 2.0
-        mirror = (calculate_single_palm_score(student_seq, baseline_seq, "right_hand", "left_hand") +
-                  calculate_single_palm_score(student_seq, baseline_seq, "left_hand", "right_hand")) / 2.0
+        direct_r = calculate_single_palm_score(student_seq, baseline_seq, "right_hand", "right_hand")
+        direct_l = calculate_single_palm_score(student_seq, baseline_seq, "left_hand", "left_hand")
+        mirror_r = calculate_single_palm_score(student_seq, baseline_seq, "right_hand", "left_hand")
+        mirror_l = calculate_single_palm_score(student_seq, baseline_seq, "left_hand", "right_hand")
+        
+        direct = ((direct_r or 0) + (direct_l or 0)) / 2.0
+        mirror = ((mirror_r or 0) + (mirror_l or 0)) / 2.0
         absolute_score = max(direct, mirror)
 
         # Dual-Hand Relative Palm Orientation Metric (critical for signs like "Book"):
@@ -240,46 +264,52 @@ def calculate_palm_orientation_score(student_seq, baseline_seq):
         b_r_normals = _windowed_palm_normals(baseline_seq, "right_hand")
         b_l_normals = _windowed_palm_normals(baseline_seq, "left_hand")
 
-        s_r_norm = np.mean(s_r_normals, axis=0)
-        s_r_norm = s_r_norm / (np.linalg.norm(s_r_norm) or 1.0)
-        s_l_norm = np.mean(s_l_normals, axis=0)
-        s_l_norm = s_l_norm / (np.linalg.norm(s_l_norm) or 1.0)
+        if s_r_normals and s_l_normals and b_r_normals and b_l_normals:
+            s_r_norm = np.mean(s_r_normals, axis=0)
+            s_r_norm = s_r_norm / (np.linalg.norm(s_r_norm) or 1.0)
+            s_l_norm = np.mean(s_l_normals, axis=0)
+            s_l_norm = s_l_norm / (np.linalg.norm(s_l_norm) or 1.0)
 
-        b_r_norm = np.mean(b_r_normals, axis=0)
-        b_r_norm = b_r_norm / (np.linalg.norm(b_r_norm) or 1.0)
-        b_l_norm = np.mean(b_l_normals, axis=0)
-        b_l_norm = b_l_norm / (np.linalg.norm(b_l_norm) or 1.0)
+            b_r_norm = np.mean(b_r_normals, axis=0)
+            b_r_norm = b_r_norm / (np.linalg.norm(b_r_norm) or 1.0)
+            b_l_norm = np.mean(b_l_normals, axis=0)
+            b_l_norm = b_l_norm / (np.linalg.norm(b_l_norm) or 1.0)
 
-        s_rel_dot = max(-1.0, min(1.0, np.dot(s_r_norm, s_l_norm)))
-        b_rel_dot = max(-1.0, min(1.0, np.dot(b_r_norm, b_l_norm)))
+            s_rel_dot = max(-1.0, min(1.0, np.dot(s_r_norm, s_l_norm)))
+            b_rel_dot = max(-1.0, min(1.0, np.dot(b_r_norm, b_l_norm)))
 
-        rel_angle_diff = abs(np.arccos(s_rel_dot) - np.arccos(b_rel_dot))
-        relative_score = max(0, min(100, 100 - (rel_angle_diff * 180 / np.pi)))
+            rel_angle_diff = abs(np.arccos(s_rel_dot) - np.arccos(b_rel_dot))
+            relative_score = max(0, min(100, 100 - (rel_angle_diff * 180 / np.pi)))
 
-        # Blend: 60% absolute body orientation + 40% dual-hand relative palm orientation
-        blended_score = (absolute_score * 0.60) + (relative_score * 0.40)
-        return max(absolute_score, blended_score)
+            # Blend: 60% absolute body orientation + 40% dual-hand relative palm orientation
+            blended_score = (absolute_score * 0.60) + (relative_score * 0.40)
+            return max(absolute_score, blended_score)
+        return absolute_score
     else:
         scores = []
         for s_k in ["hand", "right_hand", "left_hand"]:
             for b_k in ["hand", "right_hand", "left_hand"]:
-                scores.append(calculate_single_palm_score(student_seq, baseline_seq, s_k, b_k))
+                sc = calculate_single_palm_score(student_seq, baseline_seq, s_k, b_k)
+                if sc is not None:
+                    scores.append(sc)
         return max(scores) if scores else 0
 
 def _score_location_distance(dist):
     """
-    Strict multi-tier signing location curve.
-    dist is measured in normalized shoulder widths (0.0 = exact match):
-    - 0.00 to 0.20: within target signing space (100 -> 80)
-    - 0.20 to 0.38: outer boundary of target zone (80 -> 40)
-    - > 0.38: completely out of location target (ear, phone, lap) (< 40, fail)
+    Normalized signing space location scoring (measured in body shoulder widths):
+    - dist <= 0.25: Spot-on target signing zone (100 -> 80)
+    - 0.25 < dist <= 0.50: Natural ergonomic variation / comfortable signing space (80 -> 60)
+    - 0.50 < dist <= 0.75: Outer margin boundary (60 -> 40)
+    - dist > 0.75: Out of position (ear, lap, or off target) (< 40, fail)
     """
-    if dist <= 0.20:
-        score = 100.0 - (dist * 100.0)
-    elif dist <= 0.38:
-        score = 80.0 - ((dist - 0.20) * 222.0)
+    if dist <= 0.25:
+        score = 100.0 - (dist * 80.0)
+    elif dist <= 0.50:
+        score = 80.0 - ((dist - 0.25) * 80.0)
+    elif dist <= 0.75:
+        score = 60.0 - ((dist - 0.50) * 80.0)
     else:
-        score = max(0.0, 40.0 - ((dist - 0.38) * 100.0))
+        score = max(0.0, 40.0 - ((dist - 0.75) * 80.0))
     return round(max(0.0, min(100.0, score)), 1)
 
 def calculate_location_score(student_seq, baseline_seq):
@@ -291,43 +321,67 @@ def calculate_location_score(student_seq, baseline_seq):
     is_b_two = is_two_handed_sequence(baseline_seq)
     is_s_two = is_two_handed_sequence(student_seq)
 
-    scale_s = get_shoulder_width(s_frame)
-    scale_b = get_shoulder_width(b_frame)
-    nose_s = get_nose(s_frame)
-    nose_b = get_nose(b_frame)
+    # Use 2D (X, Y) plane for body scale and reference points to eliminate monocular Z depth estimation noise:
+    def get_2d_wrist(frame, key="hand"):
+        hand = frame.get(key, frame.get("hand", []))
+        if not hand or len(hand) == 0:
+            return np.array([0.0, 0.0])
+        return np.array([hand[0]['x'], hand[0]['y']])
+
+    def get_2d_nose(frame):
+        if not frame.get('pose') or len(frame['pose']) == 0:
+            return np.array([0.5, 0.5])
+        return np.array([frame['pose'][0]['x'], frame['pose'][0]['y']])
+
+    def get_2d_scale(frame):
+        if not frame.get('pose') or len(frame['pose']) < 13:
+            return 0.33
+        l = np.array([frame['pose'][11]['x'], frame['pose'][11]['y']])
+        r = np.array([frame['pose'][12]['x'], frame['pose'][12]['y']])
+        w = np.linalg.norm(l - r)
+        return float(w) if w > 0.05 else 0.33
+
+    scale_s = get_2d_scale(s_frame)
+    scale_b = get_2d_scale(b_frame)
+    nose_s = get_2d_nose(s_frame)
+    nose_b = get_2d_nose(b_frame)
 
     if is_b_two and is_s_two:
-        # In 2-hand signs, evaluate both wrists relative to body AND relative distance between both hands
-        s_rw = (get_wrist(s_frame, "right_hand") - nose_s) / scale_s
-        s_lw = (get_wrist(s_frame, "left_hand") - nose_s) / scale_s
-        b_rw = (get_wrist(b_frame, "right_hand") - nose_b) / scale_b
-        b_lw = (get_wrist(b_frame, "left_hand") - nose_b) / scale_b
+        # In 2-hand signs, evaluate both wrists relative to body AND relative distance between both hands in 2D
+        s_rw = (get_2d_wrist(s_frame, "right_hand") - nose_s) / scale_s
+        s_lw = (get_2d_wrist(s_frame, "left_hand") - nose_s) / scale_s
+        b_rw = (get_2d_wrist(b_frame, "right_hand") - nose_b) / scale_b
+        b_lw = (get_2d_wrist(b_frame, "left_hand") - nose_b) / scale_b
 
         # Relative hand separation (in shoulder widths)
-        s_sep = np.linalg.norm(get_wrist(s_frame, "right_hand") - get_wrist(s_frame, "left_hand")) / scale_s
-        b_sep = np.linalg.norm(get_wrist(b_frame, "right_hand") - get_wrist(b_frame, "left_hand")) / scale_b
+        s_sep = np.linalg.norm(get_2d_wrist(s_frame, "right_hand") - get_2d_wrist(s_frame, "left_hand")) / scale_s
+        b_sep = np.linalg.norm(get_2d_wrist(b_frame, "right_hand") - get_2d_wrist(b_frame, "left_hand")) / scale_b
         sep_diff = abs(s_sep - b_sep)
 
-        # Direct vs mirrored placement
+        # Direct vs mirrored placement (X-axis flip for mirror invariance)
         dist_direct = (np.linalg.norm(s_rw - b_rw) + np.linalg.norm(s_lw - b_lw)) / 2.0
-        dist_mirror = (np.linalg.norm(s_rw - np.array([-b_lw[0], b_lw[1], b_lw[2]])) +
-                       np.linalg.norm(s_lw - np.array([-b_rw[0], b_rw[1], b_rw[2]]))) / 2.0
+        b_lw_mirrored = np.array([-b_lw[0], b_lw[1]])
+        b_rw_mirrored = np.array([-b_rw[0], b_rw[1]])
+        dist_mirror = (np.linalg.norm(s_rw - b_lw_mirrored) + np.linalg.norm(s_lw - b_rw_mirrored)) / 2.0
         best_dist = min(dist_direct, dist_mirror)
 
         total_err = (best_dist * 0.7) + (sep_diff * 0.3)
         return _score_location_distance(total_err)
     else:
-        def location_vector(frame, key="hand"):
-            scale = get_shoulder_width(frame)
-            return (get_wrist(frame, key) - get_nose(frame)) / scale
+        def location_vector_2d(frame, key="hand"):
+            scale = get_2d_scale(frame)
+            return (get_2d_wrist(frame, key) - get_2d_nose(frame)) / scale
 
         scores = []
         for s_k in ["hand", "right_hand", "left_hand"]:
             for b_k in ["hand", "right_hand", "left_hand"]:
-                s_vec = location_vector(s_frame, s_k)
-                b_vec = location_vector(b_frame, b_k)
+                s_vec = location_vector_2d(s_frame, s_k)
+                b_vec = location_vector_2d(b_frame, b_k)
+                # Ignore empty detections
+                if np.all(s_vec == 0) or np.all(b_vec == 0):
+                    continue
                 dist = np.linalg.norm(s_vec - b_vec)
-                b_vec_mirrored = np.array([-b_vec[0], b_vec[1], b_vec[2]])
+                b_vec_mirrored = np.array([-b_vec[0], b_vec[1]])
                 dist_mirrored = np.linalg.norm(s_vec - b_vec_mirrored)
                 best_dist = min(dist, dist_mirrored)
                 scores.append(_score_location_distance(best_dist))

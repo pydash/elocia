@@ -223,9 +223,20 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   }, [diagOn]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const [isCameraDisconnected, setIsCameraDisconnected] = useState<boolean>(false);
+
+  const stopCameraTracks = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -238,6 +249,8 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           video: { width: 640, height: 480 },
           audio: false,
         });
+
+        streamRef.current = stream;
 
         if (!cancelled && videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -689,6 +702,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
       holdStartRef.current = null;
       if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
     } else {
+      stopCameraTracks();
       onComplete(currentStageId);
     }
   };
@@ -764,7 +778,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
       )}
 
       <header className="eval-header-bar">
-        <button className="eval-back-btn" onClick={(e) => { e.preventDefault(); onExit(); }} type="button" aria-label="Back">
+        <button className="eval-back-btn" onClick={(e) => { e.preventDefault(); stopCameraTracks(); onExit(); }} type="button" aria-label="Back">
           <img src={backButtonImg} alt="Back" />
         </button>
 

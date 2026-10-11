@@ -52,3 +52,9 @@ async def init_db():
                 "ADD COLUMN IF NOT EXISTS reference_video_url VARCHAR"
             )
         )
+        await conn.execute(
+            text(
+                "ALTER TABLE classes "
+                "ALTER COLUMN teacher_id DROP NOT NULL"
+            )
+        )

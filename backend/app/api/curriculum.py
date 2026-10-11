@@ -281,18 +281,18 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
     )
     rows = prog_res.all()
 
-    # Fetch ordered list of active curriculum stages for this student's grade level
+    # Fetch ordered list of active curriculum stages for this student's grade level with section info
     student_grade = profile.grade_level if profile else 1
     all_stages_query = (
-        select(CurriculumStage)
+        select(CurriculumStage, CurriculumSection.id.label("section_id"))
         .join(CurriculumUnit, CurriculumStage.unit_id == CurriculumUnit.id)
         .join(CurriculumSection, CurriculumUnit.section_id == CurriculumSection.id)
         .join(Curriculum, CurriculumSection.curriculum_id == Curriculum.id)
         .where(CurriculumStage.is_active == True, Curriculum.grade_level == student_grade)
-        .order_by(CurriculumStage.stage_number.asc())
+        .order_by(CurriculumSection.section_number.asc(), CurriculumStage.stage_number.asc())
     )
     all_stages_res = await db.execute(all_stages_query)
-    all_active_stages = all_stages_res.scalars().all()
+    all_active_stage_rows = all_stages_res.all()
 
     # Build a map of stage progression keyed by stage id
     ssp_map = {ssp.stage_id: ssp for ssp, stage in rows}
@@ -300,13 +300,22 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
     unlocked_stages = []
     stage_progress = []
 
-    # Self-healing sequential unlock: iterate stages in order
-    prev_passed = True  # The "stage before the first" is implicitly passed
-    for stage in all_active_stages:
+    # Sequential unlock per section:
+    # First stage of EVERY section is always accessible/unlocked!
+    # Subsequent stages in a section unlock when the prior stage in that same section is passed.
+    current_sec_id = None
+    prev_passed = True
+
+    for stage, sec_id in all_active_stage_rows:
+        if sec_id != current_sec_id:
+            # New section begins: first stage of this section is always unlocked!
+            current_sec_id = sec_id
+            prev_passed = True
+
         ssp = ssp_map.get(stage.id)
 
-        # Determine correct unlock state
-        should_be_unlocked = prev_passed  # Only unlocked if all prior stages passed
+        # Determine correct unlock state within this section
+        should_be_unlocked = prev_passed
 
         if ssp:
             # Self-heal: fix stale unlocked=True when prior stages not passed
@@ -356,8 +365,8 @@ async def get_student_progress(student_id: str, db: AsyncSession = Depends(get_d
     await db.commit()
 
     # If stages exist for this grade level but none unlocked yet, unlock the first one
-    if all_active_stages and not unlocked_stages:
-        first_st = all_active_stages[0]
+    if all_active_stage_rows and not unlocked_stages:
+        first_st = all_active_stage_rows[0][0]
         unlocked_stages = [first_st.stage_number]
         for sp in stage_progress:
             if sp["stage_id"] == first_st.stage_number:
