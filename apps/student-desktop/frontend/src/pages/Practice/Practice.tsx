@@ -107,16 +107,23 @@ export default function Practice({ onNavigate, onStartLesson, cachedCurriculum }
           try {
             localStorage.setItem('elocia_cached_progress', JSON.stringify(prog));
           } catch {}
-        }
-      });
-      fetchNeedsPractice(studentId).then((items) => {
-        try {
-          const finishedSigns: string[] = JSON.parse(localStorage.getItem('elocia_finished_drills') || '[]');
-          const filtered = (items || []).filter(it => !finishedSigns.includes(it.sign));
-          setPracticeItems(filtered);
-          localStorage.setItem('elocia_cached_needs_practice', JSON.stringify(filtered));
-        } catch {
-          setPracticeItems(items || []);
+
+          // Also re-filter practice items once prog is loaded so no future signs are leaked
+          fetchNeedsPractice(studentId).then((items) => {
+            try {
+              const finishedSigns: string[] = JSON.parse(localStorage.getItem('elocia_finished_drills') || '[]');
+              const completedStageIds = (prog.stages || []).filter(s => s.passed).map(s => s.stage_id);
+              // Only show practice signs for stages the student has completed (anti-spoiler)
+              const filtered = (items || []).filter(it => 
+                !finishedSigns.includes(it.sign) && 
+                (completedStageIds.includes(it.stage_id) || it.stage_id === 1)
+              );
+              setPracticeItems(filtered);
+              localStorage.setItem('elocia_cached_needs_practice', JSON.stringify(filtered));
+            } catch {
+              setPracticeItems(items || []);
+            }
+          });
         }
       });
     }
@@ -288,189 +295,227 @@ export default function Practice({ onNavigate, onStartLesson, cachedCurriculum }
               <p>You can practice your completed stages here!</p>
             </div>
 
-            {curriculumData.length === 0 || curriculumData.every(sec => sec.units.every(u => u.stages.length === 0)) ? (
-              <div style={{
-                padding: '36px 32px',
-                textAlign: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '24px',
-                border: '3px dashed #F59E0B',
-                maxWidth: '520px',
-                margin: '24px auto',
-                color: '#92400E',
-                fontWeight: 600
-              }}>
-                <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>📚</span>
-                Lessons are being prepared by your teacher. Check back soon!
-              </div>
-            ) : (
-              curriculumData
-                .filter(section => section.units && section.units.some(u => u.stages && u.stages.length > 0))
-                .map((section, secIdx) => {
-                  const stages = section.units
-                    .flatMap(u => u.stages)
-                    .sort((a, b) => a.id - b.id);
+            {(() => {
+              // Authoritative list of stages strictly completed/passed in Lesson Proper
+              const localCompleted: number[] = (() => {
+                try {
+                  const raw = localStorage.getItem('elocia_completed_stages');
+                  return raw ? JSON.parse(raw) : [];
+                } catch {
+                  return [];
+                }
+              })();
 
-                  const sectionKey = `review-${section.id}-${secIdx}`;
-                  const currentPage = reviewPages[sectionKey] || 0;
-                  const itemsPerPage = 3;
-                  const totalPages = Math.ceil(stages.length / itemsPerPage);
-                  const startIndex = currentPage * itemsPerPage;
-                  const visibleStages = stages.slice(startIndex, startIndex + itemsPerPage);
+              const completedFromBackend = (studentProgress?.stages || [])
+                .filter(s => s.passed)
+                .map(s => s.stage_id);
 
-                  const handlePrev = () => {
-                    setReviewPages(prev => ({
-                      ...prev,
-                      [sectionKey]: Math.max(0, (prev[sectionKey] || 0) - 1)
-                    }));
-                  };
+              const allCompletedStageIds = Array.from(new Set([...completedFromBackend, ...localCompleted]));
 
-                  const handleNext = () => {
-                    setReviewPages(prev => ({
-                      ...prev,
-                      [sectionKey]: Math.min(totalPages - 1, (prev[sectionKey] || 0) + 1)
-                    }));
-                  };
+              // Filter curriculum to sections containing stages
+              const validSections = curriculumData.filter(section => 
+                section.units && section.units.some(u => u.stages && u.stages.length > 0)
+              );
 
-                  return (
-                    <div key={sectionKey} className="review-section-group" style={{ width: '100%', marginBottom: '40px' }}>
-                      <div className="section-banner" style={{ margin: '0 auto 28px auto' }}>
-                        {section.title}
-                      </div>
+              if (curriculumData.length === 0 || validSections.length === 0) {
+                return (
+                  <div style={{
+                    padding: '36px 32px',
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    borderRadius: '24px',
+                    border: '3px dashed #F59E0B',
+                    maxWidth: '520px',
+                    margin: '24px auto',
+                    color: '#92400E',
+                    fontWeight: 600
+                  }}>
+                    <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>📚</span>
+                    Lessons are being prepared by your teacher. Check back soon!
+                  </div>
+                );
+              }
 
-                      <div className="stages-carousel-wrapper">
-                        {stages.length > itemsPerPage && currentPage > 0 && (
-                          <button
-                            className="carousel-arrow-btn arrow-prev"
-                            onClick={handlePrev}
-                            title="Previous Stages"
-                            aria-label="Previous Stages"
-                          >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'rotate(180deg)' }}>
-                              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        )}
+              // FRESH START: Student has not completed any stages yet in Lesson Proper!
+              // Anti-spoiler guard: Do not display review stages until completed in Learn mode.
+              if (allCompletedStageIds.length === 0) {
+                return (
+                  <div className="review-empty-state">
+                    <div className="review-empty-icon-bubble">
+                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                      </svg>
+                    </div>
+                    <h3 className="review-empty-title">No Stages Completed Yet</h3>
+                    <p className="review-empty-subtitle">
+                      Complete lessons in the <strong>Learn</strong> tab first! Once you finish a stage in Lesson Proper, it will automatically unlock here for free practice anytime.
+                    </p>
+                    <button
+                      type="button"
+                      className="review-empty-learn-btn"
+                      onClick={() => onNavigate('navigation')}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                      Go to Learn Lessons
+                    </button>
+                  </div>
+                );
+              }
 
-                        <div className="stages-path">
-                          <div className="path-line"></div>
+              return validSections.map((section, secIdx) => {
+                const stages = section.units
+                  .flatMap(u => u.stages)
+                  .sort((a, b) => a.id - b.id);
 
-                          {visibleStages.map((stage) => {
-                            const originalStageIdx = stages.findIndex(s => s.id === stage.id);
-                            const stageSeqNum = originalStageIdx + 1;
-                            const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id || s.stage_id === stageSeqNum);
-                            
-                            // Check local completed stages cache as immediate optimistic fallback
-                            const localCompleted: number[] = (() => {
-                              try {
-                                return JSON.parse(localStorage.getItem('elocia_completed_stages') || '[]');
-                              } catch {
-                                return [];
-                              }
-                            })();
+                const sectionKey = `review-${section.id}-${secIdx}`;
+                const currentPage = reviewPages[sectionKey] || 0;
+                const itemsPerPage = 3;
+                const totalPages = Math.ceil(stages.length / itemsPerPage);
+                const startIndex = currentPage * itemsPerPage;
+                const visibleStages = stages.slice(startIndex, startIndex + itemsPerPage);
 
-                            const isCompleted = !!(stageInfo && stageInfo.passed) || 
-                                                localCompleted.includes(stage.id) || 
-                                                localCompleted.includes(stageSeqNum);
-                            // Review past stage must ONLY be playable after completing the main activity from learn
-                            const isLocked = !isCompleted;
-                            const cardStateClass = isLocked ? 'locked-card' : 'completed-card';
-                            const xpPoints = (stage.items?.length || 1) * 10;
+                const handlePrev = () => {
+                  setReviewPages(prev => ({
+                    ...prev,
+                    [sectionKey]: Math.max(0, (prev[sectionKey] || 0) - 1)
+                  }));
+                };
 
-                            return (
-                              <div
-                                key={stage.id}
-                                className={`stage-card ${cardStateClass}`}
-                                onClick={() => {
-                                  if (isLocked) return;
-                                  try {
-                                    const reviewed: number[] = JSON.parse(localStorage.getItem('elocia_reviewed_stages') || '[]');
-                                    if (!reviewed.includes(stage.id)) {
-                                      reviewed.push(stage.id);
-                                      localStorage.setItem('elocia_reviewed_stages', JSON.stringify(reviewed));
-                                    }
-                                  } catch (err) {
-                                    console.warn('Failed to update reviewed stages:', err);
+                const handleNext = () => {
+                  setReviewPages(prev => ({
+                    ...prev,
+                    [sectionKey]: Math.min(totalPages - 1, (prev[sectionKey] || 0) + 1)
+                  }));
+                };
+
+                return (
+                  <div key={sectionKey} className="review-section-group" style={{ width: '100%', marginBottom: '40px' }}>
+                    <div className="section-banner" style={{ margin: '0 auto 28px auto' }}>
+                      {section.title}
+                    </div>
+
+                    <div className="stages-carousel-wrapper">
+                      {stages.length > itemsPerPage && currentPage > 0 && (
+                        <button
+                          className="carousel-arrow-btn arrow-prev"
+                          onClick={handlePrev}
+                          title="Previous Stages"
+                          aria-label="Previous Stages"
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'rotate(180deg)' }}>
+                            <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      )}
+
+                      <div className="stages-path">
+                        <div className="path-line"></div>
+
+                        {visibleStages.map((stage) => {
+                          const originalStageIdx = stages.findIndex(s => s.id === stage.id);
+                          // Match stageInfo strictly by global stage.id from backend/curriculum
+                          const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
+                          
+                          // A stage is only completed if it was actually passed in Lesson Proper
+                          const isCompleted = allCompletedStageIds.includes(stage.id) || 
+                                              Boolean(stageInfo?.passed);
+
+                          // Anti-spoiler: If not completed in Lesson Proper, it stays locked!
+                          const isLocked = !isCompleted;
+                          const cardStateClass = isLocked ? 'locked-card' : 'completed-card';
+                          const xpPoints = (stage.items?.length || 1) * 10;
+
+                          return (
+                            <div
+                              key={stage.id}
+                              className={`stage-card ${cardStateClass}`}
+                              onClick={() => {
+                                if (isLocked) return;
+                                try {
+                                  const reviewed: number[] = JSON.parse(localStorage.getItem('elocia_reviewed_stages') || '[]');
+                                  if (!reviewed.includes(stage.id)) {
+                                    reviewed.push(stage.id);
+                                    localStorage.setItem('elocia_reviewed_stages', JSON.stringify(reviewed));
                                   }
+                                } catch (err) {
+                                  console.warn('Failed to update reviewed stages:', err);
+                                }
 
-                                  if (onStartLesson) {
-                                    onStartLesson(stage.id, true);
-                                  } else {
-                                    onNavigate('setup');
-                                  }
-                                }}
-                                role="button"
-                                tabIndex={isLocked ? -1 : 0}
-                                title={isLocked ? 'Complete this stage in Learn mode first to review it here!' : `Practice ${stage.title}`}
-                              >
-                                {isLocked ? (
-                                  <>
-                                    <div className="stage-text-group">
-                                      <span className="stage-label">Stage</span>
-                                      <span className="stage-number">{originalStageIdx + 1}</span>
-                                    </div>
-                                    <div className="icon-container">
-                                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                                if (onStartLesson) {
+                                  onStartLesson(stage.id, true);
+                                } else {
+                                  onNavigate('setup');
+                                }
+                              }}
+                              role="button"
+                              tabIndex={isLocked ? -1 : 0}
+                              title={isLocked ? 'Complete this stage in Learn mode first to review it here!' : `Practice ${stage.title}`}
+                            >
+                              {isLocked ? (
+                                <>
+                                  <div className="stage-text-group">
+                                    <span className="stage-label">Stage</span>
+                                    <span className="stage-number">{originalStageIdx + 1}</span>
+                                  </div>
+                                  <div className="icon-container" title="Locked - Finish in Learn first">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                      <path d="M7 11V7a5 5 0 0110 0v4" />
+                                    </svg>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="card-top-badge-row">
+                                    <span className="status-pill pill-completed">
+                                      Completed
+                                    </span>
+                                    <div className="card-mini-icon">
+                                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" fill="#2ECC71"/>
+                                        <path d="M8 12.5L10.5 15L16 9.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                                       </svg>
                                     </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="card-top-badge-row">
-                                      <span className={`status-pill ${isCompleted ? 'pill-completed' : 'pill-active'}`}>
-                                        {isCompleted ? 'Completed' : 'Stage ' + (originalStageIdx + 1)}
-                                      </span>
-                                      <div className="card-mini-icon">
-                                        {isCompleted ? (
-                                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="12" cy="12" r="10" fill="#2ECC71"/>
-                                            <path d="M8 12.5L10.5 15L16 9.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                          </svg>
-                                        ) : (
-                                          <svg width="32" height="32" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="22" cy="22" r="22" fill="#FF9800"/>
-                                            <path d="M17 14.5L31 22L17 29.5V14.5Z" fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/>
-                                          </svg>
-                                        )}
-                                      </div>
-                                    </div>
+                                  </div>
 
-                                    <div className="card-body-text">
-                                      <h4 className="card-stage-title">{stage.title}</h4>
-                                      <p className="card-stage-subtitle">
-                                        {stage.items?.length ? `${stage.items.length} signs to learn` : (stage.description || 'Fun sign activities')}
-                                      </p>
-                                    </div>
+                                  <div className="card-body-text">
+                                    <h4 className="card-stage-title">{stage.title}</h4>
+                                    <p className="card-stage-subtitle">
+                                      {stage.items?.length ? `${stage.items.length} signs to review` : (stage.description || 'Fun review activities')}
+                                    </p>
+                                  </div>
 
-                                    <div className="card-footer-row">
-                                      <span className="card-reward-pts">⭐ {xpPoints} pts</span>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {stages.length > itemsPerPage && currentPage < totalPages - 1 && (
-                          <button
-                            className="carousel-arrow-btn arrow-next"
-                            onClick={handleNext}
-                            title="Next Stages"
-                            aria-label="Next Stages"
-                          >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        )}
+                                  <div className="card-footer-row">
+                                    <span className="card-reward-pts">⭐ {xpPoints} pts</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
+
+                      {stages.length > itemsPerPage && currentPage < totalPages - 1 && (
+                        <button
+                          className="carousel-arrow-btn arrow-next"
+                          onClick={handleNext}
+                          title="Next Stages"
+                          aria-label="Next Stages"
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      )}
                     </div>
-                  );
-                })
-            )}
+                  </div>
+                );
+              });
+            })()}
           </section>
 
         </div>

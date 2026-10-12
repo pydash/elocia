@@ -48,13 +48,45 @@ def is_two_handed_sequence(seq):
             both_count += 1
     return (both_count / len(seq)) >= 0.25
 
+def _get_finger_angles(frame, hand_key="hand"):
+    """
+    Computes 3D joint bend angles (MCP-PIP-DIP) for each finger (Index, Middle, Ring, Pinky).
+    These joint angles are invariant to camera perspective (whether hand is front, sideways, or angled).
+    Returns array of 4 angles (in radians, from 0 = straight to pi = fully curled).
+    """
+    hand = frame.get(hand_key, frame.get("hand", []))
+    if not hand or len(hand) < 21:
+        return np.zeros(4)
+    
+    # Finger triplets: (MCP, PIP, DIP)
+    # Index: 5, 6, 7; Middle: 9, 10, 11; Ring: 13, 14, 15; Pinky: 17, 18, 19
+    finger_triplets = [(5, 6, 7), (9, 10, 11), (13, 14, 15), (17, 18, 19)]
+    angles = []
+    for mcp_i, pip_i, dip_i in finger_triplets:
+        mcp = np.array([hand[mcp_i]['x'], hand[mcp_i]['y'], hand[mcp_i]['z']])
+        pip = np.array([hand[pip_i]['x'], hand[pip_i]['y'], hand[pip_i]['z']])
+        dip = np.array([hand[dip_i]['x'], hand[dip_i]['y'], hand[dip_i]['z']])
+        
+        v1 = mcp - pip
+        v2 = dip - pip
+        norm1 = np.linalg.norm(v1)
+        norm2 = np.linalg.norm(v2)
+        if norm1 > 1e-4 and norm2 > 1e-4:
+            cos_val = np.dot(v1, v2) / (norm1 * norm2)
+            cos_val = max(-1.0, min(1.0, cos_val))
+            angle = np.arccos(cos_val)
+        else:
+            angle = 0.0
+        angles.append(angle)
+    return np.array(angles)
+
 def _handshape_features_for_hand(seq, hand_key):
     n = len(seq)
     mid = n // 2
     k = min(9, n)
     idxs = [max(0, min(n - 1, mid - k // 2 + i)) for i in range(k)] if k > 1 else [0]
     
-    ext_list, spread_list = [], []
+    ext_list, spread_list, angle_list = [], [], []
     for i in idxs:
         f = seq[i]
         wrist = get_wrist(f, hand_key)
@@ -66,29 +98,42 @@ def _handshape_features_for_hand(seq, hand_key):
         ext_list.append(dists / size)
         spread = np.array([np.linalg.norm(tips[j + 1] - tips[j]) for j in range(4)])
         spread_list.append(spread / size)
+        angle_list.append(_get_finger_angles(f, hand_key))
     if not ext_list:
-        return None, None
-    return np.median(ext_list, axis=0), np.median(spread_list, axis=0)
+        return None, None, None
+    return np.median(ext_list, axis=0), np.median(spread_list, axis=0), np.median(angle_list, axis=0)
 
 def calculate_single_handshape_score(s_seq, b_seq, s_key="hand", b_key="hand"):
-    s_ext, s_spread = _handshape_features_for_hand(s_seq, s_key)
-    b_ext, b_spread = _handshape_features_for_hand(b_seq, b_key)
+    s_ext, s_spread, s_angles = _handshape_features_for_hand(s_seq, s_key)
+    b_ext, b_spread, b_angles = _handshape_features_for_hand(b_seq, b_key)
     if s_ext is None or b_ext is None or s_spread is None or b_spread is None:
         return 0
 
     ext_diff = float(np.abs(s_ext - b_ext).max())
     spread_diff = float(np.abs(s_spread - b_spread).max())
+    
+    # 3D Joint Angle difference (perspective-invariant):
+    # Normalized so difference in radians / pi gives error 0.0 -> 1.0
+    if s_angles is not None and b_angles is not None:
+        angle_diff = float(np.abs(s_angles - b_angles).max() / np.pi)
+    else:
+        angle_diff = ext_diff
+
+    # Combine tip extension with 3D joint flexion:
+    # If the hand is turned sideways, camera foreshortening may artificially decrease 2D tip distance,
+    # but the 3D joint bend angle remains accurate. We take min(ext_diff, angle_diff) for radial flexion.
+    effective_ext_diff = min(ext_diff, angle_diff * 0.9)
 
     # Strict handshape scoring curve:
     # Small differences (<= 0.15): acceptable anatomical variation (100 -> 80)
     # Moderate differences (0.15 - 0.30): partial deformation (80 -> 45)
     # Large differences (> 0.30, e.g. phone grasp vs sign): instant fail (< 45)
-    if ext_diff <= 0.15:
-        ext_score = 100.0 - (ext_diff * 133.0)
-    elif ext_diff <= 0.30:
-        ext_score = 80.0 - ((ext_diff - 0.15) * 233.0)
+    if effective_ext_diff <= 0.15:
+        ext_score = 100.0 - (effective_ext_diff * 133.0)
+    elif effective_ext_diff <= 0.30:
+        ext_score = 80.0 - ((effective_ext_diff - 0.15) * 233.0)
     else:
-        ext_score = max(0.0, 45.0 - ((ext_diff - 0.30) * 120.0))
+        ext_score = max(0.0, 45.0 - ((effective_ext_diff - 0.30) * 120.0))
 
     if spread_diff <= 0.15:
         spread_score = 100.0 - (spread_diff * 133.0)
@@ -228,15 +273,15 @@ def calculate_single_palm_score(s_seq, b_seq, s_key="hand", b_key="hand"):
     angle_deg = best_angle * 180.0 / np.pi
 
     # Ergonomic palm orientation scoring curve:
-    # 0 - 25 degrees: excellent alignment with teacher demo (100 -> 80)
-    # 25 - 45 degrees: acceptable learner pitch/yaw variation (80 -> 50)
-    # > 45 degrees: unacceptable or reversed orientation (< 50, veto fail if back of hand)
-    if angle_deg <= 25.0:
-        score = 100.0 - (angle_deg * 0.8)
-    elif angle_deg <= 45.0:
-        score = 80.0 - ((angle_deg - 25.0) * 1.5)
+    # 0 - 30 degrees: excellent alignment with teacher demo (100 -> 80)
+    # 30 - 55 degrees: acceptable learner pitch/yaw variation (80 -> 60)
+    # > 55 degrees: reversed orientation / wrong palm face (< 60, triggers scaffolding)
+    if angle_deg <= 30.0:
+        score = 100.0 - (angle_deg * 0.67)
+    elif angle_deg <= 55.0:
+        score = 80.0 - ((angle_deg - 30.0) * 0.8)
     else:
-        score = max(0.0, 50.0 - ((angle_deg - 45.0) * 1.5))
+        score = max(0.0, 60.0 - ((angle_deg - 55.0) * 1.8))
 
     return round(max(0.0, min(100.0, score)), 1)
 
@@ -428,14 +473,13 @@ def calculate_movement_score(student_seq, baseline_seq):
             return 0
 
         # Motion Concordance Check:
-        # If baseline has significant dynamic movement (> 0.25) but student's hand
-        # is virtually stationary (< 0.12, e.g. holding a phone or casual rest),
-        # fail movement immediately (< 20%).
+        # If baseline has significant dynamic movement (> 0.40) but student's hand
+        # has zero movement (< 0.04, e.g. no attempt or hand not moving at all),
+        # penalize movement. For static signs (numbers, letters), static hand is natural and valid.
         if s_seq is not None and b_seq is not None:
             b_disp = path_displacement(b_seq, hand_key)
             s_disp = path_displacement(s_seq, hand_key)
-            if b_disp > 0.25 and s_disp < 0.12:
-                # Stationary hand during dynamic sign: fail
+            if b_disp > 0.40 and s_disp < 0.04:
                 return max(5.0, round((s_disp / (b_disp or 1.0)) * 30.0, 1))
 
         dist_full = min(
@@ -481,17 +525,55 @@ def calculate_movement_score(student_seq, baseline_seq):
 
 def filter_valid_frames(sequence):
     """
-    Removes frames where landmarks were not detected:
-    - hand missing
-    - pose missing
+    Cleanses and gap-heals the sequence:
+    1. Identifies valid frames with pose and hand landmarks.
+    2. Interpolates isolated 1-frame tracking drops caused by motion blur or fast signing.
     """
-    return [
-        f for f in sequence
-        if (f.get('hand', [{}])[0].get('x', 0) != 0 or 
-            f.get('right_hand', [{}])[0].get('x', 0) != 0 or 
-            f.get('left_hand', [{}])[0].get('x', 0) != 0) and 
-           f.get('pose', [{}])[0].get('x', 0) != 0
-    ]
+    if not sequence:
+        return []
+
+    def has_hand(f):
+        return (f.get('hand', [{}])[0].get('x', 0) != 0 or 
+                f.get('right_hand', [{}])[0].get('x', 0) != 0 or 
+                f.get('left_hand', [{}])[0].get('x', 0) != 0)
+
+    def has_pose(f):
+        return f.get('pose', [{}])[0].get('x', 0) != 0
+
+    valid_mask = [has_hand(f) and has_pose(f) for f in sequence]
+
+    # 1-frame gap healing (if frame i is dropped but i-1 and i+1 are valid)
+    healed = list(sequence)
+    for i in range(1, len(sequence) - 1):
+        if not valid_mask[i] and valid_mask[i - 1] and valid_mask[i + 1]:
+            prev_f = healed[i - 1]
+            next_f = healed[i + 1]
+            interp_f = {
+                "hand": [],
+                "right_hand": [],
+                "left_hand": [],
+                "has_right": prev_f.get("has_right", False) or next_f.get("has_right", False),
+                "has_left": prev_f.get("has_left", False) or next_f.get("has_left", False),
+                "pose": []
+            }
+            for k in ["hand", "right_hand", "left_hand", "pose"]:
+                p_lms = prev_f.get(k, [])
+                n_lms = next_f.get(k, [])
+                if p_lms and n_lms and len(p_lms) == len(n_lms):
+                    interp_f[k] = [
+                        {
+                            "x": (p_lms[j]["x"] + n_lms[j]["x"]) / 2.0,
+                            "y": (p_lms[j]["y"] + n_lms[j]["y"]) / 2.0,
+                            "z": (p_lms[j]["z"] + n_lms[j]["z"]) / 2.0
+                        }
+                        for j in range(len(p_lms))
+                    ]
+                else:
+                    interp_f[k] = p_lms or n_lms
+            healed[i] = interp_f
+            valid_mask[i] = True
+
+    return [healed[i] for i in range(len(healed)) if valid_mask[i]]
 
 def evaluate_sign(student_sequence, baseline_sequence):
     """

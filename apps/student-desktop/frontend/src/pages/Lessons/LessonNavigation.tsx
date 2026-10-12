@@ -351,8 +351,11 @@ export default function LessonNavigation({ onNavigate, unlockedStages, onStartLe
 
                         {visibleStages.map((stage) => {
                           const originalStageIdx = stages.findIndex(s => s.id === stage.id);
-                          const isLocked = !unlockedStages.includes(stage.id);
                           const stageInfo = studentProgress?.stages.find(s => s.stage_id === stage.id);
+                          const isUnlocked = unlockedStages.includes(stage.id) ||
+                                            (studentProgress?.unlocked_stages && studentProgress.unlocked_stages.includes(stage.id)) ||
+                                            Boolean(stageInfo?.unlocked);
+                          const isLocked = !isUnlocked;
                           const isCompleted = !!(stageInfo && stageInfo.passed);
                           const cardStateClass = isLocked ? 'locked-card' : (isCompleted ? 'completed-card' : 'active-card');
                           const xpPoints = (stage.items?.length || 1) * 10;

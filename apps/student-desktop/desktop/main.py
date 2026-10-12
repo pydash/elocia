@@ -153,8 +153,10 @@ async def evaluate_endpoint(websocket: WebSocket):
     from inference import get_diagnostic_baseline, diagnostic_frame_scores
     mp_holistic = mp.solutions.holistic
     holistic = mp_holistic.Holistic(
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        model_complexity=1,
+        min_detection_confidence=0.45,
+        min_tracking_confidence=0.40,
+        smooth_landmarks=True
     )
     
     student_sequence = []

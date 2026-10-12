@@ -56,6 +56,8 @@ interface Point3D {
 
 interface LandmarksData {
   hand: Point3D[];
+  right_hand?: Point3D[] | null;
+  left_hand?: Point3D[] | null;
   pose: {
     nose: Point3D;
     leftShoulder: Point3D;
@@ -406,29 +408,42 @@ export default function PuzzleSign({ onNavigate }: PuzzleSignProps) {
         ctx.stroke();
       }
 
-      // Draw Hand
-      if (lm.hand[0] && lm.hand[0].x !== 0) {
-        const handOk = Math.min(lm.scores.handshape, lm.scores.palmOrientation) >= 60;
-        const handLineColor = handOk ? '#39FF14' : '#E5484D';
-        const handDotColor = handOk ? '#FF0000' : '#8B0000';
+      // Draw Hand(s): Render both hands if student uses a two-handed sign
+      const handOk = Math.min(lm.scores.handshape, lm.scores.palmOrientation) >= 60;
+      const handLineColor = handOk ? '#39FF14' : '#E5484D';
+      const handDotColor = handOk ? '#FF0000' : '#8B0000';
 
+      const drawSingleHand = (handPoints: Point3D[]) => {
+        if (!handPoints || !handPoints[0] || (handPoints[0].x === 0 && handPoints[0].y === 0)) return;
         ctx.strokeStyle = handLineColor;
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (const [a, b] of HAND_CONNECTIONS) {
-          const p1 = lm.hand[a];
-          const p2 = lm.hand[b];
-          ctx.moveTo(X(p1.x), Y(p1.y));
-          ctx.lineTo(X(p2.x), Y(p2.y));
+          const p1 = handPoints[a];
+          const p2 = handPoints[b];
+          if (p1 && p2) {
+            ctx.moveTo(X(p1.x), Y(p1.y));
+            ctx.lineTo(X(p2.x), Y(p2.y));
+          }
         }
         ctx.stroke();
 
         ctx.fillStyle = handDotColor;
-        for (const p of lm.hand) {
+        for (const p of handPoints) {
           ctx.beginPath();
           ctx.arc(X(p.x), Y(p.y), 4, 0, 2 * Math.PI);
           ctx.fill();
         }
+      };
+
+      const hasRight = Boolean(lm.right_hand && lm.right_hand[0] && lm.right_hand[0].x !== 0);
+      const hasLeft = Boolean(lm.left_hand && lm.left_hand[0] && lm.left_hand[0].x !== 0);
+
+      if (hasRight || hasLeft) {
+        if (hasRight && lm.right_hand) drawSingleHand(lm.right_hand);
+        if (hasLeft && lm.left_hand) drawSingleHand(lm.left_hand);
+      } else if (lm.hand && lm.hand[0] && lm.hand[0].x !== 0) {
+        drawSingleHand(lm.hand);
       }
     };
     raf = requestAnimationFrame(draw);
