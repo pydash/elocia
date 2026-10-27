@@ -471,7 +471,36 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             return;
           }
 
-          if (isHandDetected) {
+          // Active signing window runs on wall-clock time:
+          // Completes reliably even if the student finishes early and lowers their hand to their lap
+          if (autoStateRef.current === 'signing') {
+            const elapsed = Date.now() - (holdStartRef.current || Date.now());
+            const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
+            const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
+            setHoldProgress((prev) => (Math.abs(prev - progress) >= 4 || progress === 100 || progress === 0 ? progress : prev));
+
+            if (elapsed >= SIGN_DURATION) {
+              setAutoState('grading');
+              autoStateRef.current = 'grading';
+              setIsRecording(false);
+              setIsEvaluating(true);
+              holdStartRef.current = null;
+
+              const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  action: 'evaluate',
+                  stageId: currentItemRef.current.globalId,
+                  stageName: currentItemRef.current.name,
+                  studentId: student.id || '',
+                  studentName: student.name || 'Student',
+                  attemptNumber: failCountRef.current + 1,
+                  tierLevel: currentTierRef.current,
+                  activityType: isPracticeModeRef.current ? 'practice' : 'evaluation'
+                }));
+              }
+            }
+          } else if (isHandDetected) {
             consecutiveMissRef.current = 0;
             if (autoStateRef.current === 'idle') {
               setAutoState('ready');
@@ -494,33 +523,6 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                 if (ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ action: 'clear' }));
                   if (diagFramesRef.current) diagFramesRef.current.textContent = '0';
-                }
-              }
-            } else if (autoStateRef.current === 'signing') {
-              const elapsed = Date.now() - (holdStartRef.current || Date.now());
-              const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
-              const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
-              setHoldProgress((prev) => (Math.abs(prev - progress) >= 4 || progress === 100 || progress === 0 ? progress : prev));
-
-              if (elapsed >= SIGN_DURATION) {
-                setAutoState('grading');
-                autoStateRef.current = 'grading';
-                setIsRecording(false);
-                setIsEvaluating(true);
-                holdStartRef.current = null;
-
-                const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({
-                    action: 'evaluate',
-                    stageId: currentItemRef.current.globalId,
-                    stageName: currentItemRef.current.name,
-                    studentId: student.id || '',
-                    studentName: student.name || 'Student',
-                    attemptNumber: failCountRef.current + 1,
-                    tierLevel: currentTierRef.current,
-                    activityType: isPracticeModeRef.current ? 'practice' : 'evaluation'
-                  }));
                 }
               }
             }
@@ -547,8 +549,8 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
     let rafNextFrame: number | null = null;
 
     const canvas = canvasRef.current;
-    canvas.width = 320;
-    canvas.height = 240;
+    canvas.width = 480;
+    canvas.height = 360;
     const ctx = canvas.getContext('2d');
 
     const sendNextFrame = () => {
@@ -568,8 +570,8 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
       if (ctx) {
         isSending = true;
-        ctx.drawImage(videoRef.current, 0, 0, 320, 240);
-        const base64Data = canvas.toDataURL('image/jpeg', 0.4);
+        ctx.drawImage(videoRef.current, 0, 0, 480, 360);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.65);
         activeWs.send(JSON.stringify({ image: base64Data }));
 
         if (fallbackTimeout) clearTimeout(fallbackTimeout);

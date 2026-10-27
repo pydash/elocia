@@ -137,27 +137,41 @@ def calculate_single_handshape_score(s_seq, b_seq, s_key="hand", b_key="hand"):
         else:
             angle_diff = ext_diff
 
-        effective_ext_diff = min(ext_diff, angle_diff * 0.9)
+        # Balanced effective difference: requires both extension and 3D joint curvature to align
+        effective_ext_diff = (0.50 * ext_diff) + (0.50 * max(ext_diff, angle_diff))
 
         # Pedagogical scoring curve:
         # Small differences (<= 0.18): acceptable anatomical variation (100 -> 80)
-        # Moderate differences (0.18 - 0.32): partial deformation (80 -> 50)
-        # Large differences (> 0.32, e.g. phone grasp vs sign): wrong handshape (< 50)
+        # Moderate differences (0.18 - 0.30): partial deformation (80 -> 55)
+        # Large differences (> 0.30, e.g. open hand when index/fist expected): wrong handshape (< 50)
         if effective_ext_diff <= 0.18:
             ext_score = 100.0 - (effective_ext_diff * 111.0)
-        elif effective_ext_diff <= 0.32:
-            ext_score = 80.0 - ((effective_ext_diff - 0.18) * 214.0)
+        elif effective_ext_diff <= 0.30:
+            ext_score = 80.0 - ((effective_ext_diff - 0.18) * 208.0)
         else:
-            ext_score = max(0.0, 50.0 - ((effective_ext_diff - 0.32) * 125.0))
+            ext_score = max(0.0, 55.0 - ((effective_ext_diff - 0.30) * 140.0))
 
         if spread_diff <= 0.18:
             spread_score = 100.0 - (spread_diff * 111.0)
-        elif spread_diff <= 0.32:
-            spread_score = 80.0 - ((spread_diff - 0.18) * 214.0)
+        elif spread_diff <= 0.30:
+            spread_score = 80.0 - ((spread_diff - 0.18) * 208.0)
         else:
-            spread_score = max(0.0, 50.0 - ((spread_diff - 0.32) * 125.0))
+            spread_score = max(0.0, 55.0 - ((spread_diff - 0.30) * 140.0))
 
-        cand_score = max(0.0, min(100.0, min(ext_score, spread_score)))
+        # Categorical Distinctive Finger Check:
+        # In FSL, fingers are phonemically extended or curled.
+        # If baseline requires curled fingers (e.g. middle/ring/pinky in '1' or 'Black')
+        # but student presents fully open fingers (or vice-versa), penalize the category mismatch
+        category_penalty = 0.0
+        if b_angles is not None and s_angles is not None:
+            for fi in range(4): # Index (0), Middle (1), Ring (2), Pinky (3)
+                if b_angles[fi] > 1.45 and s_angles[fi] < 0.75:
+                    category_penalty += 12.0 # Baseline curled, student straight
+                elif b_angles[fi] < 0.75 and s_angles[fi] > 1.45:
+                    category_penalty += 12.0 # Baseline straight, student curled
+
+        raw_score = min(ext_score, spread_score)
+        cand_score = max(0.0, min(100.0, raw_score - category_penalty))
         if cand_score > best_score:
             best_score = cand_score
 
@@ -227,16 +241,15 @@ def _get_palm_normal_for_hand(frame, hand_key="hand"):
     norm = np.linalg.norm(normal)
     return normal / norm if norm > 0 else np.array([0.0, 0.0, -1.0])
 
-def _windowed_palm_normals(seq, hand_key="hand"):
+def _windowed_palm_normals(seq, hand_key="hand", center_ratio=0.5):
     """
-    Gathers palm normal vectors across the central signing execution window (apex +/- 15%).
-    Filters out transient monocular landmark jitter and depth noise.
-    Returns empty list if the requested hand_key is absent in the sequence.
+    Gathers palm normal vectors across a signing execution window (center_ratio +/- 15%).
+    Filters out transient monocular landmark jitter and requires actual knuckles (landmarks 5 and 17).
     """
     n = len(seq)
     if n == 0:
         return []
-    mid = n // 2
+    mid = max(0, min(n - 1, int(n * center_ratio)))
     window_half = max(2, int(n * 0.15))
     start_idx = max(0, mid - window_half)
     end_idx = min(n, mid + window_half + 1)
@@ -245,64 +258,71 @@ def _windowed_palm_normals(seq, hand_key="hand"):
     for i in range(start_idx, end_idx):
         f = seq[i]
         hand = f.get(hand_key)
-        if hand and len(hand) >= 21 and any(lm['x'] != 0 or lm['y'] != 0 for lm in hand[:5]):
+        if hand and len(hand) >= 21 and (hand[5]['x'] != 0 or hand[17]['x'] != 0):
             normals.append(_get_palm_normal_for_hand(f, hand_key))
             
-    # If no window frames had the hand, check if mid frame specifically has it
+    # If no window frames had the hand with knuckles, search entire active sequence
     if not normals:
-        mid_hand = seq[mid].get(hand_key)
-        if mid_hand and len(mid_hand) >= 21 and any(lm['x'] != 0 or lm['y'] != 0 for lm in mid_hand[:5]):
-            normals.append(_get_palm_normal_for_hand(seq[mid], hand_key))
+        for f in seq:
+            hand = f.get(hand_key)
+            if hand and len(hand) >= 21 and (hand[5]['x'] != 0 or hand[17]['x'] != 0):
+                normals.append(_get_palm_normal_for_hand(f, hand_key))
             
     return normals
 
 def calculate_single_palm_score(s_seq, b_seq, s_key="hand", b_key="hand"):
     """
     Windowed palm orientation score comparing representative apex normal vectors.
-    Evaluates both direct orientation and horizontally mirrored orientation.
+    Evaluates both direct orientation and horizontally mirrored orientation across candidate windows.
     Returns None if either sequence lacks landmarks for the specified hand.
     """
-    s_normals = _windowed_palm_normals(s_seq, s_key) if isinstance(s_seq, list) else [_get_palm_normal_for_hand(s_seq, s_key)]
-    b_normals = _windowed_palm_normals(b_seq, b_key) if isinstance(b_seq, list) else [_get_palm_normal_for_hand(b_seq, b_key)]
-
-    if not s_normals or not b_normals:
+    b_normals = _windowed_palm_normals(b_seq, b_key, center_ratio=0.50) if isinstance(b_seq, list) else [_get_palm_normal_for_hand(b_seq, b_key)]
+    if not b_normals:
         return None
-
-    # Compute robust mean normal vector for student and baseline
-    s_mean = np.mean(s_normals, axis=0)
-    s_norm_val = np.linalg.norm(s_mean)
-    s_normal = s_mean / s_norm_val if s_norm_val > 0 else np.array([0.0, 0.0, -1.0])
 
     b_mean = np.mean(b_normals, axis=0)
     b_norm_val = np.linalg.norm(b_mean)
     b_normal = b_mean / b_norm_val if b_norm_val > 0 else np.array([0.0, 0.0, -1.0])
-
-    # Direct comparison:
-    dot = np.dot(s_normal, b_normal)
-    dot = max(-1.0, min(1.0, dot))
-    angle1 = np.arccos(dot)
-
-    # Horizontal mirror comparison (flip X axis across sagittal plane; Y and Z point towards viewer):
     b_normal_mirrored = np.array([-b_normal[0], b_normal[1], b_normal[2]])
-    dot_mirrored = np.dot(s_normal, b_normal_mirrored)
-    dot_mirrored = max(-1.0, min(1.0, dot_mirrored))
-    angle2 = np.arccos(dot_mirrored)
 
-    best_angle = min(angle1, angle2)
-    angle_deg = best_angle * 180.0 / np.pi
+    candidate_ratios = [0.50, 0.35, 0.65] if isinstance(s_seq, list) and len(s_seq) >= 8 else [0.50]
+    best_score = None
 
-    # Ergonomic palm orientation scoring curve:
-    # 0 - 30 degrees: excellent alignment with teacher demo (100 -> 80)
-    # 30 - 55 degrees: acceptable learner pitch/yaw variation (80 -> 60)
-    # > 55 degrees: reversed orientation / wrong palm face (< 60, triggers scaffolding)
-    if angle_deg <= 30.0:
-        score = 100.0 - (angle_deg * 0.67)
-    elif angle_deg <= 55.0:
-        score = 80.0 - ((angle_deg - 30.0) * 0.8)
-    else:
-        score = max(0.0, 60.0 - ((angle_deg - 55.0) * 1.8))
+    for ratio in candidate_ratios:
+        s_normals = _windowed_palm_normals(s_seq, s_key, center_ratio=ratio) if isinstance(s_seq, list) else [_get_palm_normal_for_hand(s_seq, s_key)]
+        if not s_normals:
+            continue
 
-    return round(max(0.0, min(100.0, score)), 1)
+        s_mean = np.mean(s_normals, axis=0)
+        s_norm_val = np.linalg.norm(s_mean)
+        s_normal = s_mean / s_norm_val if s_norm_val > 0 else np.array([0.0, 0.0, -1.0])
+
+        # Direct comparison:
+        dot = max(-1.0, min(1.0, np.dot(s_normal, b_normal)))
+        angle1 = np.arccos(dot)
+
+        # Horizontal mirror comparison:
+        dot_mirrored = max(-1.0, min(1.0, np.dot(s_normal, b_normal_mirrored)))
+        angle2 = np.arccos(dot_mirrored)
+
+        best_angle = min(angle1, angle2)
+        angle_deg = best_angle * 180.0 / np.pi
+
+        # Ergonomic palm orientation scoring curve:
+        # 0 - 30 degrees: excellent alignment with teacher demo (100 -> 80)
+        # 30 - 55 degrees: acceptable learner pitch/yaw variation (80 -> 60)
+        # > 55 degrees: reversed orientation / wrong palm face (< 60, triggers scaffolding)
+        if angle_deg <= 30.0:
+            score = 100.0 - (angle_deg * 0.67)
+        elif angle_deg <= 55.0:
+            score = 80.0 - ((angle_deg - 30.0) * 0.8)
+        else:
+            score = max(0.0, 60.0 - ((angle_deg - 55.0) * 1.8))
+
+        if best_score is None or score > best_score:
+            best_score = score
+
+    return round(max(0.0, min(100.0, best_score)), 1) if best_score is not None else None
 
 def calculate_palm_orientation_score(student_seq, baseline_seq):
     if not student_seq or not baseline_seq: return 0
@@ -534,14 +554,14 @@ def calculate_movement_score(student_seq, baseline_seq):
             return 0
 
         # Motion Concordance Check:
-        # If baseline has significant dynamic movement (> 0.40) but student's hand
-        # has zero movement (< 0.04, e.g. no attempt or hand not moving at all),
-        # penalize movement. For static signs (numbers, letters), static hand is natural and valid.
+        # If baseline has significant dynamic movement (> 0.35) but student's hand
+        # has negligible movement (< 0.12, e.g. just showing hands without trying the gesture),
+        # penalize movement to require genuine physical attempt.
         if s_seq is not None and b_seq is not None:
             b_disp = path_displacement(b_seq, hand_key)
             s_disp = path_displacement(s_seq, hand_key)
-            if b_disp > 0.40 and s_disp < 0.04:
-                return max(5.0, round((s_disp / (b_disp or 1.0)) * 30.0, 1))
+            if b_disp > 0.35 and s_disp < 0.12:
+                return max(5.0, round((s_disp / (b_disp or 1.0)) * 35.0, 1))
 
         dist_full = min(
             _dtw_distance(s_arr, b_arr),
