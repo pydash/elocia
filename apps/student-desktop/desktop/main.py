@@ -220,8 +220,15 @@ async def evaluate_endpoint(websocket: WebSocket):
 
                 overall = (scores['handshape'] * 0.25) + (scores['palmOrientation'] * 0.25) + (scores['location'] * 0.25) + (scores['movement'] * 0.25)
                 
-                # Passing standard: 60.0% composite score
-                passed = bool(overall >= 60.0)
+                # Multi-parameter passing standard per Thesis Manuscript (pp. 70, 80, 99):
+                # Both overall composite score >= 60.0 AND all four phonological parameters >= 60.0 required to pass.
+                has_failed_parameter = (
+                    scores['handshape'] < 60 or
+                    scores['palmOrientation'] < 60 or
+                    scores['location'] < 60 or
+                    scores['movement'] < 60
+                )
+                passed = bool((overall >= 60.0) and (not has_failed_parameter))
 
                 # Hardware camera capture rate per thesis manuscript specification: 30.0 FPS
                 fps = 30.0

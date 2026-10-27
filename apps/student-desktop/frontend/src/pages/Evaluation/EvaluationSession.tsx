@@ -314,8 +314,15 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
           const overall = data.overall;
 
-          // Standard Passing Rule: overall score >= 60.0% passes
-          const isPassed = overall >= 60;
+          // Multi-parameter passing standard per Thesis Manuscript (pp. 70, 80, 99):
+          // Both overall composite score >= 60.0 AND all four phonological parameters >= 60.0 required to pass.
+          const hasFailedParameter =
+            data.scores.handshape < 60 ||
+            data.scores.palmOrientation < 60 ||
+            data.scores.location < 60 ||
+            data.scores.movement < 60;
+
+          const isPassed = overall >= 60 && !hasFailedParameter;
 
           if (!isPassed) {
             setFailCount(prev => {
