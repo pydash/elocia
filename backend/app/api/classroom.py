@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+import sys
 import uuid
 import os
 import shutil
@@ -25,16 +26,40 @@ def invalidate_educational_videos_cache():
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
 class ClassCreate(BaseModel):
-    teacher_id: uuid.UUID
+    teacher_id: Optional[uuid.UUID] = None
     name: str
     grade_level: int = 1
     school_year: str = "2026-2027"
+
+    @field_validator("teacher_id", mode="before")
+    @classmethod
+    def parse_teacher_id(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v_clean = v.strip()
+            if not v_clean or v_clean.lower() in ("none", "null", "undefined", ""):
+                return None
+            return uuid.UUID(v_clean)
+        return v
 
 class ClassUpdate(BaseModel):
     name: Optional[str] = None
     teacher_id: Optional[uuid.UUID] = None
     grade_level: Optional[int] = None
     school_year: Optional[str] = None
+
+    @field_validator("teacher_id", mode="before")
+    @classmethod
+    def parse_teacher_id(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v_clean = v.strip()
+            if not v_clean or v_clean.lower() in ("none", "null", "undefined", ""):
+                return None
+            return uuid.UUID(v_clean)
+        return v
 
 class AddStudentToClass(BaseModel):
     student_id: uuid.UUID
@@ -326,7 +351,10 @@ async def upload_educational_video_file(
                 h264_pub_path
             ]
 
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        extra_flags = {}
+        if sys.platform == "win32":
+            extra_flags["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, **extra_flags)
         if res.returncode == 0:
             if os.path.exists(pub_path):
                 try:

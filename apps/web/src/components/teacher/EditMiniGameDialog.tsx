@@ -49,6 +49,7 @@ export default function EditMiniGameDialog({
 
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,14 +126,16 @@ export default function EditMiniGameDialog({
     fieldKey: string,
   ) => {
     setUploadingField(fieldKey);
+    setUploadProgress(0);
     setError(null);
     try {
-      const res = await uploadMiniGameMedia(file);
+      const res = await uploadMiniGameMedia(file, (percent) => setUploadProgress(percent));
       onSuccess(res.url);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to upload file");
     } finally {
       setUploadingField(null);
+      setUploadProgress(0);
     }
   };
 
@@ -377,7 +380,7 @@ export default function EditMiniGameDialog({
                           )}
                           <label className="cursor-pointer text-xs font-semibold text-(--primary) hover:underline">
                             {uploadingField === `sisi_img_${idx}`
-                              ? "Uploading..."
+                              ? `Uploading (${uploadProgress}%)...`
                               : item.objective_image_url
                                 ? "Replace Image"
                                 : "Upload Image"}
@@ -422,7 +425,7 @@ export default function EditMiniGameDialog({
                           )}
                           <label className="cursor-pointer text-xs font-semibold text-(--primary) hover:underline">
                             {uploadingField === `sisi_vid_${idx}`
-                              ? "Uploading..."
+                              ? `Uploading (${uploadProgress}%)...`
                               : item.reference_video_url
                                 ? "Replace Video"
                                 : "Upload Video"}
@@ -586,7 +589,7 @@ export default function EditMiniGameDialog({
                           )}
                           <label className="cursor-pointer text-xs font-semibold text-(--primary) hover:underline">
                             {uploadingField === `puz_img_${idx}`
-                              ? "Uploading..."
+                              ? `Uploading (${uploadProgress}%)...`
                               : item.word_form_image_url
                                 ? "Replace Image"
                                 : "Upload Image"}
@@ -630,7 +633,7 @@ export default function EditMiniGameDialog({
                           )}
                           <label className="cursor-pointer text-xs font-semibold text-(--primary) hover:underline">
                             {uploadingField === `puz_vid_${idx}`
-                              ? "Uploading..."
+                              ? `Uploading (${uploadProgress}%)...`
                               : item.reference_video_url
                                 ? "Replace Video"
                                 : "Upload Video"}
@@ -808,7 +811,7 @@ export default function EditMiniGameDialog({
                             )}
                             <label className="cursor-pointer text-xs font-semibold text-(--primary) hover:underline">
                               {uploadingField === `mf_vid_${idx}`
-                                ? "Uploading..."
+                                ? `Uploading (${uploadProgress}%)...`
                                 : item.reference_video_url
                                   ? "Replace Video"
                                   : "Upload Video"}
@@ -855,7 +858,7 @@ export default function EditMiniGameDialog({
                             )}
                             <label className="cursor-pointer text-xs font-semibold text-(--primary) hover:underline">
                               {uploadingField === `mf_vid2_${idx}`
-                                ? "Uploading..."
+                                ? `Uploading (${uploadProgress}%)...`
                                 : item.reference_video_url_2
                                   ? "Replace Video"
                                   : "Upload Video"}

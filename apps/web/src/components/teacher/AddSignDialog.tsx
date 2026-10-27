@@ -1,5 +1,5 @@
 import { useState, useRef, type FormEvent } from "react";
-import { Upload, X, Loader2, Video } from "lucide-react";
+import { Upload, X, Loader2, Video, ImagePlus } from "lucide-react";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
 import { uploadStageBaseline } from "@/services/curriculum";
@@ -14,13 +14,17 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
   const [isOpen, setIsOpen] = useState(false);
   const [signName, setSignName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpen = () => {
     setSignName("");
     setSelectedFile(null);
+    setSelectedPhoto(null);
     setError(null);
     setIsOpen(true);
   };
@@ -28,6 +32,12 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedPhoto(e.target.files[0]);
     }
   };
 
@@ -43,6 +53,7 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
     }
 
     setLoading(true);
+    setUploadProgress(0);
     setError(null);
 
     try {
@@ -51,7 +62,9 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
         signName.trim(),
         selectedFile,
         gradeLevel,
-        `Demonstration video for ${signName.trim()}`
+        `Demonstration video for ${signName.trim()}`,
+        selectedPhoto,
+        (percent) => setUploadProgress(percent)
       );
       setIsOpen(false);
       onAdded();
@@ -59,6 +72,7 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
       setError(err.message || "Failed to upload sign video.");
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -75,7 +89,7 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-100 space-y-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
                 <Video className="size-5 text-(--primary)" />
@@ -124,7 +138,7 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
 
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 hover:border-(--primary) rounded-xl p-5 text-center cursor-pointer transition bg-gray-50 hover:bg-gray-100/50 flex flex-col items-center justify-center gap-2"
+                  className="border-2 border-dashed border-gray-300 hover:border-(--primary) rounded-xl p-4 text-center cursor-pointer transition bg-gray-50 hover:bg-gray-100/50 flex flex-col items-center justify-center gap-2"
                 >
                   <Upload className="size-6 text-gray-400" />
                   {selectedFile ? (
@@ -141,6 +155,71 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
                 </div>
               </div>
 
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Visual Aid Picture / Illustration (Optional)
+                  </label>
+                  <span className="text-[10px] font-semibold text-(--primary) bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Lesson Proper Card
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 mb-1.5">
+                  Shown directly to students on the right-hand card in Lesson Proper instead of plain text.
+                </p>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => photoInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 hover:border-(--primary) rounded-xl p-4 text-center cursor-pointer transition bg-gray-50 hover:bg-gray-100/50 flex flex-col items-center justify-center gap-2"
+                >
+                  <ImagePlus className="size-6 text-gray-400" />
+                  {selectedPhoto ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <img
+                        src={URL.createObjectURL(selectedPhoto)}
+                        alt="Visual Aid Preview"
+                        className="h-24 max-w-full object-contain rounded-lg border border-gray-200 bg-white p-1 shadow-xs"
+                      />
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800">📸 {selectedPhoto.name}</p>
+                        <p className="text-[11px] text-gray-500">{(selectedPhoto.size / 1024).toFixed(0)} KB (Click to change)</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Click to upload visual aid picture</p>
+                      <p className="text-[11px] text-gray-400">PNG, JPG, or WebP (auto-captured snapshot if omitted)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {loading && (
+                <div className="space-y-1.5 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex justify-between text-xs font-semibold text-gray-700">
+                    <span>
+                      {uploadProgress < 100
+                        ? `Uploading video file...`
+                        : `Processing landmarks with MediaPipe...`}
+                    </span>
+                    <span className="text-(--primary) font-bold">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-(--primary) h-full transition-all duration-150 rounded-full"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
                 <Button
                   type="button"
@@ -152,7 +231,11 @@ export default function AddSignDialog({ stageId, gradeLevel = 1, onAdded }: AddS
                 </Button>
                 <Button type="submit" disabled={loading} className="gap-2">
                   {loading && <Loader2 className="size-4 animate-spin" />}
-                  {loading ? "Extracting & Saving..." : "Upload & Save"}
+                  {loading
+                    ? uploadProgress < 100
+                      ? `Uploading (${uploadProgress}%)...`
+                      : "Extracting Landmarks..."
+                    : "Upload & Save"}
                 </Button>
               </div>
             </form>

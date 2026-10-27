@@ -73,10 +73,10 @@ export function startEvaluationTour() {
       }
     },
     {
-      element: '.eval-number-card',
+      element: '.eval-visual-aid-card',
       popover: {
-        title: '🔢 Target Sign',
-        description: 'Copy this sign! Look closely! 👀',
+        title: '🖼️ Visual Aid & Target Sign',
+        description: 'Look at the picture to know which sign to perform! 👀',
         side: 'left',
         align: 'start'
       }

@@ -17,12 +17,32 @@ import os
 import uuid
 from app.core.streak import get_effective_streak
 
-# Storage paths for cleanup
+# Storage paths for cleanup & static visual aids
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 PUBLIC_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "videos")
 BASELINES_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines")
 STORAGE_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "videos")
 STORAGE_BASELINES_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "baselines")
+PUBLIC_THUMBNAILS_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "thumbnails")
+STORAGE_THUMBNAILS_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "thumbnails")
+os.makedirs(PUBLIC_THUMBNAILS_DIR, exist_ok=True)
+os.makedirs(STORAGE_THUMBNAILS_DIR, exist_ok=True)
+
+def resolve_sign_photo(sign_id: Optional[int], stage_id: Optional[int] = None, sign_name: Optional[str] = None) -> Optional[str]:
+    """Resolve static visual aid image path for learners."""
+    candidates = []
+    if sign_id:
+        candidates.extend([f"{sign_id}.png", f"{sign_id}.jpg", f"{sign_id}.jpeg", f"{sign_id}.webp", f"thumb_{sign_id}.png"])
+    if stage_id:
+        candidates.extend([f"{stage_id}.png", f"{stage_id}.jpg", f"{stage_id}.jpeg", f"{stage_id}.webp", f"thumb_{stage_id}.png"])
+    if sign_name:
+        candidates.extend([f"{sign_name}.png", f"{sign_name}.jpg", f"thumb_{sign_name}.png"])
+
+    for cand in candidates:
+        if os.path.exists(os.path.join(STORAGE_THUMBNAILS_DIR, cand)) or os.path.exists(os.path.join(PUBLIC_THUMBNAILS_DIR, cand)):
+            return f"/thumbnails/{cand}"
+
+    return f"/thumbnails/{sign_id}.png" if sign_id else None
 
 def remove_baseline_disk_files(video_filename: Optional[str], stage_id: Optional[int]):
     """Safely delete video and baseline JSON files from disk."""
@@ -122,7 +142,8 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
                     "globalId": b.sign_id,
                     "name": b.sign_name,
                     "videoUrl": f"/videos/{b.video_filename}" if b.video_filename else None,
-                    "videoFilename": b.video_filename
+                    "videoFilename": b.video_filename,
+                    "photoUrl": resolve_sign_photo(b.sign_id, b.stage_id, b.sign_name)
                 }
                 if b.stage_id_new is not None:
                     baselines_by_stage.setdefault(b.stage_id_new, []).append(item)
@@ -197,7 +218,13 @@ async def get_curriculum(grade_level: Optional[int] = Query(None), db: AsyncSess
         for b in baselines:
             if b.sign_id is None or b.sign_id == 0:
                 continue
-            item = {"globalId": b.sign_id, "name": b.sign_name}
+            item = {
+                "globalId": b.sign_id,
+                "name": b.sign_name,
+                "videoUrl": f"/videos/{b.video_filename}" if b.video_filename else None,
+                "videoFilename": b.video_filename,
+                "photoUrl": resolve_sign_photo(b.sign_id, b.stage_id, b.sign_name)
+            }
             if b.stage_id_new is not None:
                 baselines_by_stage.setdefault(b.stage_id_new, []).append(item)
             else:
@@ -700,7 +727,8 @@ async def get_curriculum_stage(stage_id: int, db: AsyncSession = Depends(get_db)
                 "video_filename": b.video_filename,
                 "video_url": f"/videos/{b.video_filename}",
                 "fps": b.fps,
-                "total_frames": b.total_frames
+                "total_frames": b.total_frames,
+                "photo_url": resolve_sign_photo(b.sign_id or b.stage_id, b.stage_id, b.sign_name)
             })
 
     return {
@@ -835,16 +863,80 @@ async def delete_curriculum_sign(sign_id: str, db: AsyncSession = Depends(get_db
     await db.commit()
     return {"status": "deleted", "sign_id": sign_id}
 
-@router.put("/curriculum-signs/{sign_id}", status_code=status.HTTP_200_OK)
-async def update_curriculum_sign(sign_id: int, payload: dict, db: AsyncSession = Depends(get_db)):
-    """Update sign name or details of a baseline round."""
-    res = await db.execute(select(FSLBaseline).where(FSLBaseline.sign_id == sign_id))
-    b = res.scalar_one_or_none()
-    if not b:
-        res_alt = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id == sign_id))
+from fastapi import UploadFile, File
+
+async def find_baseline_by_id_or_ref(ref_id: str, db: AsyncSession) -> Optional[FSLBaseline]:
+    """Find a baseline by UUID, sign_id, stage_id, or sign_name."""
+    # 1. Try UUID
+    try:
+        uuid_val = uuid.UUID(ref_id)
+        res = await db.execute(select(FSLBaseline).where(FSLBaseline.id == uuid_val))
+        b = res.scalar_one_or_none()
+        if b:
+            return b
+    except (ValueError, TypeError):
+        pass
+
+    # 2. Try integer sign_id or stage_id
+    try:
+        int_id = int(ref_id)
+        res = await db.execute(select(FSLBaseline).where(FSLBaseline.sign_id == int_id))
+        b = res.scalar_one_or_none()
+        if b:
+            return b
+        res_alt = await db.execute(select(FSLBaseline).where(FSLBaseline.stage_id == int_id))
         b = res_alt.scalar_one_or_none()
-        if not b:
-            raise HTTPException(status_code=404, detail="Sign baseline not found")
+        if b:
+            return b
+    except (ValueError, TypeError):
+        pass
+
+    # 3. Try matching sign_name
+    res_name = await db.execute(select(FSLBaseline).where(FSLBaseline.sign_name == ref_id))
+    return res_name.scalar_one_or_none()
+
+@router.post("/curriculum-signs/{sign_id}/photo", status_code=status.HTTP_200_OK)
+async def upload_curriculum_sign_photo(sign_id: str, photo: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Upload or update the static visual aid picture for an existing sign (including earlier uploads)."""
+    b = await find_baseline_by_id_or_ref(sign_id, db)
+    if not b:
+        raise HTTPException(status_code=404, detail="Sign baseline not found")
+
+    p_ext = os.path.splitext(photo.filename)[1].lower() or ".png"
+    photo_bytes = await photo.read()
+    resolved_id = b.sign_id or b.stage_id
+    saved_names = set()
+    if resolved_id is not None:
+        saved_names.add(f"{resolved_id}{p_ext}")
+        saved_names.add(f"thumb_{resolved_id}.png")
+    if b.stage_id is not None:
+        saved_names.add(f"{b.stage_id}{p_ext}")
+        saved_names.add(f"thumb_{b.stage_id}.png")
+    if b.sign_name:
+        saved_names.add(f"{b.sign_name}{p_ext}")
+        saved_names.add(f"{b.sign_name}.png")
+        saved_names.add(f"thumb_{b.sign_name}.png")
+
+    for name in saved_names:
+        with open(os.path.join(PUBLIC_THUMBNAILS_DIR, name), "wb") as fp:
+            fp.write(photo_bytes)
+        with open(os.path.join(STORAGE_THUMBNAILS_DIR, name), "wb") as fb:
+            fb.write(photo_bytes)
+
+    invalidate_curriculum_cache()
+    primary_name = f"{resolved_id}{p_ext}" if resolved_id else f"{b.sign_name}{p_ext}"
+    return {
+        "status": "success",
+        "sign_id": resolved_id,
+        "photo_url": f"/thumbnails/{primary_name}"
+    }
+
+@router.put("/curriculum-signs/{sign_id}", status_code=status.HTTP_200_OK)
+async def update_curriculum_sign(sign_id: str, payload: dict, db: AsyncSession = Depends(get_db)):
+    """Update sign name or details of a baseline round."""
+    b = await find_baseline_by_id_or_ref(sign_id, db)
+    if not b:
+        raise HTTPException(status_code=404, detail="Sign baseline not found")
 
     if "sign_name" in payload and payload["sign_name"]:
         b.sign_name = payload["sign_name"].strip()
@@ -853,4 +945,5 @@ async def update_curriculum_sign(sign_id: int, payload: dict, db: AsyncSession =
 
     await db.commit()
     await db.refresh(b)
-    return {"status": "updated", "sign_id": b.sign_id, "sign_name": b.sign_name, "is_active": b.is_active}
+    invalidate_curriculum_cache()
+    return {"status": "updated", "sign_id": b.sign_id or b.stage_id, "sign_name": b.sign_name, "is_active": b.is_active}

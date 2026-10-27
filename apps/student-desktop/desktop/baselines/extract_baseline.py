@@ -10,10 +10,19 @@ import json
 import cv2
 import mediapipe as mp
 
+def safe_print(*args, **kwargs):
+    """Safely print without crashing on Windows broken console pipes [WinError 233]."""
+    try:
+        print(*args, **kwargs)
+        sys.stdout.flush()
+    except (OSError, IOError, Exception):
+        pass
+
 def extract_landmarks(video_path, output_json_path, stage_id=None):
     if not os.path.exists(video_path):
-        print(json.dumps({"success": False, "error": f"Video file not found: {video_path}"}))
-        sys.exit(1)
+        err = f"Video file not found: {video_path}"
+        safe_print(json.dumps({"success": False, "error": err}))
+        return {"success": False, "error": err}
 
     mp_holistic = mp.solutions.holistic
     holistic = mp_holistic.Holistic(
@@ -25,8 +34,9 @@ def extract_landmarks(video_path, output_json_path, stage_id=None):
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(json.dumps({"success": False, "error": f"Could not open video file: {video_path}"}))
-        sys.exit(1)
+        err = f"Could not open video file: {video_path}"
+        safe_print(json.dumps({"success": False, "error": err}))
+        return {"success": False, "error": err}
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -90,11 +100,12 @@ def extract_landmarks(video_path, output_json_path, stage_id=None):
     holistic.close()
 
     if frame_count == 0:
-        print(json.dumps({"success": False, "error": "No frames could be read from the video"}))
-        sys.exit(1)
+        err = "No frames could be read from the video"
+        safe_print(json.dumps({"success": False, "error": err}))
+        return {"success": False, "error": err}
 
     os.makedirs(os.path.dirname(os.path.abspath(output_json_path)), exist_ok=True)
-    with open(output_json_path, 'w') as f:
+    with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(baseline_data, f)
 
     result = {
@@ -106,7 +117,7 @@ def extract_landmarks(video_path, output_json_path, stage_id=None):
         "hands_detected_frames": hands_detected_count,
         "fps": fps
     }
-    print(json.dumps(result))
+    safe_print(json.dumps(result))
     return result
 
 if __name__ == "__main__":
@@ -117,4 +128,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     extract_landmarks(args.video, args.output, args.stage)
-

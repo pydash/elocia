@@ -426,6 +426,7 @@
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
 
+.eval-visual-aid-card,
 .eval-number-card {
   height: clamp(100px, 14vh, 150px);
   background: #FFF6E9;
@@ -434,12 +435,103 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(12px, 2vw, 24px);
   padding: 8px 16px;
   box-sizing: border-box;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+}
+
+.eval-visual-aid-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eval-visual-aid-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 14px;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.12));
+  transition: transform 0.25s ease;
+  display: block;
+}
+
+.eval-visual-aid-img:hover {
+  transform: scale(1.03);
+}
+
+.eval-visual-aid-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  background: rgba(30, 41, 59, 0.88);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  padding: 3px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.eval-visual-aid-badge-label {
+  color: #FCD34D;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.eval-visual-aid-badge-name {
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.eval-visual-aid-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+  width: 100%;
+}
+
+.eval-visual-aid-fallback-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.eval-visual-aid-fallback-text {
+  font-size: clamp(34px, 5.5vh, 52px);
+  font-weight: 900;
+  color: #FB9F34;
+  -webkit-text-stroke: 1.5px #3E4850;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+
+.eval-visual-aid-hint {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9A3412;
+  background: #FED7AA;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .eval-number-image {
@@ -480,7 +572,8 @@
   top: clamp(8px, 1.4vh, 18px);
   left: 50%;
   transform: translateX(-50%);
-  width: clamp(240px, 28vw, 360px);
+  width: clamp(220px, 26vw, 340px);
+  max-height: clamp(60px, 9vh, 90px);
   height: auto;
   object-fit: contain;
   z-index: 3;
@@ -512,7 +605,7 @@
   content: '';
   position: absolute;
   bottom: -30px;
-  left: 100%;
+  left: 50%;
   transform: translateX(-50%);
   border-width: 16px 14px 0;
   border-style: solid;
@@ -534,8 +627,9 @@
   bottom: 0px;
   left: 50%;
   transform: translateX(-50%);
-  width: clamp(280px, 32vw, 440px);
-  height: clamp(190px, 28vh, 300px);
+  width: clamp(220px, 26vw, 360px);
+  height: clamp(130px, 19vh, 215px);
+  max-height: 58%;
   display: flex;
   align-items: flex-end;
   justify-content: center;

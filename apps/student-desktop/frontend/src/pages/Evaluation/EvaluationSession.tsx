@@ -152,6 +152,11 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const currentItem = activeItems[questionIndex] || { globalId: 101, name: "1" };
+  const [photoFailed, setPhotoFailed] = useState<boolean>(false);
+
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [questionIndex, currentItem?.globalId, currentItem?.name]);
 
   const [currentTier, setCurrentTier] = useState<1 | 2 | 3 | 4>(1);
   const [failCount, setFailCount] = useState<number>(0);
@@ -181,8 +186,12 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
   // Diagnostic Mode State & Refs
   const [diagOn, setDiagOn] = useState<boolean>(false);
-  const [diagData, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
+  const [, setDiagData] = useState<{ scores: ScoreSet, frames: number } | null>(null);
   const diagRef = useRef(diagOn);
+  const diagHandRef = useRef<HTMLSpanElement>(null);
+  const diagPalmRef = useRef<HTMLSpanElement>(null);
+  const diagLocRef = useRef<HTMLSpanElement>(null);
+  const diagFramesRef = useRef<HTMLSpanElement>(null);
   const landmarksRef = useRef<LandmarksData | null>(null);
   const trailRef = useRef<{ x: number, y: number, a: number }[]>([]);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -248,7 +257,11 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
       try {
         setIsCameraDisconnected(false);
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480 },
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            frameRate: { ideal: 30, min: 24 }
+          },
           audio: false,
         });
 
@@ -410,9 +423,35 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
             xp_earned: isPracticeModeRef.current ? 0 : xpEarned,
           });
         } else if (data.action === 'landmarks' || data.action === 'hand_status') {
+          isSending = false;
+          if (fallbackTimeout) {
+            clearTimeout(fallbackTimeout);
+            fallbackTimeout = null;
+          }
+
+          if (!isEvaluatingRef.current && !cancelled) {
+            if (rafNextFrame) cancelAnimationFrame(rafNextFrame);
+            rafNextFrame = requestAnimationFrame(() => {
+              sendNextFrame();
+            });
+          }
+
           if (data.action === 'landmarks') {
             landmarksRef.current = data;
-            setDiagData({ scores: data.scores, frames: data.frames });
+            // Direct DOM update eliminates full-component React re-renders on every frame (30 FPS smooth!)
+            if (diagFramesRef.current) diagFramesRef.current.textContent = String(data.frames);
+            if (diagHandRef.current) {
+              diagHandRef.current.textContent = String(data.scores.handshape);
+              diagHandRef.current.className = `diag-stat-value ${data.scores.handshape >= 60 ? 'diag-good' : 'diag-bad'}`;
+            }
+            if (diagPalmRef.current) {
+              diagPalmRef.current.textContent = String(data.scores.palmOrientation);
+              diagPalmRef.current.className = `diag-stat-value ${data.scores.palmOrientation >= 60 ? 'diag-good' : 'diag-bad'}`;
+            }
+            if (diagLocRef.current) {
+              diagLocRef.current.textContent = String(data.scores.location);
+              diagLocRef.current.className = `diag-stat-value ${data.scores.location >= 60 ? 'diag-good' : 'diag-bad'}`;
+            }
           }
           // Update wrist trail
           if (data.hand && data.hand[0] && data.hand[0].x !== 0) {
@@ -441,7 +480,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
               const elapsed = Date.now() - (holdStartRef.current || Date.now());
               const READY_DURATION = 1000; // 1s ready countdown
               const progress = Math.min(100, Math.round((elapsed / READY_DURATION) * 100));
-              setHoldProgress(progress);
+              setHoldProgress((prev) => (Math.abs(prev - progress) >= 4 || progress === 100 || progress === 0 ? progress : prev));
 
               if (elapsed >= READY_DURATION) {
                 // Transition into active dynamic signing window!
@@ -452,13 +491,14 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                 setIsRecording(true);
                 if (ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ action: 'clear' }));
+                  if (diagFramesRef.current) diagFramesRef.current.textContent = '0';
                 }
               }
             } else if (autoStateRef.current === 'signing') {
               const elapsed = Date.now() - (holdStartRef.current || Date.now());
               const SIGN_DURATION = 2800; // 2.8 seconds active movement recording window
               const progress = Math.min(100, Math.round((elapsed / SIGN_DURATION) * 100));
-              setHoldProgress(progress);
+              setHoldProgress((prev) => (Math.abs(prev - progress) >= 4 || progress === 100 || progress === 0 ? progress : prev));
 
               if (elapsed >= SIGN_DURATION) {
                 setAutoState('grading');
@@ -499,29 +539,56 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
       }
     };
 
-    const interval = setInterval(() => {
+    let isSending = false;
+    let fallbackTimeout: any | null = null;
+    let heartbeat: any | null = null;
+    let rafNextFrame: number | null = null;
+
+    const canvas = canvasRef.current;
+    canvas.width = 320;
+    canvas.height = 240;
+    const ctx = canvas.getContext('2d');
+
+    const sendNextFrame = () => {
       if (
-        ws.readyState === WebSocket.OPEN &&
-        videoRef.current &&
-        videoRef.current.videoWidth > 0 &&
-        !isEvaluatingRef.current
+        cancelled ||
+        isSending ||
+        isEvaluatingRef.current ||
+        !videoRef.current ||
+        videoRef.current.videoWidth === 0
       ) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        canvas.width = 320;
-        canvas.height = 240;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const base64Data = canvas.toDataURL('image/jpeg', 0.5);
-          ws.send(JSON.stringify({ image: base64Data }));
-        }
+        return;
       }
-    }, 80);
+      const activeWs = wsRef.current;
+      if (!activeWs || activeWs.readyState !== WebSocket.OPEN || activeWs.bufferedAmount > 0) {
+        return;
+      }
+
+      if (ctx) {
+        isSending = true;
+        ctx.drawImage(videoRef.current, 0, 0, 320, 240);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.4);
+        activeWs.send(JSON.stringify({ image: base64Data }));
+
+        if (fallbackTimeout) clearTimeout(fallbackTimeout);
+        fallbackTimeout = setTimeout(() => {
+          isSending = false;
+        }, 250);
+      }
+    };
+
+    // Adaptive frame heartbeat (safety net alongside reactive rAF)
+    heartbeat = setInterval(() => {
+      if (!isSending && !isEvaluatingRef.current) {
+        sendNextFrame();
+      }
+    }, 40);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (heartbeat) clearInterval(heartbeat);
+      if (fallbackTimeout) clearTimeout(fallbackTimeout);
+      if (rafNextFrame) cancelAnimationFrame(rafNextFrame);
       if (stream) stream.getTracks().forEach((t) => t.stop());
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
@@ -680,6 +747,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
   const triggerEvaluation = () => {
     setIsRecording(true);
     // Tell backend to clear previous frames
+    if (diagFramesRef.current) diagFramesRef.current.textContent = '0';
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ action: 'clear' }));
     }
@@ -918,7 +986,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                       className="eval-camera-reconnect-btn"
                       onClick={() => {
                         setIsCameraDisconnected(false);
-                        navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+                        navigator.mediaDevices?.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, min: 24 } }, audio: false })
                           .then((stream) => {
                             if (videoRef.current) {
                               videoRef.current.srcObject = stream;
@@ -1011,22 +1079,22 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
                 </div>
               )}
 
-              {diagOn && diagData && (
+              {diagOn && (
                 <div className="eval-diag-panel">
                   <div className="diag-stat">
-                    <span className={`diag-stat-value ${diagData.scores.handshape >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.handshape}</span>
+                    <span ref={diagHandRef} className="diag-stat-value diag-bad">--</span>
                     <span className="diag-stat-label">Hand</span>
                   </div>
                   <div className="diag-stat">
-                    <span className={`diag-stat-value ${diagData.scores.palmOrientation >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.palmOrientation}</span>
+                    <span ref={diagPalmRef} className="diag-stat-value diag-bad">--</span>
                     <span className="diag-stat-label">Palm</span>
                   </div>
                   <div className="diag-stat">
-                    <span className={`diag-stat-value ${diagData.scores.location >= 60 ? 'diag-good' : 'diag-bad'}`}>{diagData.scores.location}</span>
+                    <span ref={diagLocRef} className="diag-stat-value diag-bad">--</span>
                     <span className="diag-stat-label">Loc</span>
                   </div>
                   <div className="diag-stat">
-                    <span className="diag-stat-value" style={{ color: '#F59E0B' }}>{diagData.frames}</span>
+                    <span ref={diagFramesRef} className="diag-stat-value" style={{ color: '#F59E0B' }}>0</span>
                     <span className="diag-stat-label">Frames</span>
                   </div>
                   <button
@@ -1057,17 +1125,46 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
         </section>
 
         <section className="eval-right-col-container">
-          <div className="eval-number-card">
-            <img 
-              src={`/thumbnails/thumb_${currentItem.name}.png`}
-              alt={currentItem.name}
-              className="eval-number-image"
-              onError={(e) => {
-                // If specific sign thumb not found, gracefully hide the img tag
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-            <div className="eval-number-display">{currentItem.name}</div>
+          <div className="eval-visual-aid-card eval-number-card">
+            {photoFailed ? (
+              <div className="eval-visual-aid-fallback">
+                <span className="eval-visual-aid-fallback-icon">🎯</span>
+                <span className="eval-visual-aid-fallback-text">{currentItem.name}</span>
+                <span className="eval-visual-aid-hint">Sign Target</span>
+              </div>
+            ) : (
+              <div className="eval-visual-aid-wrapper">
+                <img 
+                  key={`photo-${currentItem.globalId}-${currentItem.name}`}
+                  src={
+                    (currentItem as any)?.photoUrl 
+                      ? (resolveMediaUrl((currentItem as any).photoUrl) || undefined) 
+                      : `/thumbnails/${currentItem.globalId}.png`
+                  }
+                  alt={currentItem.name}
+                  className="eval-visual-aid-img"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.dataset.triedName) {
+                      target.dataset.triedName = 'true';
+                      target.src = `/thumbnails/${currentItem.name}.png`;
+                    } else if (!target.dataset.triedThumbId) {
+                      target.dataset.triedThumbId = 'true';
+                      target.src = `/thumbnails/thumb_${currentItem.globalId}.png`;
+                    } else if (!target.dataset.triedThumbName) {
+                      target.dataset.triedThumbName = 'true';
+                      target.src = `/thumbnails/thumb_${currentItem.name}.png`;
+                    } else {
+                      setPhotoFailed(true);
+                    }
+                  }}
+                />
+                <div className="eval-visual-aid-badge">
+                  <span className="eval-visual-aid-badge-label">Target:</span>
+                  <span className="eval-visual-aid-badge-name">{currentItem.name}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="eval-mascot-feedback-card">

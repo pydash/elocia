@@ -367,7 +367,18 @@ export async function uploadStageBaseline(
   video: File,
   gradeLevel: number,
   description?: string,
+  photoOrProgress?: File | null | ((percent: number) => void),
+  onProgress?: (percent: number) => void
 ): Promise<void> {
+  let photo: File | null = null;
+  let progressCb: ((percent: number) => void) | undefined = onProgress;
+
+  if (typeof photoOrProgress === "function") {
+    progressCb = photoOrProgress;
+  } else if (photoOrProgress) {
+    photo = photoOrProgress;
+  }
+
   const formData = new FormData();
   formData.append("video", video);
   formData.append("sign_name", signName);
@@ -376,19 +387,39 @@ export async function uploadStageBaseline(
   if (description) {
     formData.append("description", description);
   }
-
-  const response = await fetch(`${API_BASE_URL}/baselines/upload`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error: { detail?: string } | null = await response
-      .json()
-      .catch(() => null);
-
-    throw new Error(error?.detail ?? "Failed to upload stage video");
+  if (photo) {
+    formData.append("photo", photo);
   }
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/baselines/upload`);
+
+    if (xhr.upload && progressCb) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          progressCb(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error?.detail ?? "Failed to upload stage video"));
+        } catch {
+          reject(new Error("Failed to upload stage video"));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during stage video upload"));
+    xhr.send(formData);
+  });
 }
 
 export async function updateStage(
@@ -459,4 +490,24 @@ export async function deleteSign(signId: number | string): Promise<void> {
     const error = await response.json().catch(() => null);
     throw new Error(error?.detail ?? "Failed to delete sign");
   }
+}
+
+export async function uploadSignPhoto(
+  signId: number | string,
+  photoFile: File
+): Promise<{ status: string; sign_id: number; photo_url: string }> {
+  const formData = new FormData();
+  formData.append("photo", photoFile);
+
+  const response = await fetch(`${API_BASE_URL}/curriculum-signs/${signId}/photo`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail ?? "Failed to upload sign visual aid picture");
+  }
+
+  return response.json();
 }

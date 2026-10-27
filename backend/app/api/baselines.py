@@ -1,4 +1,5 @@
 import os
+import asyncio
 import sys
 import json
 import subprocess
@@ -20,16 +21,30 @@ router = APIRouter()
 
 # Directories for videos and baselines
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-DESKTOP_PYTHON = sys.executable
+
+def get_python_exe():
+    local_app_py = os.path.expandvars(r"%LOCALAPPDATA%\Programs\Python\Python311\python.exe")
+    if os.path.exists(local_app_py):
+        return local_app_py
+    if sys.executable and os.path.exists(sys.executable) and not sys.executable.endswith("uvicorn.exe"):
+        return sys.executable
+    venv_py = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "venv", "Scripts", "python.exe")
+    if os.path.exists(venv_py):
+        return venv_py
+    return sys.executable or "python"
+
+DESKTOP_PYTHON = get_python_exe()
 EXTRACTOR_SCRIPT = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines", "extract_baseline.py")
 
 PUBLIC_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "videos")
 BASELINES_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines", "lessons")
 STORAGE_VIDEOS_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "videos")
 STORAGE_BASELINES_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "baselines", "lessons")
+PUBLIC_THUMBNAILS_DIR = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "frontend", "public", "thumbnails")
+STORAGE_THUMBNAILS_DIR = os.path.join(PROJECT_ROOT, "backend", "storage", "thumbnails")
 
 # Ensure required directories exist
-for d in [PUBLIC_VIDEOS_DIR, BASELINES_DIR, STORAGE_VIDEOS_DIR, STORAGE_BASELINES_DIR]:
+for d in [PUBLIC_VIDEOS_DIR, BASELINES_DIR, STORAGE_VIDEOS_DIR, STORAGE_BASELINES_DIR, PUBLIC_THUMBNAILS_DIR, STORAGE_THUMBNAILS_DIR]:
     os.makedirs(d, exist_ok=True)
 
 @router.post("/upload", response_model=BaselineUploadResult)
@@ -42,6 +57,7 @@ async def upload_baseline_video(
     stage_id_new: Optional[int] = Form(None),
     order_index: Optional[int] = Form(None),
     video: UploadFile = File(...),
+    photo: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -76,69 +92,97 @@ async def upload_baseline_video(
         shutil.copyfileobj(video.file, f_out)
     shutil.copyfile(target_video_path, backup_video_path)
 
+    # 3b. Save custom photo/thumbnail if provided, or auto-extract from video
+    try:
+        if photo and photo.filename:
+            p_ext = os.path.splitext(photo.filename)[1].lower() or ".png"
+            photo_bytes = await photo.read()
+            for name in [f"thumb_{stage_id}{p_ext}", f"{stage_id}{p_ext}", f"{resolved_sign_id}{p_ext}", f"thumb_{sign_name}.png", f"{sign_name}.png", f"thumb_{resolved_sign_id}.png"]:
+                with open(os.path.join(PUBLIC_THUMBNAILS_DIR, name), "wb") as fp:
+                    fp.write(photo_bytes)
+                with open(os.path.join(STORAGE_THUMBNAILS_DIR, name), "wb") as fb:
+                    fb.write(photo_bytes)
+        else:
+            def extract_thumb():
+                try:
+                    import cv2
+                    cap = cv2.VideoCapture(target_video_path)
+                    if cap.isOpened():
+                        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, min(max(int(total * 0.35), 0), total - 1))
+                        ret, frame = cap.read()
+                        if not ret:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            ret, frame = cap.read()
+                        cap.release()
+                        if ret and frame is not None:
+                            for name in [f"thumb_{stage_id}.png", f"{stage_id}.png", f"thumb_{sign_name}.png", f"{sign_name}.png", f"thumb_{resolved_sign_id}.png"]:
+                                cv2.imwrite(os.path.join(PUBLIC_THUMBNAILS_DIR, name), frame)
+                                cv2.imwrite(os.path.join(STORAGE_THUMBNAILS_DIR, name), frame)
+                except Exception as th_err:
+                    pass
+            await asyncio.to_thread(extract_thumb)
+    except Exception as img_err:
+        pass
+
     # 4. Output baseline JSON target paths
     target_json_filename = f"baseline_{stage_id}.json"
     desktop_json_path = os.path.join(BASELINES_DIR, target_json_filename)
     backup_json_path = os.path.join(STORAGE_BASELINES_DIR, target_json_filename)
 
-    # 5. Execute extraction subprocess using Python with MediaPipe
-    cmd = [
-        DESKTOP_PYTHON,
-        EXTRACTOR_SCRIPT,
-        "--video", target_video_path,
-        "--output", desktop_json_path,
-        "--stage", str(stage_id)
-    ]
-
+    # 5. Execute extraction: in worker thread to prevent event loop starvation on Windows Proactor
+    extract_result = None
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        if proc.returncode != 0:
-            err_msg = proc.stderr.strip() or proc.stdout.strip()
+        if PROJECT_ROOT not in sys.path:
+            sys.path.insert(0, PROJECT_ROOT)
+        extractor_dir = os.path.dirname(EXTRACTOR_SCRIPT)
+        if extractor_dir not in sys.path:
+            sys.path.insert(0, extractor_dir)
+        from extract_baseline import extract_landmarks
+        
+        res = await asyncio.to_thread(extract_landmarks, target_video_path, desktop_json_path, str(stage_id))
+        if res and res.get("success"):
+            extract_result = res
+        else:
+            err_msg = res.get("error") if res else "Could not detect hand landmarks in the video"
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Landmark extraction failed: {err_msg}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Video baseline extraction failed: {err_msg}. Please ensure hands are clearly visible in the video."
             )
-
-        # Parse JSON output robustly from worker lines (search backwards for {"success": ...})
-        lines = [line.strip() for line in proc.stdout.split("\n") if line.strip()]
-        extract_result = None
-        for line in reversed(lines):
+    except HTTPException:
+        raise
+    except Exception as in_proc_err:
+        # Check if the output JSON was actually generated successfully before error was raised
+        if os.path.exists(desktop_json_path) and os.path.getsize(desktop_json_path) > 100:
             try:
-                candidate = json.loads(line)
-                if isinstance(candidate, dict) and "success" in candidate:
-                    extract_result = candidate
-                    break
+                with open(desktop_json_path, "r", encoding="utf-8") as f_chk:
+                    saved_data = json.load(f_chk)
+                if isinstance(saved_data, list) and len(saved_data) > 0:
+                    extract_result = {
+                        "success": True,
+                        "total_frames": len(saved_data),
+                        "hands_detected_frames": sum(1 for f in saved_data if f.get("has_right") or f.get("has_left")),
+                        "fps": 30.0
+                    }
             except Exception:
-                continue
+                pass
 
         if not extract_result:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Could not parse landmark extraction output. Please ensure video format is supported."
+                detail=f"Internal error processing video landmarks: {str(in_proc_err)}"
             )
-
-        if not extract_result.get("success"):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=extract_result.get("error", "Unknown extraction error")
-            )
-
-    except subprocess.TimeoutExpired:
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Video extraction timed out (exceeded 120 seconds)."
-        )
-    except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Subprocess execution error: {str(e)}"
-        )
 
     # Copy generated baseline to backend storage backup
     if os.path.exists(desktop_json_path):
         shutil.copyfile(desktop_json_path, backup_json_path)
+    
+    # Invalidate curriculum cache so new visual aid / video is instantly active
+    try:
+        from app.api.curriculum import invalidate_curriculum_cache
+        invalidate_curriculum_cache()
+    except Exception:
+        pass
 
     total_frames = extract_result.get("total_frames", 0)
     hands_detected = extract_result.get("hands_detected_frames", 0)

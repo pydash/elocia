@@ -33,21 +33,46 @@ export type MediaUploadResponse = {
 /**
  * Upload an image or video asset for a mini-game.
  */
-export async function uploadMiniGameMedia(file: File): Promise<MediaUploadResponse> {
+export async function uploadMiniGameMedia(
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<MediaUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/minigames/upload/media`, {
-    method: "POST",
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/minigames/upload/media`);
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error("Invalid server response format"));
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error?.detail ?? "Failed to upload media file"));
+        } catch {
+          reject(new Error("Failed to upload media file"));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during media upload"));
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? "Failed to upload media file");
-  }
-
-  return response.json() as Promise<MediaUploadResponse>;
 }
 
 /**

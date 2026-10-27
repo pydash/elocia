@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from "react";
-import { Pencil, Trash2, X, Loader2 } from "lucide-react";
+import { useState, useRef, type FormEvent } from "react";
+import { Pencil, Trash2, X, Loader2, ImagePlus } from "lucide-react";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
-import { updateSign, deleteSign } from "@/services/curriculum";
+import { updateSign, deleteSign, uploadSignPhoto } from "@/services/curriculum";
 
 interface StageSignItem {
   id: string;
@@ -10,6 +10,7 @@ interface StageSignItem {
   sign_name: string;
   video_filename: string;
   video_url: string;
+  photo_url?: string;
 }
 
 interface EditSignDialogProps {
@@ -21,12 +22,15 @@ export default function EditSignDialog({ sign, onUpdated }: EditSignDialogProps)
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [signName, setSignName] = useState(sign.sign_name);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
     setSignName(sign.sign_name);
+    setSelectedPhoto(null);
     setError(null);
     setIsOpen(true);
   };
@@ -40,9 +44,15 @@ export default function EditSignDialog({ sign, onUpdated }: EditSignDialogProps)
     setLoading(true);
     setError(null);
     try {
-      await updateSign(sign.sign_id, {
-        sign_name: signName.trim(),
-      });
+      const targetId = sign.id || String(sign.sign_id);
+      if (signName.trim() !== sign.sign_name) {
+        await updateSign(targetId, {
+          sign_name: signName.trim(),
+        });
+      }
+      if (selectedPhoto) {
+        await uploadSignPhoto(targetId, selectedPhoto);
+      }
       setIsOpen(false);
       onUpdated();
     } catch (err: any) {
@@ -74,7 +84,7 @@ export default function EditSignDialog({ sign, onUpdated }: EditSignDialogProps)
           type="button"
           onClick={handleOpen}
           className="p-1 rounded-md text-gray-400 hover:text-(--primary) hover:bg-white/80 transition-colors cursor-pointer"
-          title="Edit Sign Name"
+          title="Edit Round / Sign"
         >
           <Pencil className="size-3.5" />
         </button>
@@ -98,7 +108,7 @@ export default function EditSignDialog({ sign, onUpdated }: EditSignDialogProps)
         >
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl border border-gray-100 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-base font-bold text-gray-900">Edit Sign Name</h3>
+              <h3 className="text-base font-bold text-gray-900">Edit Round: {sign.sign_name}</h3>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -126,6 +136,67 @@ export default function EditSignDialog({ sign, onUpdated }: EditSignDialogProps)
                   placeholder="e.g. Black"
                   required
                 />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Visual Aid Picture / Illustration
+                  </label>
+                  <span className="text-[10px] font-semibold text-(--primary) bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Lesson Proper
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 mb-1.5">
+                  Visual instruction prompt displayed to students instead of plain text.
+                </p>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedPhoto(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => photoInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 hover:border-(--primary) rounded-xl p-3 text-center cursor-pointer transition bg-gray-50 hover:bg-gray-100/50 flex flex-col items-center justify-center gap-2"
+                >
+                  {selectedPhoto ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <img
+                        src={URL.createObjectURL(selectedPhoto)}
+                        alt="New visual aid preview"
+                        className="h-20 max-w-full object-contain rounded-lg border border-gray-200 bg-white p-1 shadow-xs"
+                      />
+                      <p className="text-xs font-semibold text-gray-800">📸 {selectedPhoto.name}</p>
+                      <p className="text-[11px] text-gray-500">Click to change picture</p>
+                    </div>
+                  ) : sign.photo_url ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <img
+                        src={`http://localhost:8000${sign.photo_url}`}
+                        alt={sign.sign_name}
+                        className="h-20 max-w-full object-contain rounded-lg border border-gray-200 bg-white p-1 shadow-xs"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <p className="text-xs font-medium text-gray-700">Click to replace visual aid picture</p>
+                      <p className="text-[11px] text-gray-400">PNG, JPG, or WebP</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <ImagePlus className="size-6 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs font-medium text-gray-700">Click to upload visual aid picture</p>
+                      <p className="text-[11px] text-gray-400">PNG, JPG, or WebP</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">

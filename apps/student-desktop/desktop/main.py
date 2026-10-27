@@ -153,7 +153,7 @@ async def evaluate_endpoint(websocket: WebSocket):
     from inference import get_diagnostic_baseline, diagnostic_frame_scores
     mp_holistic = mp.solutions.holistic
     holistic = mp_holistic.Holistic(
-        model_complexity=1,
+        model_complexity=0,
         min_detection_confidence=0.45,
         min_tracking_confidence=0.40,
         smooth_landmarks=True
@@ -280,7 +280,8 @@ async def evaluate_endpoint(websocket: WebSocket):
             # ADVISER VALIDATION: Background Person Filtering
             # Ensure the detected person is the centered foreground student, not a person in the background.
             if not results.pose_landmarks:
-                # If no student pose is detected, ignore stray background hands
+                # If no student pose is detected, keep client pipeline unlocked
+                await websocket.send_json({"action": "hand_status", "hand_detected": False})
                 continue
 
             ls = results.pose_landmarks.landmark[11]
@@ -291,6 +292,7 @@ async def evaluate_endpoint(websocket: WebSocket):
             # Background adults standing far behind typically have width < 0.10
             if shoulder_width < 0.12:
                 # Discard frame: person is too far in background
+                await websocket.send_json({"action": "hand_status", "hand_detected": False})
                 continue
 
             # Check if active hand belongs to the foreground student's signing space

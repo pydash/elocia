@@ -3,6 +3,7 @@ export interface StageItem {
   name: string;
   videoUrl?: string;
   videoFilename?: string;
+  photoUrl?: string;
 }
 
 export interface Stage {

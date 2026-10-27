@@ -148,6 +148,8 @@ export function MagicFingersCreateActivityStepOnePage() {
 export function MagicFingersCreateActivityStepTwoPage() {
   const [game, setGame] = useState<MagicFingersPayload>(readDraft);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [showWordListModal, setShowWordListModal] = useState(false);
   const [bulkWordsInput, setBulkWordsInput] = useState("");
@@ -191,9 +193,11 @@ export function MagicFingersCreateActivityStepTwoPage() {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadingTarget(`${index}_${field}`);
+    setUploadProgress(0);
     setUploadError("");
     try {
-      const res = await uploadMiniGameMedia(file);
+      const res = await uploadMiniGameMedia(file, (percent) => setUploadProgress(percent));
       updateItem(index, { [field]: `${API_BASE_URL}${res.url}` });
     } catch (err) {
       setUploadError(
@@ -201,6 +205,8 @@ export function MagicFingersCreateActivityStepTwoPage() {
       );
     } finally {
       setIsUploading(false);
+      setUploadingTarget(null);
+      setUploadProgress(0);
     }
   };
 
@@ -641,8 +647,20 @@ export function MagicFingersCreateActivityStepTwoPage() {
                             <>
                               <Upload className="size-8 text-(--primary)" />
                               <span className="caption font-semibold text-(--black)">
-                                {isUploading ? "Uploading video..." : `Upload Demo Video for '${firstChar}'`}
+                                {isUploading && uploadingTarget === `${index}_reference_video_url`
+                                  ? `Uploading video (${uploadProgress}%)...`
+                                  : isUploading
+                                  ? "Uploading..."
+                                  : `Upload Demo Video for '${firstChar}'`}
                               </span>
+                              {isUploading && uploadingTarget === `${index}_reference_video_url` && (
+                                <div className="w-full max-w-[180px] bg-gray-200 h-2 rounded-full overflow-hidden my-1">
+                                  <div
+                                    className="bg-(--primary) h-full transition-all duration-150 rounded-full"
+                                    style={{ width: `${uploadProgress}%` }}
+                                  />
+                                </div>
+                              )}
                               <span className="text-[11px] text-(--ghost)">
                                 MP4, WebM up to 100MB
                               </span>

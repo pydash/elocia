@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { UploadCloud, ArrowUp, ArrowDown } from "lucide-react";
 
-type Round = { signName: string; video: File | null };
+type Round = { signName: string; video: File | null; photo?: File | null };
 type StageDraft = {
   stageNumber: number;
   title: string;
@@ -16,7 +16,7 @@ type StageDraft = {
   rounds: Round[];
 };
 
-const newRound = (): Round => ({ signName: "", video: null });
+const newRound = (): Round => ({ signName: "", video: null, photo: null });
 
 export function TeacherStageCreatePage() {
   const { curriculumId, sectionId, unitId } = useParams<{
@@ -156,6 +156,7 @@ export function TeacherStageCreatePage() {
                     return {
                       signName: capitalized || "Sign",
                       video: file,
+                      photo: null,
                     };
                   });
                   setDraft((prev) => ({
@@ -246,7 +247,7 @@ export function TeacherStageCreatePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <label className="caption text-(--black)">
                     Sign name
                     <Input
@@ -260,11 +261,11 @@ export function TeacherStageCreatePage() {
                     />
                   </label>
                   <label className="caption block text-(--black)">
-                    Video
+                    Reference Video
                     {round.video ? (
                       <div className="mt-2 space-y-2">
                         <div className="flex items-center justify-between rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
-                          <span className="truncate font-semibold">🎬 {round.video.name}</span>
+                          <span className="truncate font-semibold">🎥 {round.video.name}</span>
                           <label className="ml-2 cursor-pointer font-bold underline hover:text-green-950">
                             Change
                             <input
@@ -299,6 +300,51 @@ export function TeacherStageCreatePage() {
                         }
                         required
                       />
+                    )}
+                  </label>
+                  <label className="caption block text-(--black)">
+                    Visual Aid Picture / Illustration (Lesson Instruction Prompt)
+                    {round.photo ? (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center justify-between rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                          <span className="truncate font-semibold">📷 {round.photo.name}</span>
+                          <label className="ml-2 cursor-pointer font-bold underline hover:text-blue-950">
+                            Change
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/jpg"
+                              className="sr-only"
+                              onChange={(event) =>
+                                updateRound(index, {
+                                  photo: event.target.files?.[0] ?? round.photo,
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-amber-50 shadow-inner border border-amber-200 flex items-center justify-center p-2">
+                          <img
+                            src={URL.createObjectURL(round.photo)}
+                            alt="Sign preview"
+                            className="h-full w-full object-contain rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/jpg"
+                          onChange={(event) =>
+                            updateRound(index, {
+                              photo: event.target.files?.[0] ?? null,
+                            })
+                          }
+                        />
+                        <span className="text-[11px] text-gray-500 mt-1 block">
+                          Visual aid shown to students on the right card during lesson proper instead of plain text (auto-captures from video if left empty)
+                        </span>
+                      </div>
                     )}
                   </label>
                 </div>
@@ -377,6 +423,7 @@ export function TeacherStagePreviewPage() {
           round.video!,
           Number(draft.gradeLevel),
           draft.description.trim(),
+          round.photo ?? null,
         );
       }
 
@@ -430,6 +477,16 @@ export function TeacherStagePreviewPage() {
                       controls
                       playsInline
                       className="h-full w-full object-contain"
+                    />
+                  </div>
+                )}
+
+                {round.photo && (
+                  <div className="aspect-video w-full rounded-xl overflow-hidden bg-amber-50 shadow-inner border border-amber-200 flex items-center justify-center p-2">
+                    <img
+                      src={URL.createObjectURL(round.photo)}
+                      alt={`Photo for ${round.signName}`}
+                      className="h-full w-full object-contain rounded-lg"
                     />
                   </div>
                 )}

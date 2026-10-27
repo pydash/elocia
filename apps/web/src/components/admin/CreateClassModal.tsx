@@ -38,17 +38,19 @@ export default function CreateClassModal({
       // Fetch active teachers for dropdown
       fetchAllUsers("teacher")
         .then((data) => {
-          setTeachers(data.filter((t) => t.is_active));
-          if (!classToEdit && data.length > 0 && !teacherId) {
-            setTeacherId(data[0].id);
+          const active = data.filter((t) => t.is_active);
+          setTeachers(active);
+          if (!classToEdit && active.length > 0) {
+            setTeacherId((prev) => (prev && prev !== "None" && prev !== "null" ? prev : active[0].id));
           }
         })
         .catch((err) => console.error("Error fetching teachers:", err));
 
       if (classToEdit) {
-        setName(classToEdit.name);
-        setGradeLevel(classToEdit.grade_level);
-        setTeacherId(classToEdit.teacher_id);
+        setName(classToEdit.name || "");
+        setGradeLevel(classToEdit.grade_level || 1);
+        const tid = classToEdit.teacher_id;
+        setTeacherId(tid && tid !== "None" && tid !== "null" ? tid : "");
         setSchoolYear(classToEdit.school_year || "2026-2027");
       } else {
         setName("");
@@ -63,7 +65,8 @@ export default function CreateClassModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teacherId) {
+    const cleanTeacherId = teacherId && teacherId !== "None" && teacherId !== "null" ? teacherId.trim() : "";
+    if (!cleanTeacherId) {
       setError("Please select an assigned teacher for this class.");
       return;
     }
@@ -75,7 +78,7 @@ export default function CreateClassModal({
         const payload: UpdateClassPayload = {
           name,
           grade_level: Number(gradeLevel),
-          teacher_id: teacherId,
+          teacher_id: cleanTeacherId,
           school_year: schoolYear,
         };
         await updateClassroom(classToEdit.id, payload);
@@ -83,7 +86,7 @@ export default function CreateClassModal({
         const payload: CreateClassPayload = {
           name,
           grade_level: Number(gradeLevel),
-          teacher_id: teacherId,
+          teacher_id: cleanTeacherId,
           school_year: schoolYear,
         };
         await createClassroom(payload);

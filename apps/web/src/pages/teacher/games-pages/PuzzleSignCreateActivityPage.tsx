@@ -152,6 +152,8 @@ export function PuzzleSignCreateActivityStepOnePage() {
 export function PuzzleSignCreateActivityStepTwoPage() {
   const [game, setGame] = useState<PuzzleSignPayload>(readDraft);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
 
   const saveDraft = () =>
@@ -250,9 +252,11 @@ export function PuzzleSignCreateActivityStepTwoPage() {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadingTarget(`${index}_${field}`);
+    setUploadProgress(0);
     setUploadError("");
     try {
-      const res = await uploadMiniGameMedia(file);
+      const res = await uploadMiniGameMedia(file, (percent) => setUploadProgress(percent));
       updateItem(index, { [field]: `${API_BASE_URL}${res.url}` });
     } catch (err) {
       setUploadError(
@@ -260,6 +264,8 @@ export function PuzzleSignCreateActivityStepTwoPage() {
       );
     } finally {
       setIsUploading(false);
+      setUploadingTarget(null);
+      setUploadProgress(0);
     }
   };
 
@@ -762,8 +768,20 @@ export function PuzzleSignCreateActivityStepTwoPage() {
                 <>
                   <Upload className="size-10 text-(--primary)" />
                   <span className="paragraph-2 font-semibold text-(--black)">
-                    {isUploading ? "Uploading video..." : "Click to upload demonstration video"}
+                    {isUploading && uploadingTarget === `${index}_reference_video_url`
+                      ? `Uploading video (${uploadProgress}%)...`
+                      : isUploading
+                      ? "Uploading..."
+                      : "Click to upload demonstration video"}
                   </span>
+                  {isUploading && uploadingTarget === `${index}_reference_video_url` && (
+                    <div className="w-full max-w-[200px] bg-gray-200 h-2 rounded-full overflow-hidden my-1">
+                      <div
+                        className="bg-(--primary) h-full transition-all duration-150 rounded-full"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  )}
                   <span className="caption text-(--ghost)">
                     MP4, WebM, or MOV up to 100MB
                   </span>

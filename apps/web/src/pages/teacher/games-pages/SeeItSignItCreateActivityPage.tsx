@@ -152,6 +152,9 @@ export function SeeItSignItCreateActivityStepOnePage() {
 export function SeeItSignItCreateActivityStepTwoPage() {
   const [game, setGame] = useState<SeeItSignItGamePayload>(readDraft);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
+  const [batchProgress, setBatchProgress] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
 
   const saveDraft = () =>
@@ -175,9 +178,13 @@ export function SeeItSignItCreateActivityStepTwoPage() {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadingTarget(`${index}_${field}`);
+    setUploadProgress(0);
     setUploadError("");
     try {
-      const res = await uploadMiniGameMedia(file);
+      const res = await uploadMiniGameMedia(file, (percent) => {
+        setUploadProgress(percent);
+      });
       updateItem(index, { [field]: `${API_BASE_URL}${res.url}` });
     } catch (err) {
       setUploadError(
@@ -185,6 +192,8 @@ export function SeeItSignItCreateActivityStepTwoPage() {
       );
     } finally {
       setIsUploading(false);
+      setUploadingTarget(null);
+      setUploadProgress(0);
     }
   };
 
@@ -245,6 +254,7 @@ export function SeeItSignItCreateActivityStepTwoPage() {
     if (files.length === 0) return;
     setIsUploading(true);
     setUploadError("");
+    setBatchProgress(`Uploading 1 of ${files.length} (0%)...`);
     try {
       const newItems: SeeItSignItGameItem[] = [];
       for (let i = 0; i < files.length; i++) {
@@ -260,7 +270,9 @@ export function SeeItSignItCreateActivityStepTwoPage() {
 
         let uploadedUrl = "";
         try {
-          const res = await uploadMiniGameMedia(file);
+          const res = await uploadMiniGameMedia(file, (percent) => {
+            setBatchProgress(`Uploading video ${i + 1} of ${files.length} (${percent}%)...`);
+          });
           uploadedUrl = `${API_BASE_URL}${res.url}`;
         } catch (uploadErr) {
           console.error("Batch upload failed for file:", file.name, uploadErr);
@@ -290,6 +302,7 @@ export function SeeItSignItCreateActivityStepTwoPage() {
       setUploadError(err instanceof Error ? err.message : "Batch upload failed");
     } finally {
       setIsUploading(false);
+      setBatchProgress(null);
     }
   };
 
@@ -307,7 +320,7 @@ export function SeeItSignItCreateActivityStepTwoPage() {
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--primary) bg-(--primary-light)/40 p-6 text-center transition-colors hover:bg-(--primary-light)">
         <UploadCloud className="size-8 text-(--primary)" />
         <span className="paragraph-2 font-semibold text-(--primary)">
-          ⚡ Batch Upload Videos (Auto-Generates Rounds)
+          {batchProgress ? `⚡ ${batchProgress}` : "⚡ Batch Upload Videos (Auto-Generates Rounds)"}
         </span>
         <span className="caption text-(--ghost)">
           Drop multiple .mp4 / .webm videos — target signs will be auto-named from filenames!
@@ -405,10 +418,20 @@ export function SeeItSignItCreateActivityStepTwoPage() {
                     <>
                       <ImagePlus className="size-10 text-(--primary)" />
                       <span className="paragraph-2 font-semibold text-(--black)">
-                        {isUploading
-                          ? "Uploading image..."
+                        {isUploading && uploadingTarget === `${index}_objective_image_url`
+                          ? `Uploading image (${uploadProgress}%)...`
+                          : isUploading
+                          ? "Uploading..."
                           : "Click to upload an image"}
                       </span>
+                      {isUploading && uploadingTarget === `${index}_objective_image_url` && (
+                        <div className="w-full max-w-[200px] bg-gray-200 h-2 rounded-full overflow-hidden my-1">
+                          <div
+                            className="bg-(--primary) h-full transition-all duration-150 rounded-full"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      )}
                       <span className="caption text-(--ghost)">
                         PNG or JPG up to 10MB
                       </span>
@@ -452,10 +475,20 @@ export function SeeItSignItCreateActivityStepTwoPage() {
                     <>
                       <Upload className="size-10 text-(--primary)" />
                       <span className="paragraph-2 font-semibold text-(--black)">
-                        {isUploading
-                          ? "Uploading video..."
+                        {isUploading && uploadingTarget === `${index}_reference_video_url`
+                          ? `Uploading video (${uploadProgress}%)...`
+                          : isUploading
+                          ? "Uploading..."
                           : "Click to upload a video"}
                       </span>
+                      {isUploading && uploadingTarget === `${index}_reference_video_url` && (
+                        <div className="w-full max-w-[200px] bg-gray-200 h-2 rounded-full overflow-hidden my-1">
+                          <div
+                            className="bg-(--primary) h-full transition-all duration-150 rounded-full"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      )}
                       <span className="caption text-(--ghost)">
                         MP4, WebM, or MOV up to 100MB
                       </span>

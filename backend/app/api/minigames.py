@@ -45,7 +45,20 @@ router = APIRouter(prefix="/minigames", tags=["Mini-Games (Modules 7, 8, 9)"])
 
 # Define storage directories for uploaded minigame assets
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-DESKTOP_PYTHON = sys.executable
+
+# Resolve Python executable robustly
+def get_python_exe():
+    local_app_py = os.path.expandvars(r"%LOCALAPPDATA%\Programs\Python\Python311\python.exe")
+    if os.path.exists(local_app_py):
+        return local_app_py
+    if sys.executable and os.path.exists(sys.executable) and not sys.executable.endswith("uvicorn.exe"):
+        return sys.executable
+    venv_py = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "venv", "Scripts", "python.exe")
+    if os.path.exists(venv_py):
+        return venv_py
+    return sys.executable or "python"
+
+DESKTOP_PYTHON = get_python_exe()
 EXTRACTOR_SCRIPT = os.path.join(PROJECT_ROOT, "apps", "student-desktop", "desktop", "baselines", "extract_baseline.py")
 
 MINIGAME_IMAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "minigames", "images"))
@@ -109,29 +122,30 @@ def extract_minigame_baseline(video_url: Optional[str], game_type: str, word_ide
     backend_json_path = os.path.join(backend_game_dir, target_json_filename)
     desktop_json_path = os.path.join(desktop_game_dir, target_json_filename)
 
-    cmd = [
-        DESKTOP_PYTHON,
-        EXTRACTOR_SCRIPT,
-        "--video", video_path,
-        "--output", backend_json_path,
-        "--stage", clean_word
-    ]
-
     try:
         logger.info(f"Extracting baseline for {game_type} word '{clean_word}' from {video_path}...")
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        if proc.returncode == 0:
+        
+        # 100% in-process MediaPipe Holistic extraction (zero subprocess overhead, immune to 0xc0000142)
+        if PROJECT_ROOT not in sys.path:
+            sys.path.insert(0, PROJECT_ROOT)
+        extractor_dir = os.path.dirname(EXTRACTOR_SCRIPT)
+        if extractor_dir not in sys.path:
+            sys.path.insert(0, extractor_dir)
+        from extract_baseline import extract_landmarks
+        
+        res = extract_landmarks(video_path, backend_json_path, clean_word)
+        if res and res.get("success"):
             if os.path.exists(backend_json_path):
-                # Copy to student desktop baselines directory as well
                 try:
                     if os.path.normcase(os.path.abspath(backend_json_path)) != os.path.normcase(os.path.abspath(desktop_json_path)):
                         shutil.copyfile(backend_json_path, desktop_json_path)
                 except Exception as ce:
                     logger.debug(f"Desktop baseline copy note: {ce}")
-
-                logger.info(f"Successfully generated baseline for {game_type} '{clean_word}'")
+                logger.info(f"Successfully generated baseline in-process for {game_type} '{clean_word}' ({res.get('total_frames', 0)} frames, {res.get('hands_detected_frames', 0)} hand frames)")
+                return
         else:
-            logger.error(f"Failed to extract baseline for {game_type} '{clean_word}': {proc.stderr or proc.stdout}")
+            err_msg = res.get("error") if res else "Unknown extraction failure"
+            logger.warning(f"In-process extraction could not extract baseline for {game_type} '{clean_word}': {err_msg}")
     except Exception as e:
         logger.error(f"Error during baseline extraction for {game_type} '{clean_word}': {e}")
 
@@ -364,7 +378,11 @@ async def get_see_it_sign_it_activities(db: AsyncSession = Depends(get_db)):
     return await get_all_activities_by_game_type("see_it_sign_it", db)
 
 @router.post("/see-it-sign-it", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
-async def create_see_it_sign_it_activity(data: SeeItSignItActivityCreate, db: AsyncSession = Depends(get_db)):
+async def create_see_it_sign_it_activity(
+    data: SeeItSignItActivityCreate, 
+    background_tasks: BackgroundTasks, 
+    db: AsyncSession = Depends(get_db)
+):
     """
     Dedicated endpoint to create a 'See It Sign It' activity with rounds and reference videos.
     """
@@ -375,7 +393,7 @@ async def create_see_it_sign_it_activity(data: SeeItSignItActivityCreate, db: As
         difficulty=data.difficulty,
         see_it_sign_it_items=data.items
     )
-    return await create_minigame_config(payload, db)
+    return await create_minigame_config(payload, background_tasks, db)
 
 
 # 2. Puzzle Sign
@@ -387,7 +405,11 @@ async def get_puzzle_sign_activities(db: AsyncSession = Depends(get_db)):
     return await get_all_activities_by_game_type("puzzle_sign", db)
 
 @router.post("/puzzle-sign", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
-async def create_puzzle_sign_activity(data: PuzzleSignActivityCreate, db: AsyncSession = Depends(get_db)):
+async def create_puzzle_sign_activity(
+    data: PuzzleSignActivityCreate, 
+    background_tasks: BackgroundTasks, 
+    db: AsyncSession = Depends(get_db)
+):
     """
     Dedicated endpoint to create a 'Puzzle Sign' activity with rounds and reference videos.
     """
@@ -398,7 +420,7 @@ async def create_puzzle_sign_activity(data: PuzzleSignActivityCreate, db: AsyncS
         difficulty=data.difficulty,
         puzzle_sign_items=data.items
     )
-    return await create_minigame_config(payload, db)
+    return await create_minigame_config(payload, background_tasks, db)
 
 
 # 3. Magic Fingers
@@ -410,7 +432,11 @@ async def get_magic_fingers_activities(db: AsyncSession = Depends(get_db)):
     return await get_all_activities_by_game_type("magic_fingers", db)
 
 @router.post("/magic-fingers", status_code=status.HTTP_201_CREATED, response_model=MiniGameConfigDetailResponse)
-async def create_magic_fingers_activity(data: MagicFingersActivityCreate, db: AsyncSession = Depends(get_db)):
+async def create_magic_fingers_activity(
+    data: MagicFingersActivityCreate, 
+    background_tasks: BackgroundTasks, 
+    db: AsyncSession = Depends(get_db)
+):
     """
     Dedicated endpoint to create a 'Magic Fingers' activity with rounds and reference videos.
     """
@@ -421,7 +447,7 @@ async def create_magic_fingers_activity(data: MagicFingersActivityCreate, db: As
         difficulty=data.difficulty,
         magic_fingers_items=data.items
     )
-    return await create_minigame_config(payload, db)
+    return await create_minigame_config(payload, background_tasks, db)
 
 
 

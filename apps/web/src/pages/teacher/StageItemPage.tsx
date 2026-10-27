@@ -17,6 +17,7 @@ interface StageSign {
   video_url: string;
   fps: number;
   total_frames: number;
+  photo_url?: string;
 }
 
 interface StageDetail {
@@ -220,6 +221,20 @@ export default function TeacherStageItemPage() {
                               >
                                 {idx + 1}
                               </span>
+                              {sign.photo_url ? (
+                                <img
+                                  src={`http://localhost:8000${sign.photo_url}`}
+                                  alt={sign.sign_name}
+                                  className="size-10 rounded-lg object-contain bg-white border border-gray-200 p-0.5 shrink-0 shadow-2xs"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="size-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs text-gray-400 shrink-0">
+                                  🖼️
+                                </div>
+                              )}
                               <div className="truncate">
                                 <p className="font-semibold text-sm truncate">{sign.sign_name}</p>
                                 <p className="text-xs text-gray-400 truncate">
