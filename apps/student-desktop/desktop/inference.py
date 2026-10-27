@@ -360,20 +360,20 @@ def calculate_palm_orientation_score(student_seq, baseline_seq):
 
 def _score_location_distance(dist):
     """
-    Normalized signing space location scoring (measured in body shoulder widths):
-    - dist <= 0.25: Spot-on target signing zone (100 -> 80)
-    - 0.25 < dist <= 0.50: Natural ergonomic variation / comfortable signing space (80 -> 60)
-    - 0.50 < dist <= 0.75: Outer margin boundary (60 -> 40)
-    - dist > 0.75: Out of position (ear, lap, or off target) (< 40, fail)
+    Child-tolerant signing space location scoring (measured in body shoulder widths):
+    - dist <= 0.35: Target core zone (100 -> 85)
+    - 0.35 < dist <= 0.65: Natural elementary ergonomic variation (85 -> 70)
+    - 0.65 < dist <= 0.80: Acceptable region margin (70 -> 60, passing boundary)
+    - dist > 0.80: Out of position / wrong anatomical zone (< 60, fail)
     """
-    if dist <= 0.25:
-        score = 100.0 - (dist * 80.0)
-    elif dist <= 0.50:
-        score = 80.0 - ((dist - 0.25) * 80.0)
-    elif dist <= 0.75:
-        score = 60.0 - ((dist - 0.50) * 80.0)
+    if dist <= 0.35:
+        score = 100.0 - (dist * (15.0 / 0.35))
+    elif dist <= 0.65:
+        score = 85.0 - ((dist - 0.35) * (15.0 / 0.30))
+    elif dist <= 0.80:
+        score = 70.0 - ((dist - 0.65) * (10.0 / 0.15))
     else:
-        score = max(0.0, 40.0 - ((dist - 0.75) * 80.0))
+        score = max(0.0, 60.0 - ((dist - 0.80) * 120.0))
     return round(max(0.0, min(100.0, score)), 1)
 
 def calculate_location_score(student_seq, baseline_seq):
@@ -385,12 +385,18 @@ def calculate_location_score(student_seq, baseline_seq):
     # Use 2D (X, Y) plane for body scale and reference points to eliminate monocular Z depth estimation noise:
     def get_2d_wrist(frame, key="hand"):
         hand = frame.get(key, frame.get("hand", []))
-        if not hand or len(hand) == 0:
-            return None
-        pt = np.array([hand[0]['x'], hand[0]['y']])
-        if pt[0] == 0 and pt[1] == 0:
-            return None
-        return pt
+        if hand and len(hand) > 0 and (hand[0]['x'] != 0 or hand[0]['y'] != 0):
+            return np.array([hand[0]['x'], hand[0]['y']])
+
+        # Fallback to MediaPipe Pose wrist landmarks (16: Right Wrist, 15: Left Wrist)
+        # Prevents location dropping to 0 when rapid hand motion causes temporary hand detector flickering
+        pose = frame.get("pose", [])
+        if pose and len(pose) > 16:
+            if key in ("right_hand", "hand") and (pose[16]['x'] != 0 or pose[16]['y'] != 0):
+                return np.array([pose[16]['x'], pose[16]['y']])
+            if key in ("left_hand", "hand") and (pose[15]['x'] != 0 or pose[15]['y'] != 0):
+                return np.array([pose[15]['x'], pose[15]['y']])
+        return None
 
     def get_2d_nose(frame):
         if not frame.get('pose') or len(frame['pose']) == 0:
@@ -457,12 +463,13 @@ def calculate_location_score(student_seq, baseline_seq):
             traj_dist = (min_rw + min_lw) / 2.0
             best_dist = min(best_dist, (best_dist + traj_dist) / 2.0)
 
-        # Relative hand separation in shoulder widths
+        # Relative hand separation in shoulder widths with child hand size deadband:
         s_sep = np.linalg.norm(s_rw_cent - s_lw_cent)
         b_sep = np.linalg.norm(b_rw_cent - b_lw_cent)
         sep_diff = abs(s_sep - b_sep)
+        effective_sep_diff = max(0.0, sep_diff - 0.12)
 
-        total_err = (best_dist * 0.70) + (sep_diff * 0.30)
+        total_err = (best_dist * 0.80) + (effective_sep_diff * 0.20)
         return _score_location_distance(total_err)
     else:
         scores = []
