@@ -49,10 +49,12 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
   const [step, setStep] = useState<SetupStep>('setup');
   const [wsConnected, setWsConnected] = useState<boolean>(false);
 
+  const isCameraActive = step !== 'setup';
+
   useEffect(() => {
     let stream: MediaStream | null = null;
 
-    if (step !== 'setup') {
+    if (isCameraActive) {
       async function enableCamera() {
         try {
           if (!navigator.mediaDevices?.getUserMedia) {
@@ -78,10 +80,10 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
     return () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
     };
-  }, [step]);
+  }, [isCameraActive]);
 
   useEffect(() => {
-    if (step === 'setup') return;
+    if (!isCameraActive) return;
 
     let cancelled = false;
     let retryTimer: number | null = null;
@@ -100,7 +102,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
           try {
             const data = JSON.parse(event.data);
             if (data.status && !cancelled) {
-              setStep(data.status as SetupStep);
+              setStep((prev) => (prev === 'setup' ? prev : (data.status as SetupStep)));
             }
           } catch (err) {
             console.error('WebSocket parse error:', err);
@@ -157,7 +159,7 @@ export default function CameraSetup({ onDone, onCancel }: CameraSetupProps) {
         wsRef.current.close();
       }
     };
-  }, [step]);
+  }, [isCameraActive]);
 
   const getDialogueBubble = () => {
     switch (step) {

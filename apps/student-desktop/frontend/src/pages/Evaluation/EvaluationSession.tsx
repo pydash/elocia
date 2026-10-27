@@ -314,14 +314,10 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
           const overall = data.overall;
 
-          // Veto Rule: Even if the average is >= 60, if ANY parameter is < 60, the sign fails.
-          const hasFailedParameter =
-            data.scores.handshape < 60 ||
-            data.scores.palmOrientation < 60 ||
-            data.scores.location < 60 ||
-            data.scores.movement < 60;
+          // Standard Passing Rule: overall score >= 60.0% passes
+          const isPassed = overall >= 60;
 
-          if (overall < 60 || hasFailedParameter) {
+          if (!isPassed) {
             setFailCount(prev => {
               const newCount = prev + 1;
               if (newCount >= 4) setCurrentTier(4);
@@ -364,7 +360,6 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
 
           // Save score to database with max 50 XP for proper learn signing
           const student = JSON.parse(localStorage.getItem('elocia_current_student') || '{}');
-          const isPassed = overall >= 60 && !hasFailedParameter;
           const xpEarned = isPassed ? Math.min(50, Math.round((overall / 100) * 50)) : 0;
 
           // Track highest parameters in localStorage for achievements
@@ -525,7 +520,7 @@ export default function EvaluationSession({ stageId, dynamicCurriculum, isPracti
           } else {
             if (autoStateRef.current === 'ready') {
               consecutiveMissRef.current += 1;
-              if (consecutiveMissRef.current >= 3) {
+              if (consecutiveMissRef.current >= 12) {
                 setAutoState('idle');
                 autoStateRef.current = 'idle';
                 setHoldProgress(0);

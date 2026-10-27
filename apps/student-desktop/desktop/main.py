@@ -220,14 +220,8 @@ async def evaluate_endpoint(websocket: WebSocket):
 
                 overall = (scores['handshape'] * 0.25) + (scores['palmOrientation'] * 0.25) + (scores['location'] * 0.25) + (scores['movement'] * 0.25)
                 
-                # Veto Rule check
-                has_failed_parameter = (
-                    scores['handshape'] < 60 or
-                    scores['palmOrientation'] < 60 or
-                    scores['location'] < 60 or
-                    scores['movement'] < 60
-                )
-                passed = (overall >= 60) and (not has_failed_parameter)
+                # Passing standard: 60.0% composite score
+                passed = bool(overall >= 60.0)
 
                 # Hardware camera capture rate per thesis manuscript specification: 30.0 FPS
                 fps = 30.0
@@ -318,6 +312,14 @@ async def evaluate_endpoint(websocket: WebSocket):
 
             active_hand = rh_valid or lh_valid
 
+            # Pose wrist fallback: if palm detector momentarily drops because palm is turned away or fisted
+            pose_wrist_present = False
+            rw_pose = results.pose_landmarks.landmark[16] # RIGHT_WRIST
+            lw_pose = results.pose_landmarks.landmark[15] # LEFT_WRIST
+            rw_in_zone = (rw_pose.visibility > 0.35 and min_x <= rw_pose.x <= max_x and min_y <= rw_pose.y <= max_y)
+            lw_in_zone = (lw_pose.visibility > 0.35 and min_x <= lw_pose.x <= max_x and min_y <= lw_pose.y <= max_y)
+            pose_wrist_present = rw_in_zone or lw_in_zone
+
             frame_data = {
                 "hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
                 "right_hand": [{"x": 0.0, "y": 0.0, "z": 0.0} for _ in range(21)],
@@ -340,6 +342,15 @@ async def evaluate_endpoint(websocket: WebSocket):
             if active_hand:
                 for i, lm in enumerate(active_hand.landmark):
                     frame_data["hand"][i] = {"x": lm.x, "y": lm.y, "z": lm.z}
+            elif pose_wrist_present:
+                target_pose_wrist = rw_pose if rw_in_zone else lw_pose
+                frame_data["hand"][0] = {"x": target_pose_wrist.x, "y": target_pose_wrist.y, "z": target_pose_wrist.z}
+                if rw_in_zone:
+                    frame_data["has_right"] = True
+                    frame_data["right_hand"][0] = {"x": rw_pose.x, "y": rw_pose.y, "z": rw_pose.z}
+                if lw_in_zone:
+                    frame_data["has_left"] = True
+                    frame_data["left_hand"][0] = {"x": lw_pose.x, "y": lw_pose.y, "z": lw_pose.z}
                     
             for i, lm in enumerate(results.pose_landmarks.landmark):
                 frame_data["pose"][i] = {"x": lm.x, "y": lm.y, "z": lm.z}
@@ -347,7 +358,7 @@ async def evaluate_endpoint(websocket: WebSocket):
             student_sequence.append(frame_data)
             
             # Streaming presence / landmarks to frontend
-            hand_detected = (rh_valid is not None or lh_valid is not None)
+            hand_detected = (rh_valid is not None or lh_valid is not None or pose_wrist_present)
             if diag_state["on"] and diag_state["mid"] is not None:
                 scores = diagnostic_frame_scores(frame_data, diag_state["mid"])
                 await websocket.send_json({
